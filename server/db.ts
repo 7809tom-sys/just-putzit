@@ -1,11 +1,35 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import {
+  InsertUser,
+  chatMessages,
+  gameSessions,
+  interviewSessions,
+  matches,
+  notifications,
+  userProfiles,
+  users,
+  reports,
+  blocks,
+  adminFlags,
+  venuePartners,
+  activityListings,
+  activityRsvps,
+  communityGroups,
+  communityGroupMembers,
+  bookings,
+  conciergeRequests,
+  coupleLinks,
+  coupleMatches,
+  type ProfileTraits,
+  type InterviewMessage,
+  type GameQuestion,
+  type ConciergePlanItem,
+} from "../drizzle/schema";
+import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -18,75 +42,681 @@ export async function getDb() {
   return _db;
 }
 
+// ─── Users ────────────────────────────────────────────────────────────────────
+
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
+  if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
+  if (!db) return;
+
+  const values: InsertUser = { openId: user.openId };
+  const updateSet: Record<string, unknown> = {};
+  const textFields = ["name", "email", "loginMethod"] as const;
+  for (const field of textFields) {
+    const value = user[field];
+    if (value === undefined) continue;
+    const normalized = value ?? null;
+    values[field] = normalized;
+    updateSet[field] = normalized;
   }
-
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
-
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
+  if (user.lastSignedIn !== undefined) {
+    values.lastSignedIn = user.lastSignedIn;
+    updateSet.lastSignedIn = user.lastSignedIn;
   }
+  if (user.role !== undefined) {
+    values.role = user.role;
+    updateSet.role = user.role;
+  } else if (user.openId === ENV.ownerOpenId) {
+    values.role = "admin";
+    updateSet.role = "admin";
+  }
+  if (!values.lastSignedIn) values.lastSignedIn = new Date();
+  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+
+  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  return result[0];
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users);
+}
+
+// ─── User Profiles ────────────────────────────────────────────────────────────
+
+export async function getOrCreateProfile(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  if (existing[0]) return existing[0];
+  await db.insert(userProfiles).values({ userId, traits: {} });
+  const created = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function updateProfile(userId: number, data: Partial<typeof userProfiles.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(userProfiles).set(data).where(eq(userProfiles.userId, userId));
+}
+
+export async function getProfileByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getAllProfiles() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(userProfiles);
+}
+
+// ─── Interview Sessions ───────────────────────────────────────────────────────
+
+export async function createInterviewSession(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(interviewSessions).values({ userId, messages: [], extractedTraits: {} });
+  const result = await db
+    .select()
+    .from(interviewSessions)
+    .where(eq(interviewSessions.userId, userId))
+    .orderBy(desc(interviewSessions.createdAt))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function getInterviewSession(sessionId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(interviewSessions).where(eq(interviewSessions.id, sessionId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function updateInterviewSession(
+  sessionId: number,
+  data: { messages?: InterviewMessage[]; extractedTraits?: ProfileTraits; completedAt?: Date }
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(interviewSessions).set(data).where(eq(interviewSessions.id, sessionId));
+}
+
+export async function getLatestInterviewSession(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(interviewSessions)
+    .where(eq(interviewSessions.userId, userId))
+    .orderBy(desc(interviewSessions.createdAt))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+// ─── Matches ──────────────────────────────────────────────────────────────────
+
+export async function createMatch(user1Id: number, user2Id: number, score: number, reason: string) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(matches).values({ user1Id, user2Id, compatibilityScore: score, compatibilityReason: reason });
+  const result = await db
+    .select()
+    .from(matches)
+    .where(and(eq(matches.user1Id, user1Id), eq(matches.user2Id, user2Id)))
+    .orderBy(desc(matches.createdAt))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function getMatchesForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(matches)
+    .where(or(eq(matches.user1Id, userId), eq(matches.user2Id, userId)))
+    .orderBy(desc(matches.createdAt));
+}
+
+export async function getMatchById(matchId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(matches).where(eq(matches.id, matchId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function existingMatch(user1Id: number, user2Id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(matches)
+    .where(
+      or(
+        and(eq(matches.user1Id, user1Id), eq(matches.user2Id, user2Id)),
+        and(eq(matches.user1Id, user2Id), eq(matches.user2Id, user1Id))
+      )
+    )
+    .limit(1);
+  return result[0] ?? null;
+}
+
+// ─── Chat Messages ────────────────────────────────────────────────────────────
+
+export async function sendChatMessage(matchId: number, senderId: number, content: string) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(chatMessages).values({ matchId, senderId, content });
+  const result = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.matchId, matchId))
+    .orderBy(desc(chatMessages.createdAt))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function getChatMessages(matchId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.matchId, matchId))
+    .orderBy(chatMessages.createdAt)
+    .limit(limit);
+}
+
+// ─── Game Sessions ────────────────────────────────────────────────────────────
+
+export async function createGameSession(
+  matchId: number,
+  gameType: "newlywed" | "two_truths" | "this_or_that",
+  questions: GameQuestion[]
+) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(gameSessions).values({ matchId, gameType, questions, status: "in_progress" });
+  const result = await db
+    .select()
+    .from(gameSessions)
+    .where(eq(gameSessions.matchId, matchId))
+    .orderBy(desc(gameSessions.createdAt))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function updateGameSession(
+  sessionId: number,
+  data: Partial<typeof gameSessions.$inferInsert>
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(gameSessions).set(data).where(eq(gameSessions.id, sessionId));
+}
+
+export async function getGameSession(sessionId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(gameSessions).where(eq(gameSessions.id, sessionId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getGameSessionsForMatch(matchId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(gameSessions)
+    .where(eq(gameSessions.matchId, matchId))
+    .orderBy(desc(gameSessions.createdAt));
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export async function createNotification(
+  userId: number,
+  type: "new_match" | "game_ready" | "new_message" | "interview_reminder",
+  title: string,
+  body: string,
+  relatedId?: number
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(notifications).values({ userId, type, title, body, relatedId });
+}
+
+export async function getNotificationsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.userId, userId))
+    .orderBy(desc(notifications.createdAt))
+    .limit(20);
+}
+
+export async function markNotificationRead(notifId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, notifId));
+}
+
+export async function markAllNotificationsRead(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
+}
+
+// ─── Safety: Reports & Blocks ─────────────────────────────────────────────────
+
+export async function createReport(
+  reporterId: number,
+  reportedUserId: number,
+  reason: typeof reports.$inferInsert["reason"],
+  details?: string
+) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(reports).values({ reporterId, reportedUserId, reason, details });
+  // Auto-flag if user has 3+ reports
+  const allReports = await db.select().from(reports).where(eq(reports.reportedUserId, reportedUserId));
+  if (allReports.length >= 3) {
+    await db.insert(adminFlags).values({
+      userId: reportedUserId,
+      flagType: "multiple_reports",
+      severity: "high",
+      notes: `Auto-flagged: ${allReports.length} reports received`,
+    });
+  }
+  return { success: true };
+}
+
+export async function getReportsForAdmin() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reports).orderBy(desc(reports.createdAt)).limit(100);
+}
+
+export async function updateReportStatus(
+  reportId: number,
+  status: typeof reports.$inferInsert["status"]
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(reports).set({ status, reviewedAt: new Date() }).where(eq(reports.id, reportId));
+}
+
+export async function blockUser(blockerId: number, blockedUserId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(blocks)
+    .where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedUserId, blockedUserId))).limit(1);
+  if (!existing[0]) {
+    await db.insert(blocks).values({ blockerId, blockedUserId });
+  }
+}
+
+export async function getBlockedUserIds(userId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.select().from(blocks).where(eq(blocks.blockerId, userId));
+  return result.map(b => b.blockedUserId);
+}
+
+export async function getAdminFlags() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(adminFlags).orderBy(desc(adminFlags.createdAt)).limit(100);
+}
+
+export async function resolveAdminFlag(flagId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(adminFlags).set({ resolvedAt: new Date() }).where(eq(adminFlags.id, flagId));
+}
+
+export async function suspendUser(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ role: "user" }).where(eq(users.id, userId));
+  // Flag as manually reviewed
+  await db.insert(adminFlags).values({
+    userId,
+    flagType: "manual_review",
+    severity: "high",
+    notes: "Account suspended by admin",
+  });
+}
+
+// ─── Venue Partners ───────────────────────────────────────────────────────────
+
+export async function getVenuePartners(city?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (city) {
+    return db.select().from(venuePartners)
+      .where(and(eq(venuePartners.isActive, true), eq(venuePartners.city, city)))
+      .orderBy(desc(venuePartners.isFeatured));
+  }
+  return db.select().from(venuePartners)
+    .where(eq(venuePartners.isActive, true))
+    .orderBy(desc(venuePartners.isFeatured));
+}
+
+export async function getVenueById(venueId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(venuePartners).where(eq(venuePartners.id, venueId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createVenuePartner(data: typeof venuePartners.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(venuePartners).values(data);
+  const result = await db.select().from(venuePartners).orderBy(desc(venuePartners.createdAt)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function recordReferralVisit(activityId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const activity = await db.select().from(activityListings).where(eq(activityListings.id, activityId)).limit(1);
+  if (activity[0]) {
+    await db.update(activityListings)
+      .set({ totalReferrals: (activity[0].totalReferrals ?? 0) + 1 })
+      .where(eq(activityListings.id, activityId));
+  }
+}
+
+// ─── Activity Listings ────────────────────────────────────────────────────────
+
+export async function getActivityListings(city?: string, category?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(activityListings)
+    .where(eq(activityListings.isActive, true))
+    .orderBy(desc(activityListings.createdAt))
+    .limit(100);
+  if (category && category !== "all") {
+    return rows.filter(r => r.category === category);
+  }
+  return rows.slice(0, 50);
+}
+
+export async function getActivityById(activityId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(activityListings).where(eq(activityListings.id, activityId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createActivityListing(data: typeof activityListings.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(activityListings).values(data);
+  const result = await db.select().from(activityListings).orderBy(desc(activityListings.createdAt)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function rsvpToActivity(activityId: number, userId: number, matchId?: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await db.select().from(activityRsvps)
+    .where(and(eq(activityRsvps.activityId, activityId), eq(activityRsvps.userId, userId))).limit(1);
+  if (existing[0]) return existing[0];
+  await db.insert(activityRsvps).values({ activityId, userId, matchId, status: "going" });
+  const result = await db.select().from(activityRsvps)
+    .where(and(eq(activityRsvps.activityId, activityId), eq(activityRsvps.userId, userId))).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getRsvpsForActivity(activityId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(activityRsvps).where(eq(activityRsvps.activityId, activityId));
+}
+
+export async function checkInToActivity(activityId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(activityRsvps)
+    .set({ checkedIn: true, checkedInAt: new Date() })
+    .where(and(eq(activityRsvps.activityId, activityId), eq(activityRsvps.userId, userId)));
+  await recordReferralVisit(activityId);
+}
+
+// ─── Community Groups ─────────────────────────────────────────────────────────
+
+export async function getCommunityGroups(city?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(communityGroups)
+    .where(eq(communityGroups.isPublic, true))
+    .orderBy(desc(communityGroups.createdAt))
+    .limit(50);
+}
+
+export async function createCommunityGroup(data: typeof communityGroups.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(communityGroups).values(data);
+  const result = await db.select().from(communityGroups).orderBy(desc(communityGroups.createdAt)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function joinCommunityGroup(groupId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(communityGroupMembers)
+    .where(and(eq(communityGroupMembers.groupId, groupId), eq(communityGroupMembers.userId, userId))).limit(1);
+  if (!existing[0]) {
+    await db.insert(communityGroupMembers).values({ groupId, userId, role: "member" });
+  }
+}
+
+export async function getGroupMembers(groupId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(communityGroupMembers).where(eq(communityGroupMembers.groupId, groupId));
+}
+
+// ─── Bookings (marketplace) ─────────────────────────────────────────────────────
+
+function genCode(prefix: string) {
+  return `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+export async function createBooking(data: typeof bookings.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(bookings).values(data);
+  const result = await db.select().from(bookings)
+    .where(and(eq(bookings.userId, data.userId), eq(bookings.confirmationCode, data.confirmationCode)))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function getBookingsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(bookings)
+    .where(eq(bookings.userId, userId))
+    .orderBy(desc(bookings.createdAt));
+}
+
+export async function getBookingById(bookingId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function cancelBooking(bookingId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(bookings).set({ status: "cancelled" })
+    .where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId)));
+}
+
+export async function getBookingsForVenue(venueId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(bookings)
+    .where(eq(bookings.venueId, venueId))
+    .orderBy(desc(bookings.createdAt));
+}
+
+export { genCode };
+
+// ─── Concierge Requests ─────────────────────────────────────────────────────────
+
+export async function createConciergeRequest(data: typeof conciergeRequests.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(conciergeRequests).values(data);
+  const result = await db.select().from(conciergeRequests)
+    .where(eq(conciergeRequests.userId, data.userId))
+    .orderBy(desc(conciergeRequests.createdAt))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function updateConciergeRequest(id: number, data: Partial<typeof conciergeRequests.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(conciergeRequests).set(data).where(eq(conciergeRequests.id, id));
+}
+
+export async function getConciergeRequestById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(conciergeRequests).where(eq(conciergeRequests.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getConciergeRequestsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(conciergeRequests)
+    .where(eq(conciergeRequests.userId, userId))
+    .orderBy(desc(conciergeRequests.createdAt));
+}
+
+// ─── Vendor Portal ──────────────────────────────────────────────────────────────
+
+export async function getVenuesByOwner(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(venuePartners)
+    .where(eq(venuePartners.ownerUserId, ownerUserId))
+    .orderBy(desc(venuePartners.createdAt));
+}
+
+export async function updateVenuePartner(venueId: number, data: Partial<typeof venuePartners.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(venuePartners).set(data).where(eq(venuePartners.id, venueId));
+}
+
+export async function getListingsByVenue(venueId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(activityListings)
+    .where(eq(activityListings.venueId, venueId))
+    .orderBy(desc(activityListings.createdAt));
+}
+
+export async function getListingsForOwner(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const venues = await getVenuesByOwner(ownerUserId);
+  if (venues.length === 0) return [];
+  const venueIds = venues.map(v => v.id);
+  const all = await db.select().from(activityListings).orderBy(desc(activityListings.createdAt));
+  return all.filter(a => venueIds.includes(a.venueId));
+}
+
+export async function updateActivityListing(id: number, data: Partial<typeof activityListings.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(activityListings).set(data).where(eq(activityListings.id, id));
+}
+
+// ─── Couples Network ────────────────────────────────────────────────────────────
+
+export async function getCoupleLinkForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(coupleLinks)
+    .where(and(eq(coupleLinks.userId, userId), eq(coupleLinks.isActive, true)))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function upsertCoupleLink(userId: number, data: Partial<typeof coupleLinks.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await getCoupleLinkForUser(userId);
+  if (existing) {
+    await db.update(coupleLinks).set(data).where(eq(coupleLinks.id, existing.id));
+    return getCoupleLinkForUser(userId);
+  }
+  await db.insert(coupleLinks).values({
+    userId,
+    partnerName: data.partnerName ?? "My Partner",
+    ...data,
+  });
+  return getCoupleLinkForUser(userId);
+}
+
+export async function getAllCoupleLinks() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(coupleLinks).where(eq(coupleLinks.isActive, true));
+}
+
+export async function existingCoupleMatch(user1Id: number, user2Id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(coupleMatches)
+    .where(or(
+      and(eq(coupleMatches.couple1UserId, user1Id), eq(coupleMatches.couple2UserId, user2Id)),
+      and(eq(coupleMatches.couple1UserId, user2Id), eq(coupleMatches.couple2UserId, user1Id)),
+    ))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function createCoupleMatch(user1Id: number, user2Id: number, score: number, reason: string) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(coupleMatches).values({
+    couple1UserId: user1Id, couple2UserId: user2Id, compatibilityScore: score, compatibilityReason: reason,
+  });
+  const result = await db.select().from(coupleMatches)
+    .where(and(eq(coupleMatches.couple1UserId, user1Id), eq(coupleMatches.couple2UserId, user2Id)))
+    .orderBy(desc(coupleMatches.createdAt))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function getCoupleMatchesForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(coupleMatches)
+    .where(or(eq(coupleMatches.couple1UserId, userId), eq(coupleMatches.couple2UserId, userId)))
+    .orderBy(desc(coupleMatches.createdAt));
+}

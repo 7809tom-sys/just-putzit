@@ -1,17 +1,17 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  boolean,
+  int,
+  json,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+} from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
+// ─── Core user table ──────────────────────────────────────────────────────────
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -25,4 +25,366 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+// ─── Profile traits type ──────────────────────────────────────────────────────
+export type ProfileTraits = {
+  hobbies?: string[];
+  favoriteActivities?: string[];
+  personalityKeywords?: string[];
+  dreamVacation?: string;
+  favoriteFood?: string;
+  morningOrNight?: string;
+  biggestPetPeeve?: string;
+  guiltPleasure?: string;
+  idealWeekend?: string;
+  funFact?: string;
+  lookingFor?: string;
+  idealDate?: string;
+  perfectSunday?: string;
+  aiSummary?: string;
+  [key: string]: unknown;
+};
+
+// ─── User profiles ────────────────────────────────────────────────────────────
+export const userProfiles = mysqlTable("user_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  avatarEmoji: varchar("avatarEmoji", { length: 10 }).notNull().default("😊"),
+  avatarColor: varchar("avatarColor", { length: 20 }).notNull().default("#f97316"),
+  displayName: varchar("displayName", { length: 100 }),
+  bio: text("bio"),
+  networkType: mysqlEnum("networkType", ["singles", "couples", "community"]).notNull().default("singles"),
+  traits: json("traits").$type<ProfileTraits>().notNull().$default(() => ({})),
+  interviewCount: int("interviewCount").notNull().default(0),
+  isVerified: boolean("isVerified").notNull().default(false),
+  onboardingComplete: boolean("onboardingComplete").notNull().default(false),
+  latitude: varchar("latitude", { length: 20 }),
+  longitude: varchar("longitude", { length: 20 }),
+  city: varchar("city", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = typeof userProfiles.$inferInsert;
+
+// ─── Interview message type ───────────────────────────────────────────────────
+export type InterviewMessage = {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
+};
+
+// ─── Interview sessions ───────────────────────────────────────────────────────
+export const interviewSessions = mysqlTable("interview_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  messages: json("messages").$type<InterviewMessage[]>().notNull().$default(() => []),
+  extractedTraits: json("extractedTraits").$type<ProfileTraits>().notNull().$default(() => ({})),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InterviewSession = typeof interviewSessions.$inferSelect;
+
+// ─── Matches ──────────────────────────────────────────────────────────────────
+export const matches = mysqlTable("matches", {
+  id: int("id").autoincrement().primaryKey(),
+  user1Id: int("user1Id").notNull(),
+  user2Id: int("user2Id").notNull(),
+  compatibilityScore: int("compatibilityScore").notNull().default(0),
+  compatibilityReason: text("compatibilityReason"),
+  status: mysqlEnum("status", ["pending", "active", "completed"]).notNull().default("active"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Match = typeof matches.$inferSelect;
+
+// ─── Chat messages ────────────────────────────────────────────────────────────
+export const chatMessages = mysqlTable("chat_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  matchId: int("matchId").notNull(),
+  senderId: int("senderId").notNull(),
+  content: text("content").notNull(),
+  isRead: boolean("isRead").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// ─── Game question type ───────────────────────────────────────────────────────
+export type GameQuestion = {
+  id: string;
+  question: string;
+  targetUserId: number;
+  targetUserName: string;
+  correctAnswer?: string;
+  user1Answer?: string;
+  user2Answer?: string;
+  user1Correct?: boolean;
+  user2Correct?: boolean;
+  // Two Truths and a Lie
+  statements?: string[];
+  lieIndex?: number;
+  // This or That
+  optionA?: string;
+  optionB?: string;
+};
+
+// ─── Game sessions ────────────────────────────────────────────────────────────
+export const gameSessions = mysqlTable("game_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  matchId: int("matchId").notNull(),
+  gameType: mysqlEnum("gameType", ["newlywed", "two_truths", "this_or_that"]).notNull().default("newlywed"),
+  questions: json("questions").$type<GameQuestion[]>().notNull().$default(() => []),
+  status: mysqlEnum("status", ["waiting", "in_progress", "completed"]).notNull().default("waiting"),
+  user1Score: int("user1Score").notNull().default(0),
+  user2Score: int("user2Score").notNull().default(0),
+  sallyNarration: text("sallyNarration"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type GameSession = typeof gameSessions.$inferSelect;
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("type", ["new_match", "game_ready", "new_message", "interview_reminder"]).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  body: text("body").notNull(),
+  isRead: boolean("isRead").notNull().default(false),
+  relatedId: int("relatedId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+export const reports = mysqlTable("reports", {
+  id: int("id").autoincrement().primaryKey(),
+  reporterId: int("reporterId").notNull(),
+  reportedUserId: int("reportedUserId").notNull(),
+  reason: mysqlEnum("reason", ["scammer", "bot", "harassment", "fake_profile", "inappropriate", "other"]).notNull(),
+  details: text("details"),
+  status: mysqlEnum("status", ["pending", "reviewed", "actioned", "dismissed"]).notNull().default("pending"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+});
+
+export type Report = typeof reports.$inferSelect;
+
+// ─── Blocks ───────────────────────────────────────────────────────────────────
+export const blocks = mysqlTable("blocks", {
+  id: int("id").autoincrement().primaryKey(),
+  blockerId: int("blockerId").notNull(),
+  blockedUserId: int("blockedUserId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Block = typeof blocks.$inferSelect;
+
+// ─── Admin Flags ──────────────────────────────────────────────────────────────
+export const adminFlags = mysqlTable("admin_flags", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  flagType: mysqlEnum("flagType", ["bot_behavior", "multiple_reports", "suspicious_location", "identity_mismatch", "manual_review"]).notNull(),
+  severity: mysqlEnum("severity", ["low", "medium", "high"]).notNull().default("medium"),
+  notes: text("notes"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AdminFlag = typeof adminFlags.$inferSelect;
+
+// ─── Venue / Vendor Partners ──────────────────────────────────────────────────
+export const venuePartners = mysqlTable("venue_partners", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  category: mysqlEnum("category", [
+    "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
+    "cooking_class", "escape_room", "wine_tasting", "hiking", "park",
+    "library", "church", "community_center", "sports", "arts", "other"
+  ]).notNull().default("other"),
+  description: text("description"),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  latitude: varchar("latitude", { length: 20 }),
+  longitude: varchar("longitude", { length: 20 }),
+  phone: varchar("phone", { length: 30 }),
+  website: varchar("website", { length: 300 }),
+  referralFeePerVisit: int("referralFeePerVisit").notNull().default(100), // cents
+  commissionPct: int("commissionPct").notNull().default(12), // platform commission on bookings (percent)
+  ownerUserId: int("ownerUserId"), // vendor account that owns this venue
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  isActive: boolean("isActive").notNull().default(true),
+  isFeatured: boolean("isFeatured").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type VenuePartner = typeof venuePartners.$inferSelect;
+export type InsertVenuePartner = typeof venuePartners.$inferInsert;
+
+// ─── Activity Listings ────────────────────────────────────────────────────────
+export const activityListings = mysqlTable("activity_listings", {
+  id: int("id").autoincrement().primaryKey(),
+  venueId: int("venueId").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  category: mysqlEnum("category", [
+    "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
+    "cooking_class", "escape_room", "wine_tasting", "hiking", "park",
+    "library", "church", "community_center", "sports", "arts", "other"
+  ]).notNull().default("other"),
+  eventDate: timestamp("eventDate"),
+  durationMinutes: int("durationMinutes").default(120),
+  maxGroupSize: int("maxGroupSize").default(10),
+  minGroupSize: int("minGroupSize").default(2),
+  isRecurring: boolean("isRecurring").notNull().default(false),
+  recurringSchedule: varchar("recurringSchedule", { length: 100 }), // e.g. "Every Saturday 2pm"
+  checkInCode: varchar("checkInCode", { length: 20 }),
+  totalReferrals: int("totalReferrals").notNull().default(0),
+  // Marketplace fields — users are FREE; price is what vendors charge, platform takes commission
+  priceCents: int("priceCents").notNull().default(0), // 0 = free RSVP activity
+  hasTickets: boolean("hasTickets").notNull().default(false),
+  imageEmoji: varchar("imageEmoji", { length: 10 }).notNull().default("\uD83C\uDF89"),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ActivityListing = typeof activityListings.$inferSelect;
+export type InsertActivityListing = typeof activityListings.$inferInsert;
+
+// ─── Activity RSVPs ───────────────────────────────────────────────────────────
+export const activityRsvps = mysqlTable("activity_rsvps", {
+  id: int("id").autoincrement().primaryKey(),
+  activityId: int("activityId").notNull(),
+  userId: int("userId").notNull(),
+  matchId: int("matchId"), // optional — if attending with a match
+  status: mysqlEnum("status", ["going", "maybe", "not_going"]).notNull().default("going"),
+  checkedIn: boolean("checkedIn").notNull().default(false),
+  checkedInAt: timestamp("checkedInAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ActivityRsvp = typeof activityRsvps.$inferSelect;
+
+// ─── Community Groups ─────────────────────────────────────────────────────────
+export const communityGroups = mysqlTable("community_groups", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  category: mysqlEnum("category", [
+    "book_club", "hiking", "cooking", "sports", "arts", "music",
+    "gaming", "travel", "fitness", "social", "other"
+  ]).notNull().default("other"),
+  city: varchar("city", { length: 100 }),
+  createdByUserId: int("createdByUserId").notNull(),
+  maxMembers: int("maxMembers").default(20),
+  isPublic: boolean("isPublic").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CommunityGroup = typeof communityGroups.$inferSelect;
+
+// ─── Community Group Members ──────────────────────────────────────────────────
+export const communityGroupMembers = mysqlTable("community_group_members", {
+  id: int("id").autoincrement().primaryKey(),
+  groupId: int("groupId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["member", "organizer"]).notNull().default("member"),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+});
+
+export type CommunityGroupMember = typeof communityGroupMembers.$inferSelect;
+
+// ─── Marketplace pricing additions live on activityListings (see migration) ─────
+// New columns added via migration: priceCents, hasTickets, imageEmoji
+
+// ─── Bookings (marketplace tickets / reservations) ──────────────────────────────
+export const bookings = mysqlTable("bookings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  activityId: int("activityId").notNull(),
+  venueId: int("venueId").notNull(),
+  matchId: int("matchId"), // optional — booked with a match
+  partySize: int("partySize").notNull().default(2),
+  // Money in cents. Users are FREE — these track what vendors owe / commission.
+  unitPriceCents: int("unitPriceCents").notNull().default(0),
+  totalPriceCents: int("totalPriceCents").notNull().default(0),
+  commissionCents: int("commissionCents").notNull().default(0), // platform earnings from vendor
+  referralFeeCents: int("referralFeeCents").notNull().default(0), // pay-per-visit owed by vendor
+  bookingType: mysqlEnum("bookingType", ["ticket", "reservation", "rsvp_free"]).notNull().default("ticket"),
+  status: mysqlEnum("status", ["confirmed", "cancelled", "completed", "checked_in"]).notNull().default("confirmed"),
+  confirmationCode: varchar("confirmationCode", { length: 20 }).notNull(),
+  scheduledFor: timestamp("scheduledFor"),
+  notes: text("notes"),
+  checkedInAt: timestamp("checkedInAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Booking = typeof bookings.$inferSelect;
+export type InsertBooking = typeof bookings.$inferInsert;
+
+// ─── Sally Date Concierge requests ──────────────────────────────────────────────
+export type ConciergePlanItem = {
+  label: string;
+  detail: string;
+  estCostCents?: number;
+  vendorName?: string;
+};
+
+export const conciergeRequests = mysqlTable("concierge_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  matchId: int("matchId"), // optional — arranging a date with a match
+  occasion: varchar("occasion", { length: 120 }).notNull().default("date"),
+  vibe: varchar("vibe", { length: 200 }), // e.g. "romantic picnic in the park"
+  location: varchar("location", { length: 200 }),
+  budgetCents: int("budgetCents").notNull().default(5000),
+  partySize: int("partySize").notNull().default(2),
+  preferredDate: timestamp("preferredDate"),
+  dietaryNotes: text("dietaryNotes"),
+  // Sally's generated plan
+  sallyPlanTitle: varchar("sallyPlanTitle", { length: 200 }),
+  sallyPlanSummary: text("sallyPlanSummary"),
+  sallyPlanItems: json("sallyPlanItems").$type<ConciergePlanItem[]>().$default(() => []),
+  estTotalCents: int("estTotalCents").notNull().default(0),
+  status: mysqlEnum("status", ["draft", "proposed", "confirmed", "arranged", "completed", "cancelled"]).notNull().default("draft"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ConciergeRequest = typeof conciergeRequests.$inferSelect;
+export type InsertConciergeRequest = typeof conciergeRequests.$inferInsert;
+
+// ─── Couple links (Couples Network: couple-to-couple matching) ──────────────────
+export const coupleLinks = mysqlTable("couple_links", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(), // owner of this couple profile
+  partnerName: varchar("partnerName", { length: 100 }).notNull(),
+  partnerEmail: varchar("partnerEmail", { length: 320 }),
+  relationshipLength: varchar("relationshipLength", { length: 60 }), // e.g. "3 years"
+  sharedInterests: json("sharedInterests").$type<string[]>().$default(() => []),
+  lookingFor: text("lookingFor"), // what kind of couples/activities they want
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CoupleLink = typeof coupleLinks.$inferSelect;
+export type InsertCoupleLink = typeof coupleLinks.$inferInsert;
+
+// ─── Couple matches (between two couple profiles) ───────────────────────────────
+export const coupleMatches = mysqlTable("couple_matches", {
+  id: int("id").autoincrement().primaryKey(),
+  couple1UserId: int("couple1UserId").notNull(),
+  couple2UserId: int("couple2UserId").notNull(),
+  compatibilityScore: int("compatibilityScore").notNull().default(0),
+  compatibilityReason: text("compatibilityReason"),
+  status: mysqlEnum("status", ["active", "completed"]).notNull().default("active"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CoupleMatch = typeof coupleMatches.$inferSelect;

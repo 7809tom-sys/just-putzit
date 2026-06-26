@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "a006d71b-5bf4-4767-9f3e-29f6a4210085",
-  "prevId": "787d4f0b-641a-4cf1-b545-17c958ce4ca0",
+  "id": "db76bebd-0a62-4f4e-b593-986c3a9f08cf",
+  "prevId": "ff15fba4-e4c7-4251-a1dc-ea049b5fdd4f",
   "tables": {
     "chat_messages": {
       "name": "chat_messages",
@@ -74,6 +74,14 @@
           "notNull": true,
           "autoincrement": false
         },
+        "gameType": {
+          "name": "gameType",
+          "type": "enum('newlywed','two_truths','this_or_that')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'newlywed'"
+        },
         "questions": {
           "name": "questions",
           "type": "json",
@@ -105,6 +113,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": 0
+        },
+        "sallyNarration": {
+          "name": "sallyNarration",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",
@@ -266,6 +281,81 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "notifications": {
+      "name": "notifications",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "enum('new_match','game_ready','new_message','interview_reminder')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "isRead": {
+          "name": "isRead",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "relatedId": {
+          "name": "relatedId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "notifications_id": {
+          "name": "notifications_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "user_profiles": {
       "name": "user_profiles",
       "columns": {
@@ -297,7 +387,14 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'#6366f1'"
+          "default": "'#f97316'"
+        },
+        "displayName": {
+          "name": "displayName",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "bio": {
           "name": "bio",
@@ -305,6 +402,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "networkType": {
+          "name": "networkType",
+          "type": "enum('singles','couples','community')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'singles'"
         },
         "traits": {
           "name": "traits",
@@ -321,6 +426,43 @@
           "notNull": true,
           "autoincrement": false,
           "default": 0
+        },
+        "isVerified": {
+          "name": "isVerified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "onboardingComplete": {
+          "name": "onboardingComplete",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "city": {
+          "name": "city",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",
