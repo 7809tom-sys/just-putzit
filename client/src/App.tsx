@@ -21,6 +21,7 @@ import Marketplace from "./pages/Marketplace";
 import Bookings from "./pages/Bookings";
 import Vendor from "./pages/Vendor";
 import Couples from "./pages/Couples";
+import WouldYouRather from "./pages/WouldYouRather";
 
 function Router() {
   return (
@@ -40,6 +41,7 @@ function Router() {
       <Route path="/bookings" component={Bookings} />
       <Route path="/vendor" component={Vendor} />
       <Route path="/couples" component={Couples} />
+      <Route path="/would-you-rather" component={WouldYouRather} />
       <Route path="/safety" component={Safety} />
       <Route path="/admin" component={Admin} />
       <Route path="/404" component={NotFound} />

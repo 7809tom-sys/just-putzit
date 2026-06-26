@@ -72,6 +72,12 @@ import {
   existingCoupleMatch,
   createCoupleMatch,
   getCoupleMatchesForUser,
+  getWyrQuestions,
+  getWyrQuestionById,
+  getWyrAnsweredQuestionIds,
+  recordWyrAnswer,
+  getWyrSplit,
+  getWyrAnswerCount,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 
@@ -1222,6 +1228,52 @@ Return JSON with questions array, each having optionA and optionB.`,
         const otherProfile = await getProfileByUserId(otherUserId);
         return { ...m, otherCouple, otherProfile, otherUserId };
       }));
+    }),
+  }),
+
+  // ─── Would You Rather (low AI cost: questions pre-written in DB) ───────────
+  wyr: router({
+    // Returns a shuffled batch of questions the user hasn't answered yet.
+    getBatch: protectedProcedure
+      .input(z.object({ category: z.string().optional(), limit: z.number().min(1).max(30).optional() }))
+      .query(async ({ ctx, input }) => {
+        const all = await getWyrQuestions(input.category ?? "all");
+        const answered = new Set(await getWyrAnsweredQuestionIds(ctx.user.id));
+        const unanswered = all.filter((q) => !answered.has(q.id));
+        // Shuffle (Fisher-Yates) so order varies each session.
+        for (let i = unanswered.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [unanswered[i], unanswered[j]] = [unanswered[j], unanswered[i]];
+        }
+        const limit = input.limit ?? 10;
+        return {
+          questions: unanswered.slice(0, limit),
+          totalAnswered: answered.size,
+          totalAvailable: all.length,
+        };
+      }),
+
+    // Records the answer and returns the honest crowd split for that question.
+    // NOTE: No AI call here -> zero token cost per play.
+    answer: protectedProcedure
+      .input(z.object({ questionId: z.number(), choice: z.enum(["A", "B"]) }))
+      .mutation(async ({ ctx, input }) => {
+        await recordWyrAnswer(ctx.user.id, input.questionId, input.choice);
+        const split = await getWyrSplit(input.questionId);
+        const total = split.a + split.b;
+        return {
+          yourChoice: input.choice,
+          countA: split.a,
+          countB: split.b,
+          percentA: total === 0 ? 0 : Math.round((split.a / total) * 100),
+          percentB: total === 0 ? 0 : Math.round((split.b / total) * 100),
+          totalVotes: total,
+        };
+      }),
+
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      const count = await getWyrAnswerCount(ctx.user.id);
+      return { answered: count };
     }),
   }),
 

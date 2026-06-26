@@ -60,6 +60,10 @@ export const userProfiles = mysqlTable("user_profiles", {
   latitude: varchar("latitude", { length: 20 }),
   longitude: varchar("longitude", { length: 20 }),
   city: varchar("city", { length: 100 }),
+  campusId: int("campusId"),
+  schoolEmail: varchar("schoolEmail", { length: 320 }),
+  inviteCode: varchar("inviteCode", { length: 40 }),
+  isAmbassador: boolean("isAmbassador").notNull().default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -388,3 +392,60 @@ export const coupleMatches = mysqlTable("couple_matches", {
 });
 
 export type CoupleMatch = typeof coupleMatches.$inferSelect;
+
+// ─── Campuses (campus-by-campus growth) ─────────────────────────────────────────
+export const campuses = mysqlTable("campuses", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  shortName: varchar("shortName", { length: 60 }),
+  city: varchar("city", { length: 100 }).notNull(),
+  state: varchar("state", { length: 60 }).notNull(),
+  // Comma-separated allowed email domains (e.g. "carrollu.edu,pio.carrollu.edu")
+  emailDomains: varchar("emailDomains", { length: 400 }).notNull().default(""),
+  launchThreshold: int("launchThreshold").notNull().default(100),
+  isLive: boolean("isLive").notNull().default(false),
+  mascot: varchar("mascot", { length: 60 }),
+  colorHex: varchar("colorHex", { length: 20 }).notNull().default("#f97316"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Campus = typeof campuses.$inferSelect;
+export type InsertCampus = typeof campuses.$inferInsert;
+
+// ─── Referrals (invite/referral viral loop) ─────────────────────────────────────
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  inviterUserId: int("inviterUserId").notNull(),
+  inviteeUserId: int("inviteeUserId").notNull(),
+  inviteCode: varchar("inviteCode", { length: 40 }).notNull(),
+  campusId: int("campusId"),
+  status: mysqlEnum("status", ["joined", "verified"]).notNull().default("joined"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
+
+// ─── Would You Rather game (low AI cost: questions pre-written in DB) ────────────
+export const wouldYouRatherQuestions = mysqlTable("would_you_rather_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  optionA: varchar("optionA", { length: 300 }).notNull(),
+  optionB: varchar("optionB", { length: 300 }).notNull(),
+  category: mysqlEnum("category", ["food", "travel", "lifestyle", "romance", "fun", "deep", "campus"]).notNull().default("fun"),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WouldYouRatherQuestion = typeof wouldYouRatherQuestions.$inferSelect;
+export type InsertWouldYouRatherQuestion = typeof wouldYouRatherQuestions.$inferInsert;
+
+export const wouldYouRatherAnswers = mysqlTable("would_you_rather_answers", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  questionId: int("questionId").notNull(),
+  choice: mysqlEnum("choice", ["A", "B"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WouldYouRatherAnswer = typeof wouldYouRatherAnswers.$inferSelect;
+export type InsertWouldYouRatherAnswer = typeof wouldYouRatherAnswers.$inferInsert;

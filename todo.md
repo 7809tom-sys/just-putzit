@@ -86,3 +86,32 @@
 - [x] Phase 5 polish: login -> interview redirect, This-or-That match %, verification badges
 - [x] Vitest tests for new routers (8 tests, all passing; caught & fixed notifications.expiresAt DB mismatch)
 - [x] Final checkpoint and delivery
+
+## Phase 9: Campus Growth Engine (cold-start solution, Carroll University first)
+- [x] Schema: campuses table (name, city, state, emailDomain, launchThreshold, isLive)
+- [x] Schema: campus membership fields on userProfiles (campusId, schoolEmail, isAmbassador)
+- [x] Schema: referrals table (inviterUserId, inviteeUserId, inviteCode, campusId, status)
+- [x] Schema: invite code field on userProfiles (personal invite code)
+- [ ] DB helpers: campuses CRUD, member counts, referral tracking, leaderboard
+- [ ] Backend: campus router (list campuses, get campus stats, join campus, waitlist count)
+- [ ] Backend: referral router (my invite link, record referral on signup, my referral count, campus leaderboard)
+- [ ] Backend: .edu / campus email verification on join (sets isVerified when domain matches)
+- [ ] Frontend: campus picker + waitlist page with honest "X of N joined" progress
+- [ ] Frontend: invite/referral page (personal link, copy, share, referral count)
+- [ ] Frontend: campus ambassador leaderboard (top inviters, badges)
+- [ ] Integrate campus selection into onboarding flow
+- [ ] Landing page: campus-focused hero + "launching at Carroll University" messaging
+- [x] Seed Carroll University (Waukesha, WI) as campus #1 with threshold 100
+- [ ] Capture invite code from URL (?ref=) on signup and attribute referral
+- [ ] Vitest tests for campus join, referral attribution, leaderboard
+- [ ] Final checkpoint and delivery for campus growth engine
+
+## Phase 10: Would You Rather game (low AI cost)
+- [x] Schema: would_you_rather_questions table (optionA, optionB, category) + would_you_rather_answers table (userId, questionId, choice)
+- [x] Seed 40 pre-written WYR questions (zero per-play AI cost)
+- [x] DB helpers: get random unanswered questions, record answer, count A/B split
+- [x] Backend router: wyr.getBatch, wyr.answer (returns crowd split), wyr.stats
+- [x] Frontend: WouldYouRather page (tap A or B, show % split, streak, categories, progress)
+- [x] Wire into route (/would-you-rather) + Navbar menu
+- [x] Vitest tests for answer recording + split counts (5 tests, all 23 pass)
+- [x] Checkpoint and deliver playable demo

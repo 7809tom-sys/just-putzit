@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store } from "lucide-react";
+import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -140,6 +140,12 @@ export default function Navbar() {
                 <Link href="/bookings">
                   <Ticket className="w-4 h-4 mr-2" />
                   My Bookings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/would-you-rather">
+                  <Scale className="w-4 h-4 mr-2" />
+                  Would You Rather
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

@@ -1,4 +1,4 @@
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -21,6 +21,10 @@ import {
   conciergeRequests,
   coupleLinks,
   coupleMatches,
+  campuses,
+  referrals,
+  wouldYouRatherQuestions,
+  wouldYouRatherAnswers,
   type ProfileTraits,
   type InterviewMessage,
   type GameQuestion,
@@ -719,4 +723,87 @@ export async function getCoupleMatchesForUser(userId: number) {
   return db.select().from(coupleMatches)
     .where(or(eq(coupleMatches.couple1UserId, userId), eq(coupleMatches.couple2UserId, userId)))
     .orderBy(desc(coupleMatches.createdAt));
+}
+
+// ─── Would You Rather helpers (low AI cost) ─────────────────────────────────────
+export async function getWyrAnsweredQuestionIds(userId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ questionId: wouldYouRatherAnswers.questionId })
+    .from(wouldYouRatherAnswers)
+    .where(eq(wouldYouRatherAnswers.userId, userId));
+  return rows.map((r) => r.questionId);
+}
+
+export async function getWyrQuestions(category?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (category && category !== "all") {
+    return db
+      .select()
+      .from(wouldYouRatherQuestions)
+      .where(
+        and(
+          eq(wouldYouRatherQuestions.isActive, true),
+          eq(wouldYouRatherQuestions.category, category as never),
+        ),
+      );
+  }
+  return db
+    .select()
+    .from(wouldYouRatherQuestions)
+    .where(eq(wouldYouRatherQuestions.isActive, true));
+}
+
+export async function getWyrQuestionById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(wouldYouRatherQuestions)
+    .where(eq(wouldYouRatherQuestions.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function recordWyrAnswer(userId: number, questionId: number, choice: "A" | "B") {
+  const db = await getDb();
+  if (!db) return;
+  // One answer per user per question: remove any prior answer, then insert.
+  await db
+    .delete(wouldYouRatherAnswers)
+    .where(
+      and(
+        eq(wouldYouRatherAnswers.userId, userId),
+        eq(wouldYouRatherAnswers.questionId, questionId),
+      ),
+    );
+  await db.insert(wouldYouRatherAnswers).values({ userId, questionId, choice });
+}
+
+export async function getWyrSplit(questionId: number): Promise<{ a: number; b: number }> {
+  const db = await getDb();
+  if (!db) return { a: 0, b: 0 };
+  const rows = await db
+    .select({ choice: wouldYouRatherAnswers.choice })
+    .from(wouldYouRatherAnswers)
+    .where(eq(wouldYouRatherAnswers.questionId, questionId));
+  let a = 0;
+  let b = 0;
+  for (const r of rows) {
+    if (r.choice === "A") a += 1;
+    else b += 1;
+  }
+  return { a, b };
+}
+
+export async function getWyrAnswerCount(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select({ id: wouldYouRatherAnswers.id })
+    .from(wouldYouRatherAnswers)
+    .where(eq(wouldYouRatherAnswers.userId, userId));
+  return rows.length;
 }
