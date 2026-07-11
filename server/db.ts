@@ -1098,3 +1098,115 @@ export async function recordReferral(inviteCode: string, inviteeUserId: number) 
   }
   return { success: true };
 }
+
+// ─── Email Auth Helpers ───────────────────────────────────────────────────────
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createEmailUser(data: {
+  email: string;
+  passwordHash: string;
+  name: string;
+  emailVerifyToken: string;
+  emailVerifyExpires: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  // Use a unique openId for email-registered users
+  const openId = `email_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  await db.insert(users).values({
+    openId,
+    email: data.email,
+    name: data.name,
+    loginMethod: "email",
+    passwordHash: data.passwordHash,
+    emailVerified: false,
+    emailVerifyToken: data.emailVerifyToken,
+    emailVerifyExpires: data.emailVerifyExpires,
+    lastSignedIn: new Date(),
+  });
+  return getUserByEmail(data.email);
+}
+
+export async function verifyUserEmail(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const now = new Date();
+  const result = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.emailVerifyToken, token)))
+    .limit(1);
+  const user = result[0];
+  if (!user) return null;
+  if (user.emailVerifyExpires && user.emailVerifyExpires < now) return null;
+  await db
+    .update(users)
+    .set({ emailVerified: true, emailVerifyToken: null, emailVerifyExpires: null })
+    .where(eq(users.id, user.id));
+  return getUserByEmail(user.email!);
+}
+
+export async function updateUserPassword(userId: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+}
+
+// ─── GPS Location Verification ───────────────────────────────────────────────
+
+// Supported launch cities with center coords and radius in km
+export const LAUNCH_CITIES: Record<string, { lat: number; lng: number; radiusKm: number; label: string }> = {
+  "milwaukee": { lat: 43.0389, lng: -87.9065, radiusKm: 50, label: "Milwaukee, WI" },
+  "waukesha": { lat: 43.0117, lng: -88.2315, radiusKm: 50, label: "Waukesha, WI" },
+  "carroll": { lat: 43.0117, lng: -88.2315, radiusKm: 50, label: "Waukesha, WI (Carroll University)" },
+};
+
+export function haversineDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function checkGpsMatchesCity(
+  lat: number,
+  lng: number,
+  claimedCity: string
+): { match: boolean; distanceKm: number; cityLabel: string } {
+  const key = claimedCity.toLowerCase().replace(/[^a-z]/g, "");
+  // Try exact key first, then partial match
+  const city =
+    LAUNCH_CITIES[key] ??
+    Object.entries(LAUNCH_CITIES).find(([k]) => key.includes(k) || k.includes(key))?.[1] ??
+    LAUNCH_CITIES["milwaukee"]; // default to Milwaukee metro
+  const distanceKm = haversineDistanceKm(lat, lng, city.lat, city.lng);
+  return { match: distanceKm <= city.radiusKm, distanceKm, cityLabel: city.label };
+}
+
+export async function saveLocationVerification(
+  userId: number,
+  data: { lat: number; lng: number; city: string; verified: boolean }
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(userProfiles)
+    .set({
+      gpsVerifiedLat: String(data.lat),
+      gpsVerifiedLng: String(data.lng),
+      gpsVerifiedCity: data.city,
+      gpsVerifiedAt: new Date(),
+      locationVerified: data.verified,
+      isVerified: data.verified, // also set the main isVerified flag
+    })
+    .where(eq(userProfiles.userId, userId));
+}

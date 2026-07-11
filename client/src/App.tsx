@@ -24,6 +24,9 @@ import Couples from "./pages/Couples";
 import WouldYouRather from "@/pages/WouldYouRather";
 import WyrChallenge from "@/pages/WyrChallenge";
 import CampusWaitlist from "@/pages/CampusWaitlist";
+import SignUp from "@/pages/SignUp";
+import Login from "@/pages/Login";
+import Verify from "@/pages/Verify";
 
 function Router() {
   return (
@@ -47,6 +50,9 @@ function Router() {
       <Route path="/wyr-challenge" component={WyrChallenge} />
       <Route path="/campus/carroll" component={CampusWaitlist} />
       <Route path="/campus" component={CampusWaitlist} />
+      <Route path="/signup" component={SignUp} />
+      <Route path="/login" component={Login} />
+      <Route path="/verify" component={Verify} />
       <Route path="/safety" component={Safety} />
       <Route path="/admin" component={Admin} />
       <Route path="/404" component={NotFound} />

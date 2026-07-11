@@ -143,3 +143,39 @@
 - [x] Campus growth: Ambassador leaderboard (top inviters, 5+ referrals = Ambassador badge)
 - [x] 23 tests passing, 0 TypeScript errors
 - [ ] Checkpoint and deliver
+
+## Phase 14: Real Auth + Face Verification (Production-Ready)
+
+### Authentication (replace Manus OAuth for public users)
+- [ ] Schema: add email, passwordHash, phone, emailVerified, phoneVerified to users table
+- [ ] Backend: auth.register (email+password), auth.login, auth.logout, auth.verifyEmail, auth.requestPhoneOTP, auth.verifyPhoneOTP
+- [ ] Frontend: Sign Up page (email+password+phone), Log In page, email verification flow
+- [ ] Keep Manus OAuth as optional "continue with Manus" for existing users
+
+### Face Verification (AWS Rekognition)
+- [ ] Add AWS credentials as secrets (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION)
+- [ ] Backend: verification.startSession (create Rekognition liveness session), verification.getResult (check liveness result, update isVerified)
+- [ ] Frontend: FaceVerification page — camera prompt, 3-angle capture, liveness check, result display
+- [ ] No images stored — only pass/fail result saved to DB
+- [ ] Show "Verified" badge on profile after passing
+
+### Integration
+- [ ] Onboarding flow: register → verify email → Sally interview → face verification → matches
+- [ ] The Shield stats page: show real verified count, bots deflected counter
+- [ ] Unverified users hidden from match results (only verified users shown)
+- [ ] Tests for new auth and verification flows
+- [ ] Checkpoint and deliver
+
+## Phase 14: Email Auth + GPS Photo Verification
+
+- [ ] Schema: add email, passwordHash, emailVerified, emailVerifyToken fields to users table
+- [ ] Schema: add gpsLat, gpsLng, gpsCity, gpsVerifiedAt to user_profiles
+- [ ] Backend: auth.registerEmail, auth.loginEmail, auth.verifyEmail procedures
+- [ ] Backend: verification.submitGpsPhoto (read EXIF, check coords vs claimed city, save result)
+- [ ] Frontend: Sign Up page (email + password + city selection)
+- [ ] Frontend: Log In page (email + password)
+- [ ] Frontend: GPS Photo Verification page (live camera capture, EXIF check, result)
+- [ ] Onboarding flow: register -> verify email -> Sally interview -> GPS photo verify -> matches
+- [ ] Match filtering: only show verified users in match results
+- [ ] Tests for auth and GPS verification flows
+- [ ] Checkpoint and deliver

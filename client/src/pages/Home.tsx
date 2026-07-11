@@ -14,15 +14,19 @@ export default function Home() {
 
   // Redirect to onboarding if authenticated but not onboarded,
   // then to Sally's interview if onboarded but never interviewed.
+  const { data: verifyStatus } = trpc.verification.getStatus.useQuery(undefined, { enabled: isAuthenticated });
+
   useEffect(() => {
     if (!loading && isAuthenticated && profile !== undefined) {
       if (!profile?.onboardingComplete) {
         navigate("/onboarding");
+      } else if (!verifyStatus?.locationVerified && verifyStatus !== undefined) {
+        navigate("/verify");
       } else if ((profile?.interviewCount ?? 0) === 0) {
         navigate("/interview");
       }
     }
-  }, [loading, isAuthenticated, profile]);
+  }, [loading, isAuthenticated, profile, verifyStatus]);
 
   if (loading) {
     return (

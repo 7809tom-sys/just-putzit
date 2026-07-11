@@ -29,8 +29,8 @@ export default function Onboarding() {
 
   const completeOnboarding = trpc.profile.completeOnboarding.useMutation({
     onSuccess: () => {
-      toast.success("Welcome to Just Putzit! 🎉");
-      navigate("/interview");
+      toast.success("Welcome to Just Putzit! 🎉 Let's verify your location next.");
+      navigate("/verify");
     },
     onError: () => toast.error("Something went wrong. Please try again."),
   });

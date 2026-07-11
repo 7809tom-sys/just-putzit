@@ -1,7 +1,9 @@
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { sdk } from "./_core/sdk";
 import { invokeLLM } from "./_core/llm";
 import { z } from "zod";
 import {
@@ -93,6 +95,8 @@ import {
   getCampusBySlug,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
+import bcrypt from "bcryptjs";
+import { getUserByEmail, createEmailUser, verifyUserEmail, checkGpsMatchesCity, saveLocationVerification } from "./db";
 
 export const appRouter = router({
   system: systemRouter,
@@ -103,6 +107,81 @@ export const appRouter = router({
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
+    }),
+
+    register: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().min(1),
+        claimedCity: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await getUserByEmail(input.email);
+        if (existing) throw new TRPCError({ code: "CONFLICT", message: "Email already registered" });
+        const passwordHash = await bcrypt.hash(input.password, 10);
+        const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const user = await createEmailUser({ email: input.email, passwordHash, name: input.name, emailVerifyToken: token, emailVerifyExpires: expires });
+        if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create user" });
+        // Auto-create session (skip email verification for MVP — just log them in)
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || "", expiresInMs: ONE_YEAR_MS });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        return { success: true, userId: user.id };
+      }),
+
+    login: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserByEmail(input.email);
+        if (!user || !user.passwordHash) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
+        const valid = await bcrypt.compare(input.password, user.passwordHash);
+        if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || "", expiresInMs: ONE_YEAR_MS });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        return { success: true, userId: user.id };
+      }),
+  }),
+
+  // ─── Location Verification ────────────────────────────────────────────────
+  verification: router({
+    checkGps: protectedProcedure
+      .input(z.object({
+        lat: z.number(),
+        lng: z.number(),
+        claimedCity: z.string(),
+        photoTimestamp: z.number().optional(), // ms since epoch from EXIF
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { match, distanceKm, cityLabel } = checkGpsMatchesCity(input.lat, input.lng, input.claimedCity);
+        // Check photo recency if timestamp provided (must be within last 10 minutes)
+        let recentPhoto = true;
+        if (input.photoTimestamp) {
+          const ageMs = Date.now() - input.photoTimestamp;
+          recentPhoto = ageMs < 10 * 60 * 1000;
+        }
+        const verified = match && recentPhoto;
+        await saveLocationVerification(ctx.user.id, {
+          lat: input.lat,
+          lng: input.lng,
+          city: cityLabel,
+          verified,
+        });
+        return { verified, distanceKm: Math.round(distanceKm), cityLabel, recentPhoto };
+      }),
+
+    getStatus: protectedProcedure.query(async ({ ctx }) => {
+      const profile = await getOrCreateProfile(ctx.user.id);
+      return {
+        locationVerified: profile?.locationVerified ?? false,
+        gpsVerifiedCity: profile?.gpsVerifiedCity ?? null,
+        gpsVerifiedAt: profile?.gpsVerifiedAt ?? null,
+      };
     }),
   }),
 
