@@ -207,3 +207,13 @@
 - [ ] Add login ads todo items
 - [ ] Login Ads section in Vendor Portal (upload clip, set budget, view impressions) - DONE
 - [ ] Seed a demo login ad for testing
+
+## Phase 17: Progressive Web App (PWA)
+- [x] Create web app manifest (manifest.json) with name, icons, theme color, display standalone
+- [x] Generate PWA icons (192x192, 512x512, maskable) and upload to CDN
+- [x] Create service worker (sw.js) for offline caching of app shell
+- [x] Wire vite-plugin-pwa into vite.config.ts
+- [x] Add manifest link and meta tags to client/index.html
+- [x] Add iOS-specific meta tags (apple-mobile-web-app-capable, status-bar-style)
+- [x] Test install prompt on Android Chrome
+- [x] Save checkpoint and deliver install instructions

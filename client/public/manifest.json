@@ -1,0 +1,51 @@
+{
+  "name": "Just Putzit",
+  "short_name": "Just Putzit",
+  "description": "Real dates. Real Milwaukee. Meet locals for activities, not just apps.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf8f5",
+  "theme_color": "#f97316",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-US",
+  "categories": ["social", "lifestyle", "dating"],
+  "icons": [
+    {
+      "src": "/manus-storage/icon-192_52214e91.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-512_c1858d5a.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-maskable-512_1dae20ca.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Find Matches",
+      "short_name": "Matches",
+      "description": "Browse your local matches",
+      "url": "/matches",
+      "icons": [{ "src": "/manus-storage/icon-192_52214e91.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Local Events",
+      "short_name": "Events",
+      "description": "Free events near you",
+      "url": "/events",
+      "icons": [{ "src": "/manus-storage/icon-192_52214e91.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
