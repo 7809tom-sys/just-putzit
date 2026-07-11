@@ -32,7 +32,6 @@ import Events from "@/pages/Events";
 import GameLobby from "@/pages/GameLobby";
 import Entertainment from "@/pages/Entertainment";
 import ShoutOut from "@/pages/ShoutOut";
-import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
 function Router() {
@@ -80,7 +79,6 @@ function App() {
           <Toaster />
           <Router />
           <MobileBottomNav />
-          <FloatingInstallButton />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

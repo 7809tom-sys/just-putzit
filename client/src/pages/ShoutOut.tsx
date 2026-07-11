@@ -146,19 +146,26 @@ export default function ShoutOut() {
   };
 
   const shareLink = (invite: SentInvite) => {
-    const text = `Hey! I'm on Just Putzit — a fun local dating app. Come join me! ${invite.link}`;
+    const text = `Join me on Just Putzit! Go to the website: ${invite.link}`;
     if (navigator.share) {
-      navigator.share({ title: "Join me on Just Putzit!", text, url: invite.link });
+      navigator.share({ title: "Join me on Just Putzit!", text, url: invite.link }).catch(() => {});
     } else {
       copyLink(invite.link, invite.inviteCode);
     }
   };
 
   const smsLink = (invite: SentInvite, phone?: string) => {
-    const text = encodeURIComponent(
-      `Hey! I'm on Just Putzit — a fun local dating app in Waukesha. Come join me! ${invite.link}`
-    );
-    window.open(`sms:${phone ?? ""}?body=${text}`, "_blank");
+    const message = `Join me on Just Putzit! Go to the website: ${invite.link}`;
+    const cleanPhone = (phone ?? "").replace(/[^+\d]/g, "");
+    if (!cleanPhone && navigator.share) {
+      // No phone stored — open native share sheet so user can pick Messages/WhatsApp
+      navigator.share({ title: "Join me on Just Putzit!", text: message, url: invite.link }).catch(() => {});
+      return;
+    }
+    // iOS uses sms:number?body=, Android uses sms:number?body= too (both work with ?)
+    // But if there's no number, just use sms:?body= which opens blank compose
+    const prefix = cleanPhone ? `sms:${cleanPhone}` : `sms:`;
+    window.open(`${prefix}?body=${encodeURIComponent(message)}`, "_blank");
   };
 
   if (!isAuthenticated) {
