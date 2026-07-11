@@ -31,6 +31,9 @@ import {
   passkeyCredentials,
   loginAds,
   profilePhotos,
+  venueOutreach,
+  gameRooms,
+  gameRoomPlayers,
   type CommunityEvent,
   type InsertCommunityEvent,
   type ProfileTraits,
@@ -458,14 +461,62 @@ export async function recordReferralVisit(activityId: number) {
 export async function getActivityListings(city?: string, category?: string) {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.select().from(activityListings)
+
+  // Join with venuePartners to get city/location info
+  const rows = await db
+    .select({
+      id: activityListings.id,
+      venueId: activityListings.venueId,
+      title: activityListings.title,
+      description: activityListings.description,
+      category: activityListings.category,
+      eventDate: activityListings.eventDate,
+      durationMinutes: activityListings.durationMinutes,
+      maxGroupSize: activityListings.maxGroupSize,
+      minGroupSize: activityListings.minGroupSize,
+      isRecurring: activityListings.isRecurring,
+      recurringSchedule: activityListings.recurringSchedule,
+      checkInCode: activityListings.checkInCode,
+      totalReferrals: activityListings.totalReferrals,
+      priceCents: activityListings.priceCents,
+      hasTickets: activityListings.hasTickets,
+      imageEmoji: activityListings.imageEmoji,
+      isSponsored: activityListings.isSponsored,
+      isActive: activityListings.isActive,
+      createdAt: activityListings.createdAt,
+      venueName: venuePartners.name,
+      venueCity: venuePartners.city,
+      venueAddress: venuePartners.address,
+      venueLat: venuePartners.latitude,
+      venueLng: venuePartners.longitude,
+      venuePhone: venuePartners.phone,
+      venueWebsite: venuePartners.website,
+    })
+    .from(activityListings)
+    .leftJoin(venuePartners, eq(activityListings.venueId, venuePartners.id))
     .where(eq(activityListings.isActive, true))
-    .orderBy(desc(activityListings.createdAt))
-    .limit(100);
-  if (category && category !== "all") {
-    return rows.filter(r => r.category === category);
+    .orderBy(desc(activityListings.isSponsored), desc(activityListings.createdAt))
+    .limit(200);
+
+  let filtered = rows;
+
+  // City filter: match venue city (case-insensitive partial match)
+  if (city && city.trim()) {
+    const cityLower = city.toLowerCase();
+    filtered = filtered.filter(r => {
+      if (!r.venueCity) return false;
+      const vc = r.venueCity.toLowerCase();
+      return vc.includes(cityLower) || cityLower.includes(vc);
+    });
+    // If no city match, fall back to all (so page is never empty)
+    if (filtered.length === 0) filtered = rows;
   }
-  return rows.slice(0, 50);
+
+  if (category && category !== "all") {
+    filtered = filtered.filter(r => r.category === category);
+  }
+
+  return filtered.slice(0, 80);
 }
 
 export async function getActivityById(activityId: number) {
@@ -1633,4 +1684,124 @@ export async function getAdminStatsEnhanced() {
     totalActivities: allActivities.length,
     bannedUsers: bannedUsers.length,
   };
+}
+
+// ─── Public Game Lobby ────────────────────────────────────────────────────────
+
+export async function listGameRooms(city?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(gameRooms)
+    .where(sql`${gameRooms.status} != 'finished'`)
+    .orderBy(desc(gameRooms.createdAt))
+    .limit(50);
+  if (city) {
+    const cityLower = city.toLowerCase();
+    const cityFiltered = rows.filter(r => !r.city || r.city.toLowerCase().includes(cityLower) || cityLower.includes(r.city.toLowerCase()));
+    return cityFiltered.length > 0 ? cityFiltered : rows;
+  }
+  return rows;
+}
+
+export async function getGameRoom(roomId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(gameRooms).where(eq(gameRooms.id, roomId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createGameRoom(data: {
+  hostUserId: number;
+  name: string;
+  gameType: "would_you_rather" | "trivia" | "icebreaker" | "two_truths";
+  city?: string;
+  maxPlayers?: number;
+  questions: { id: number; text: string; optionA?: string; optionB?: string }[];
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.insert(gameRooms).values({
+    hostUserId: data.hostUserId,
+    name: data.name,
+    gameType: data.gameType,
+    city: data.city,
+    maxPlayers: data.maxPlayers ?? 6,
+    questions: data.questions,
+    answers: [],
+  });
+  const rows = await db.select().from(gameRooms).where(eq(gameRooms.hostUserId, data.hostUserId)).orderBy(desc(gameRooms.createdAt)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function joinGameRoom(roomId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  // Check if already joined
+  const existing = await db.select().from(gameRoomPlayers)
+    .where(and(eq(gameRoomPlayers.roomId, roomId), eq(gameRoomPlayers.userId, userId)))
+    .limit(1);
+  if (existing[0]) {
+    // Re-activate if they left
+    await db.update(gameRoomPlayers)
+      .set({ isActive: true, lastSeenAt: new Date() })
+      .where(and(eq(gameRoomPlayers.roomId, roomId), eq(gameRoomPlayers.userId, userId)));
+    return;
+  }
+  await db.insert(gameRoomPlayers).values({ roomId, userId });
+}
+
+export async function leaveGameRoom(roomId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(gameRoomPlayers)
+    .set({ isActive: false })
+    .where(and(eq(gameRoomPlayers.roomId, roomId), eq(gameRoomPlayers.userId, userId)));
+}
+
+export async function getGameRoomPlayers(roomId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: gameRoomPlayers.id,
+    userId: gameRoomPlayers.userId,
+    joinedAt: gameRoomPlayers.joinedAt,
+    isActive: gameRoomPlayers.isActive,
+    lastSeenAt: gameRoomPlayers.lastSeenAt,
+    displayName: userProfiles.displayName,
+    city: userProfiles.city,
+  })
+  .from(gameRoomPlayers)
+  .leftJoin(userProfiles, eq(gameRoomPlayers.userId, userProfiles.userId))
+  .where(and(eq(gameRoomPlayers.roomId, roomId), eq(gameRoomPlayers.isActive, true)));
+}
+
+export async function submitGameAnswer(roomId: number, userId: number, questionIndex: number, answer: string) {
+  const db = await getDb();
+  if (!db) return;
+  const room = await getGameRoom(roomId);
+  if (!room) return;
+  const answers = (room.answers ?? []) as { userId: number; questionIndex: number; answer: string; timestamp: number }[];
+  answers.push({ userId, questionIndex, answer, timestamp: Date.now() });
+  await db.update(gameRooms).set({ answers, updatedAt: new Date() }).where(eq(gameRooms.id, roomId));
+}
+
+export async function advanceGameQuestion(roomId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const room = await getGameRoom(roomId);
+  if (!room) return;
+  const nextIndex = room.currentQuestionIndex + 1;
+  const questions = (room.questions ?? []) as { id: number }[];
+  const isFinished = nextIndex >= questions.length;
+  await db.update(gameRooms)
+    .set({ currentQuestionIndex: nextIndex, status: isFinished ? "finished" : "in_progress", updatedAt: new Date() })
+    .where(eq(gameRooms.id, roomId));
+}
+
+export async function startGameRoom(roomId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(gameRooms).set({ status: "in_progress", updatedAt: new Date() }).where(eq(gameRooms.id, roomId));
 }

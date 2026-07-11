@@ -571,3 +571,46 @@ export const loginAds = mysqlTable("login_ads", {
 });
 export type LoginAd = typeof loginAds.$inferSelect;
 export type InsertLoginAd = typeof loginAds.$inferInsert;
+
+// ─── Venue Outreach Emails ────────────────────────────────────────────────────
+export const venueOutreach = mysqlTable("venue_outreach", {
+  id: int("id").autoincrement().primaryKey(),
+  venueId: int("venueId").notNull(),
+  sentByUserId: int("sentByUserId").notNull(),
+  toEmail: varchar("toEmail", { length: 320 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  body: text("body").notNull(),
+  status: mysqlEnum("status", ["sent", "failed", "draft"]).notNull().default("sent"),
+  errorMessage: text("errorMessage"),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+});
+export type VenueOutreach = typeof venueOutreach.$inferSelect;
+export type InsertVenueOutreach = typeof venueOutreach.$inferInsert;
+
+// ─── Public Game Lobby ────────────────────────────────────────────────────────
+export const gameRooms = mysqlTable("game_rooms", {
+  id: int("id").autoincrement().primaryKey(),
+  hostUserId: int("hostUserId").notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  gameType: mysqlEnum("gameType", ["would_you_rather", "trivia", "icebreaker", "two_truths"]).notNull().default("would_you_rather"),
+  city: varchar("city", { length: 120 }),
+  maxPlayers: int("maxPlayers").notNull().default(6),
+  status: mysqlEnum("status", ["waiting", "in_progress", "finished"]).notNull().default("waiting"),
+  currentQuestionIndex: int("currentQuestionIndex").notNull().default(0),
+  questions: json("questions").$type<{ id: number; text: string; optionA?: string; optionB?: string }[]>(),
+  answers: json("answers").$type<{ userId: number; questionIndex: number; answer: string; timestamp: number }[]>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+export type GameRoom = typeof gameRooms.$inferSelect;
+export type InsertGameRoom = typeof gameRooms.$inferInsert;
+
+export const gameRoomPlayers = mysqlTable("game_room_players", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  userId: int("userId").notNull(),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  isActive: boolean("isActive").notNull().default(true),
+  lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+});
+export type GameRoomPlayer = typeof gameRoomPlayers.$inferSelect;

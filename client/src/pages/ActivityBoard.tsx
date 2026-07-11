@@ -31,8 +31,12 @@ export default function ActivityBoard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mapReady, setMapReady] = useState(false);
 
+  const { data: profile } = trpc.profile.get.useQuery();
+  const userCity = profile?.city ?? undefined;
+
   const { data: sallyRecs, isLoading: recsLoading } = trpc.activityBoard.getSallyRecommendations.useQuery({});
   const { data: activities, refetch } = trpc.activityBoard.getAll.useQuery({
+    city: userCity,
     category: selectedCategory === "all" ? undefined : selectedCategory,
   });
 
@@ -115,10 +119,12 @@ export default function ActivityBoard() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 font-display mb-2">
-            What's Happening Near You
+            What's Happening Near {userCity ?? "You"}
           </h1>
           <p className="text-gray-600">
-            Stop putzing around alone — find something amazing to do this weekend.
+            {userCity
+              ? `Showing activities in and around ${userCity} — stop putzing around alone!`
+              : "Stop putzing around alone — find something amazing to do this weekend."}
           </p>
         </div>
 
@@ -217,8 +223,28 @@ export default function ActivityBoard() {
                               </Badge>
                             )}
                           </div>
+                          {/* Venue name + city */}
+                          {(activity as any).venueName && (
+                            <p className="text-sm font-medium text-primary mt-2 flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {(activity as any).venueName}
+                              {(activity as any).venueCity && (
+                                <span className="text-muted-foreground font-normal">
+                                  · {(activity as any).venueCity}
+                                </span>
+                              )}
+                            </p>
+                          )}
+                          {/* Price */}
+                          {(activity.priceCents ?? 0) > 0 ? (
+                            <p className="text-xs text-gray-500 mt-1">
+                              ${((activity.priceCents ?? 0) / 100).toFixed(2)} per person
+                            </p>
+                          ) : (
+                            <p className="text-xs text-green-600 mt-1 font-medium">Free</p>
+                          )}
                           {activity.totalReferrals > 0 && (
-                            <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
                               <CheckCircle className="w-3 h-3" />
                               {activity.totalReferrals} Just Putzit members have been here!
                             </p>

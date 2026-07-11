@@ -121,6 +121,15 @@ import {
   banUser,
   unbanUser,
   getAdminStatsEnhanced,
+  listGameRooms,
+  getGameRoom,
+  createGameRoom,
+  joinGameRoom,
+  leaveGameRoom,
+  getGameRoomPlayers,
+  submitGameAnswer,
+  advanceGameQuestion,
+  startGameRoom,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import bcrypt from "bcryptjs";
@@ -390,23 +399,40 @@ Rules:
           birthdate: (profile as any)?.birthdate,
         };
 
+        // Determine what profile fields are still missing to guide Sally's questions
+        const missingFields: string[] = [];
+        if (!profileIdentity.gender) missingFields.push("gender identity");
+        if (!profileIdentity.sexualOrientation) missingFields.push("sexual orientation");
+        if (!profileIdentity.birthdate) missingFields.push("age or birth year");
+        const traitFields = ["hobbies", "favoriteActivities", "personalityKeywords", "dreamVacation", "favoriteFood", "morningOrNight", "idealWeekend", "lookingFor", "idealDate"];
+        const missingTraits = traitFields.filter(f => !(existingTraits as any)[f]);
+        if (missingTraits.length > 0) missingFields.push(...missingTraits.slice(0, 3).map(f => f.replace(/([A-Z])/g, ' $1').toLowerCase()));
+
+        const profileCompleteness = Math.round(
+          ((traitFields.filter(f => !!(existingTraits as any)[f]).length + (profileIdentity.gender ? 1 : 0) + (profileIdentity.sexualOrientation ? 1 : 0) + (profileIdentity.birthdate ? 1 : 0)) /
+          (traitFields.length + 3)) * 100
+        );
+
         const llmMessages = [
           {
             role: "system" as const,
-            content: `You are Sally, a warm and enthusiastic AI host for Just Putzit. You're conducting a 90-second profile-building interview with ${userName}.
+            content: `You are Sally, a warm and enthusiastic AI host for Just Putzit. You have an ongoing relationship with ${userName} and your job is to make their profile as rich and detailed as possible through natural conversation.
 
-Existing profile traits: ${JSON.stringify(existingTraits)}
+Current profile traits already known: ${JSON.stringify(existingTraits)}
 Identity on file: ${JSON.stringify(profileIdentity)}
+Profile completeness: ${profileCompleteness}%
+Fields still missing or incomplete: ${missingFields.length > 0 ? missingFields.join(", ") : "none — profile is looking great!"}
 
 Rules:
-- Respond warmly to their answer (1-2 sentences acknowledging what they said)
-- Then ask ONE new follow-up question to dig deeper OR pivot to a new topic
-- Keep it conversational and fun
-- If gender/orientation/birthdate are not yet on file, ask about them naturally and warmly (not clinically)
-- After 4-5 exchanges, wrap up warmly saying you've learned so much and will update their profile
+- Respond warmly to their answer (1-2 sentences genuinely acknowledging what they shared)
+- Then naturally weave in a question about one of the MISSING fields above — make it feel organic, not like a form
+- The more they share, the richer their profile becomes — celebrate this! ("Ooh I'm learning so much about you!")
+- NEVER ask about something already in their profile — always explore new territory
+- If all fields are filled, go deeper: ask about their most memorable experience, what they want in a partner, or their 5-year dream
+- Keep it conversational, warm, and fun — like a best friend who's genuinely curious
 - Use emojis sparingly but naturally
-- Never be clinical or robotic
-- When the user shares their gender, orientation, or birth year, acknowledge it warmly and move on`,
+- After 5+ exchanges, occasionally say "I'm updating your profile with all this amazing info!" to signal progress
+- Never be clinical, robotic, or repeat questions`,
           },
           ...messages.map(m => ({ role: m.role as "assistant" | "user", content: m.content })),
         ];
@@ -425,26 +451,50 @@ Rules:
           ...(isComplete ? { completedAt: new Date() } : {}),
         });
 
-        if (isComplete) {
-          // Extract traits from the conversation
-          const extractedTraits = await extractTraitsFromInterview(messages, existingTraits);
-          await updateInterviewSession(input.sessionId, { extractedTraits });
+        // ── Continuous profile enrichment: run after EVERY user message ──────────
+        // Extract whatever new info was shared in this exchange and MERGE into profile
+        // This means the profile gets richer with every single message sent to Sally
+        try {
+          const [newTraits, identityExtracted] = await Promise.all([
+            extractTraitsFromInterview(messages, existingTraits),
+            extractIdentityFromInterview(messages),
+          ]);
 
-          // Extract identity fields (gender, orientation, birthdate) from conversation
-          const identityExtracted = await extractIdentityFromInterview(messages);
-          if (identityExtracted.gender || identityExtracted.sexualOrientation || identityExtracted.birthdate) {
-            await updateProfileIdentity(ctx.user.id, identityExtracted);
+          // Deep-merge arrays (hobbies, favoriteActivities, personalityKeywords) instead of overwriting
+          const mergedTraits: ProfileTraits = { ...existingTraits };
+          for (const [key, value] of Object.entries(newTraits)) {
+            if (Array.isArray(value) && Array.isArray((existingTraits as any)[key])) {
+              // Merge arrays and deduplicate
+              const existing = (existingTraits as any)[key] as string[];
+              const merged = Array.from(new Set([...existing, ...value]));
+              (mergedTraits as any)[key] = merged;
+            } else if (value !== undefined && value !== null && value !== "") {
+              // Only overwrite scalar fields if we got a real value
+              (mergedTraits as any)[key] = value;
+            }
           }
 
-          // Merge traits into profile
-          const mergedTraits = { ...existingTraits, ...extractedTraits };
-          const aiSummary = await generateProfileSummary(mergedTraits, userName);
-          mergedTraits.aiSummary = aiSummary;
+          // Regenerate AI summary if we have enough data
+          if (Object.keys(mergedTraits).length > 2) {
+            mergedTraits.aiSummary = await generateProfileSummary(mergedTraits, userName);
+          }
 
           await updateProfile(ctx.user.id, {
             traits: mergedTraits,
-            interviewCount: (profile?.interviewCount ?? 0) + 1,
+            ...(isComplete ? { interviewCount: (profile?.interviewCount ?? 0) + 1 } : {}),
           });
+
+          if (isComplete) {
+            await updateInterviewSession(input.sessionId, { extractedTraits: mergedTraits });
+          }
+
+          // Save identity fields if newly discovered
+          if (identityExtracted.gender || identityExtracted.sexualOrientation || identityExtracted.birthdate) {
+            await updateProfileIdentity(ctx.user.id, identityExtracted);
+          }
+        } catch (err) {
+          // Non-fatal: profile update failure should not break the chat
+          console.warn("[Sally] Profile enrichment failed:", err);
         }
 
         return { message: sallyReply, isComplete };
@@ -867,6 +917,103 @@ Return JSON with questions array, each having optionA and optionB.`,
       }),
   }),
 
+  // ─── Public Game Lobby ─────────────────────────────────────────────────────
+  gameLobby: router({
+    listRooms: protectedProcedure
+      .input(z.object({ city: z.string().optional() }))
+      .query(async ({ input }) => {
+        return listGameRooms(input.city);
+      }),
+
+    getRoom: protectedProcedure
+      .input(z.object({ roomId: z.number() }))
+      .query(async ({ input }) => {
+        const room = await getGameRoom(input.roomId);
+        const players = await getGameRoomPlayers(input.roomId);
+        return room ? { ...room, players } : null;
+      }),
+
+    createRoom: protectedProcedure
+      .input(z.object({
+        name: z.string().min(2).max(80),
+        gameType: z.enum(["would_you_rather", "trivia", "icebreaker", "two_truths"]),
+        city: z.string().optional(),
+        maxPlayers: z.number().min(2).max(12).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await getProfileByUserId(ctx.user.id);
+        const city = input.city ?? profile?.city ?? undefined;
+
+        // Generate questions via LLM based on game type
+        const questionPrompt = input.gameType === "would_you_rather"
+          ? `Generate 8 fun, creative "Would You Rather" questions for a group of adults getting to know each other. Make them light-hearted, interesting, and conversation-starting. Return JSON with a questions array, each having: id (number), text (string), optionA (string), optionB (string).`
+          : input.gameType === "icebreaker"
+          ? `Generate 8 fun icebreaker questions for adults getting to know each other. Questions should be open-ended and reveal personality. Return JSON with a questions array, each having: id (number), text (string).`
+          : input.gameType === "two_truths"
+          ? `Generate 8 "Two Truths and a Lie" prompts/topics for adults. Each prompt is a category/topic for players to create their own statements. Return JSON with a questions array, each having: id (number), text (string, the topic/prompt).`
+          : `Generate 8 fun trivia questions about pop culture, food, travel, or fun facts. Return JSON with a questions array, each having: id (number), text (string), optionA (string), optionB (string), optionC (string), optionD (string), correctAnswer (string).`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: questionPrompt },
+            { role: "user", content: "Generate the questions now." },
+          ],
+          response_format: { type: "json_schema", json_schema: { name: "lobby_questions", strict: false, schema: { type: "object", properties: { questions: { type: "array", items: { type: "object" } } }, required: ["questions"] } } },
+        });
+        const content = response.choices[0]?.message?.content;
+        const questions = JSON.parse(typeof content === "string" ? content : "{}").questions ?? [];
+
+        const room = await createGameRoom({ hostUserId: ctx.user.id, name: input.name, gameType: input.gameType, city, maxPlayers: input.maxPlayers, questions });
+        if (room) await joinGameRoom(room.id, ctx.user.id);
+        return room;
+      }),
+
+    joinRoom: protectedProcedure
+      .input(z.object({ roomId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const room = await getGameRoom(input.roomId);
+        if (!room) throw new TRPCError({ code: "NOT_FOUND", message: "Room not found" });
+        const players = await getGameRoomPlayers(input.roomId);
+        if (players.length >= room.maxPlayers) throw new TRPCError({ code: "BAD_REQUEST", message: "Room is full" });
+        await joinGameRoom(input.roomId, ctx.user.id);
+        return { success: true };
+      }),
+
+    leaveRoom: protectedProcedure
+      .input(z.object({ roomId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await leaveGameRoom(input.roomId, ctx.user.id);
+        return { success: true };
+      }),
+
+    startGame: protectedProcedure
+      .input(z.object({ roomId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const room = await getGameRoom(input.roomId);
+        if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+        if (room.hostUserId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the host can start the game" });
+        await startGameRoom(input.roomId);
+        return { success: true };
+      }),
+
+    submitAnswer: protectedProcedure
+      .input(z.object({ roomId: z.number(), questionIndex: z.number(), answer: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await submitGameAnswer(input.roomId, ctx.user.id, input.questionIndex, input.answer);
+        return { success: true };
+      }),
+
+    nextQuestion: protectedProcedure
+      .input(z.object({ roomId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const room = await getGameRoom(input.roomId);
+        if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+        if (room.hostUserId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        await advanceGameQuestion(input.roomId);
+        return { success: true };
+      }),
+  }),
+
   // ─── Safety ─────────────────────────────────────────────────────────────
   safety: router({
     report: protectedProcedure
@@ -1074,7 +1221,7 @@ Return JSON with questions array, each having optionA and optionB.`,
       .input(z.object({ matchId: z.number().optional() }))
       .query(async ({ ctx, input }) => {
         const profile = await getProfileByUserId(ctx.user.id);
-        const allActivities = await getActivityListings();
+        const allActivities = await getActivityListings(profile?.city ?? undefined);
 
         if (allActivities.length === 0) {
           return {

@@ -270,3 +270,38 @@
 - [x] Ensure admin route is protected (adminProcedure / role=admin check)
 - [x] Promote owner account to admin role in DB
 - [x] Add Admin link to Navbar for admin users only
+
+## Mobile Navigation & Feature Parity
+- [ ] Audit Navbar for mobile breakpoint — what is hidden/collapsed
+- [ ] Build MobileBottomNav component with: Home, Matches, Activities, Community, More menu
+- [ ] Add Admin shortcut in More menu for admin users
+- [ ] Ensure all major pages are reachable from mobile bottom nav
+- [ ] Add mobile-responsive padding/spacing to key pages
+
+## Local Venues & City-Based Activities
+- [ ] Seed Waukesha local venues (Farmers Market, Frame Park mini golf, parks, etc.) into activityListings
+- [ ] Seed Milwaukee local venues into activityListings
+- [ ] Add city filter to ActivityBoard and Events pages based on user profile city
+- [ ] Show distance estimate from user city on activity/event cards
+- [ ] Auto-show city-relevant venues when user opens Activities page
+
+## Admin Email Outreach
+- [ ] Add venueOutreach DB table (id, venueId, toEmail, subject, body, sentAt, status)
+- [ ] Add sendOutreachEmail tRPC procedure (admin only) using built-in email or SMTP
+- [ ] Add Outreach tab in Admin panel with venue list and compose email form
+- [ ] Show email history log per venue in Admin panel
+
+## Sally Continuous Profile Enrichment
+- [ ] After every Sally chat message, extract new traits/hobbies/preferences and MERGE into profile (not overwrite)
+- [ ] Sally system prompt should track what profile fields are still missing and ask about them naturally
+- [ ] Profile traits, hobbies, dream vacation, personality tags all accumulate across sessions
+- [ ] Identity fields (gender, orientation, age) extracted if mentioned in any conversation
+- [ ] Profile completeness score shown to user to encourage more chatting
+
+## Public Game Lobby
+- [ ] Add game_rooms and game_room_players DB tables (city, max players, game type, status)
+- [ ] tRPC: createRoom, listRooms (filtered by city), joinRoom, leaveRoom, getRoomState
+- [ ] Game Lobby page: browse open rooms near you, create a room, see who's in each room
+- [ ] In-room game play: WYR, trivia, or icebreaker questions with all room members
+- [ ] Geographic filter: show rooms in same city first, then nearby cities
+- [ ] After game, prompt players to connect/match with each other
