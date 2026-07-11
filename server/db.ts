@@ -39,6 +39,7 @@ import {
   entertainmentClicks,
   friendInvites,
   campusMembers,
+  campusEmailTokens,
   type CommunityEvent,
   type InsertCommunityEvent,
   type ProfileTraits,
@@ -2031,3 +2032,150 @@ export async function getAllCampuses() {
   if (!db) return [];
   return db.select().from(campuses).orderBy(campuses.name);
 }
+
+// ─── Campus Auto-Registration (.edu email flow) ───────────────────────────────
+
+/** Look up a university by its email domain using the Hipolabs API.
+ *  Returns { name, country, state } or null if not found / not a .edu domain. */
+export async function lookupUniversityByDomain(email: string): Promise<{
+  name: string;
+  country: string;
+  state: string | null;
+  domain: string;
+} | null> {
+  const lower = email.toLowerCase().trim();
+  const atIdx = lower.lastIndexOf("@");
+  if (atIdx === -1) return null;
+  const domain = lower.slice(atIdx + 1);
+  // Only accept .edu domains
+  if (!domain.endsWith(".edu")) return null;
+  try {
+    const res = await fetch(`https://universities.hipolabs.com/search?domain=${encodeURIComponent(domain)}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as Array<{
+      name: string;
+      country: string;
+      "state-province": string | null;
+      domains: string[];
+    }>;
+    if (!data || data.length === 0) return null;
+    const uni = data[0];
+    return {
+      name: uni.name,
+      country: uni.country,
+      state: uni["state-province"] ?? null,
+      domain,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Find an existing campus by email domain, or auto-create it from the Hipolabs data. */
+export async function findOrCreateCampusByDomain(email: string): Promise<{
+  campus: { id: number; name: string; city: string; state: string; isLive: boolean };
+  created: boolean;
+} | null> {
+  const uni = await lookupUniversityByDomain(email);
+  if (!uni) return null;
+  const db = await getDb();
+  if (!db) return null;
+  // Check if campus already exists for this domain (emailDomains is comma-separated)
+  const allCampuses = await db.select().from(campuses);
+  const existing = allCampuses.find((c) =>
+    (c.emailDomains ?? "").split(",").map((d) => d.trim()).includes(uni.domain)
+  );
+  if (existing) {
+    return {
+      campus: {
+        id: existing.id,
+        name: existing.name,
+        city: existing.city,
+        state: existing.state,
+        isLive: existing.isLive ?? false,
+      },
+      created: false,
+    };
+  }
+  // Auto-create the campus
+  const [result] = await db.insert(campuses).values({
+    name: uni.name,
+    city: uni.state ? uni.name : uni.country,
+    state: uni.state ?? uni.country,
+    emailDomains: uni.domain,
+    launchThreshold: 25,
+    isLive: false,
+    colorHex: "#f97316",
+  });
+  const newId = (result as any).insertId as number;
+  return {
+    campus: {
+      id: newId,
+      name: uni.name,
+      city: uni.state ? uni.name : uni.country,
+      state: uni.state ?? uni.country,
+      isLive: false,
+    },
+    created: true,
+  };
+}
+
+/** Create a 6-digit verification token for a .edu email. Expires in 15 minutes. */
+export async function createCampusEmailToken(userId: number, email: string): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const token = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  // Invalidate old tokens for this user+email
+  await db
+    .delete(campusEmailTokens)
+    .where(and(eq(campusEmailTokens.userId, userId), eq(campusEmailTokens.email, email)));
+  await db.insert(campusEmailTokens).values({ userId, email, token, expiresAt });
+  return token;
+}
+
+/** Verify a campus email token. Returns the email if valid, throws otherwise. */
+export async function verifyCampusEmailToken(userId: number, email: string, token: string): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [row] = await db
+    .select()
+    .from(campusEmailTokens)
+    .where(
+      and(
+        eq(campusEmailTokens.userId, userId),
+        eq(campusEmailTokens.email, email),
+        eq(campusEmailTokens.token, token)
+      )
+    )
+    .limit(1);
+  if (!row) throw new Error("Invalid verification code.");
+  if (row.usedAt) throw new Error("This code has already been used.");
+  if (new Date() > row.expiresAt) throw new Error("This code has expired. Please request a new one.");
+  await db
+    .update(campusEmailTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(campusEmailTokens.id, row.id));
+  return email;
+}
+
+/** Check if a campus has hit its launch threshold and mark it live if so. */
+export async function checkAndLaunchCampus(campusId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const [campus] = await db.select().from(campuses).where(eq(campuses.id, campusId)).limit(1);
+  if (!campus || campus.isLive) return false;
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(campusMembers)
+    .where(eq(campusMembers.campusId, campusId));
+  const count = Number(countRow?.count ?? 0);
+  const threshold = campus.launchThreshold ?? 25;
+  if (count >= threshold) {
+    await db.update(campuses).set({ isLive: true }).where(eq(campuses.id, campusId));
+    return true;
+  }
+  return false;
+}
+
+

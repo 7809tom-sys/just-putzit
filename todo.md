@@ -368,3 +368,11 @@
 - [x] Add loud nudity warning banner on photo upload UI
 - [ ] Fix duplicate /shout-out key in MobileBottomNav (remove from moreItems)
 - [x] Save checkpoint after all fixes
+
+## Automatic Campus Registration
+- [ ] Add university lookup from .edu email domain (Hipolabs API or local dataset)
+- [ ] Auto-create campus record when new .edu domain is verified
+- [ ] Build .edu email verification flow (send 6-digit code, verify, auto-join)
+- [ ] Add auto-launch logic: campus goes live when member count hits threshold
+- [ ] Send owner notification when campus is created or goes live
+- [ ] Update Campus UI to show pending/live status and progress bar

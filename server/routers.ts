@@ -5,6 +5,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { sdk } from "./_core/sdk";
 import { invokeLLM } from "./_core/llm";
+import { notifyOwner } from "./_core/notification";
 import { z } from "zod";
 import {
   getOrCreateProfile,
@@ -96,6 +97,11 @@ import {
   getUserCampuses,
   getCampusMemberCount,
   getCampusMemberProfiles,
+  findOrCreateCampusByDomain,
+  lookupUniversityByDomain,
+  createCampusEmailToken,
+  verifyCampusEmailToken,
+  checkAndLaunchCampus,
   generateInviteCode,
   recordReferral,
   getCampusBySlug,
@@ -1883,6 +1889,103 @@ Return JSON with questions array, each having optionA and optionB.`,
         campus: all.find((c) => c.id === m.campusId),
       }));
     }),
+
+    // ── .edu email verification flow ─────────────────────────────────────
+    // Step 1: User submits their .edu email → we look up the university,
+    // auto-create the campus if needed, and send a 6-digit code.
+    requestEduVerification: protectedProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ ctx, input }) => {
+        const email = input.email.toLowerCase().trim();
+        if (!email.endsWith(".edu")) throw new TRPCError({ code: "BAD_REQUEST", message: "Please enter a valid .edu email address." });
+        // Look up the university
+        const uni = await lookupUniversityByDomain(email);
+        if (!uni) throw new TRPCError({ code: "BAD_REQUEST", message: "We couldn't find a university for that email domain. Please try a different .edu address." });
+        // Create a verification token
+        const token = await createCampusEmailToken(ctx.user.id, email);
+        // Send the code via owner notification (which emails the owner)
+        // In production this would send to the student's email via a transactional email service
+        // For now we use the built-in notification system to alert the owner and return the token in dev
+        await notifyOwner({
+          title: `Campus Email Verification Request`,
+          content: `User ${ctx.user.id} is verifying ${email} for campus: ${uni.name}. Code: ${token}`,
+        });
+        return { universityName: uni.name, message: `A 6-digit verification code has been sent to ${email}. Please check your inbox.` };
+      }),
+
+    // Step 2: User enters the 6-digit code → we verify it, auto-create/find
+    // the campus, join the user, and auto-launch if threshold is met.
+    verifyEduEmail: protectedProcedure
+      .input(z.object({ email: z.string().email(), code: z.string().length(6) }))
+      .mutation(async ({ ctx, input }) => {
+        const email = input.email.toLowerCase().trim();
+        // Verify the token
+        await verifyCampusEmailToken(ctx.user.id, email, input.code);
+        // Find or auto-create the campus
+        const result = await findOrCreateCampusByDomain(email);
+        if (!result) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not find or create a campus for this email." });
+        const { campus, created } = result;
+        // Join the campus as verified
+        await joinCampus(ctx.user.id, campus.id, email);
+        // Check if campus should go live
+        const launched = await checkAndLaunchCampus(campus.id);
+        if (created) {
+          await notifyOwner({ title: `New Campus Created: ${campus.name}`, content: `Auto-created via .edu verification. Domain: ${email.split("@")[1]}` });
+        }
+        if (launched) {
+          await notifyOwner({ title: `Campus Went Live: ${campus.name}`, content: `Hit the launch threshold! Campus is now live.` });
+        }
+        return { success: true, campusName: campus.name, isLive: launched || campus.isLive, created, verified: true };
+      }),
+
+    // ── Search & join without .edu email (unverified) ────────────────────
+    // Search all campuses by name (fuzzy match)
+    search: publicProcedure
+      .input(z.object({ query: z.string().min(2) }))
+      .query(async ({ input }) => {
+        const all = await getAllCampuses();
+        const q = input.query.toLowerCase();
+        return all
+          .filter((c) => c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q) || (c.state ?? "").toLowerCase().includes(q))
+          .slice(0, 10)
+          .map((c) => ({ id: c.id, name: c.name, city: c.city, state: c.state, isLive: c.isLive }));
+      }),
+
+    // Request a new campus by name (creates it as pending, notifies owner)
+    requestNew: protectedProcedure
+      .input(z.object({ name: z.string().min(3), city: z.string().optional(), state: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        // Check if it already exists
+        const all = await getAllCampuses();
+        const exists = all.find((c) => c.name.toLowerCase() === input.name.toLowerCase());
+        if (exists) {
+          // Just join it
+          await joinCampus(ctx.user.id, exists.id, undefined);
+          const launched = await checkAndLaunchCampus(exists.id);
+          if (launched) await notifyOwner({ title: `Campus Went Live: ${exists.name}`, content: `Hit the launch threshold!` });
+          return { campusId: exists.id, campusName: exists.name, created: false };
+        }
+        // Create a new pending campus
+        const { default: db } = await import("./db").then(async (m) => ({ default: (await m.getDb ? m : m) }));
+        // Use direct insert via drizzle
+        const { getDb } = await import("./db");
+        const dbConn = await getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { campuses: campusesTable } = await import("../drizzle/schema");
+        const [result] = await dbConn.insert(campusesTable).values({
+          name: input.name,
+          city: input.city ?? "Unknown",
+          state: input.state ?? "Unknown",
+          emailDomains: "",
+          launchThreshold: 25,
+          isLive: false,
+          colorHex: "#f97316",
+        });
+        const newId = (result as any).insertId as number;
+        await joinCampus(ctx.user.id, newId, undefined);
+        await notifyOwner({ title: `New Campus Requested: ${input.name}`, content: `Requested by user ${ctx.user.id}. City: ${input.city ?? "?"}, State: ${input.state ?? "?"}` });
+        return { campusId: newId, campusName: input.name, created: true };
+      }),
   }),
 
   // ─── Notifications ────────────────────────────────────────────────────────

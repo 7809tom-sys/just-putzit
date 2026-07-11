@@ -677,3 +677,15 @@ export const campusMembers = mysqlTable("campus_members", {
 });
 export type CampusMember = typeof campusMembers.$inferSelect;
 export type InsertCampusMember = typeof campusMembers.$inferInsert;
+// ─── Campus Email Verification Tokens ────────────────────────────────────────
+export const campusEmailTokens = mysqlTable("campus_email_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  token: varchar("token", { length: 8 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CampusEmailToken = typeof campusEmailTokens.$inferSelect;
+export type InsertCampusEmailToken = typeof campusEmailTokens.$inferInsert;
