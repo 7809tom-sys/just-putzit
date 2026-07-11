@@ -24,6 +24,7 @@ import Couples from "./pages/Couples";
 import WouldYouRather from "@/pages/WouldYouRather";
 import WyrChallenge from "@/pages/WyrChallenge";
 import CampusWaitlist from "@/pages/CampusWaitlist";
+import CampusPage from "@/pages/Campus";
 import SignUp from "@/pages/SignUp";
 import Login from "@/pages/Login";
 import Verify from "@/pages/Verify";
@@ -55,7 +56,7 @@ function Router() {
       <Route path="/would-you-rather" component={WouldYouRather} />
       <Route path="/wyr-challenge" component={WyrChallenge} />
       <Route path="/campus/carroll" component={CampusWaitlist} />
-      <Route path="/campus" component={CampusWaitlist} />
+      <Route path="/campus" component={CampusPage} />
       <Route path="/signup" component={SignUp} />
       <Route path="/login" component={Login} />
       <Route path="/verify" component={Verify} />

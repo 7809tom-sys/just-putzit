@@ -38,6 +38,7 @@ import {
   movieBookingClicks,
   entertainmentClicks,
   friendInvites,
+  campusMembers,
   type CommunityEvent,
   type InsertCommunityEvent,
   type ProfileTraits,
@@ -1949,4 +1950,83 @@ export async function getInviteStats() {
   const opened = rows.filter((r: { status: string }) => r.status === "opened" || r.status === "joined").length;
   const joined = rows.filter((r: { status: string }) => r.status === "joined").length;
   return { total, opened, joined, conversionRate: total > 0 ? Math.round((joined / total) * 100) : 0 };
+}
+
+// ─── Campus Members (self-serve dating pool) ─────────────────────────────────
+export async function joinCampus(userId: number, campusId: number, verifiedEmail?: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Upsert: ignore if already joined
+  const existing = await db
+    .select()
+    .from(campusMembers)
+    .where(and(eq(campusMembers.userId, userId), eq(campusMembers.campusId, campusId)))
+    .limit(1);
+  if (existing.length > 0) return existing[0];
+  await db.insert(campusMembers).values({ userId, campusId, verifiedEmail });
+  const [row] = await db
+    .select()
+    .from(campusMembers)
+    .where(and(eq(campusMembers.userId, userId), eq(campusMembers.campusId, campusId)))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function leaveCampus(userId: number, campusId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .delete(campusMembers)
+    .where(and(eq(campusMembers.userId, userId), eq(campusMembers.campusId, campusId)));
+}
+
+export async function getUserCampuses(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ campusId: campusMembers.campusId, joinedAt: campusMembers.joinedAt })
+    .from(campusMembers)
+    .where(eq(campusMembers.userId, userId));
+  return rows;
+}
+
+export async function getCampusMemberCount(campusId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const [row] = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(campusMembers)
+    .where(eq(campusMembers.campusId, campusId));
+  return Number(row?.count ?? 0);
+}
+
+export async function getCampusMemberProfiles(campusId: number, excludeUserId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      userId: campusMembers.userId,
+      joinedAt: campusMembers.joinedAt,
+      displayName: userProfiles.displayName,
+      bio: userProfiles.bio,
+      city: userProfiles.city,
+      traits: userProfiles.traits,
+      gender: userProfiles.gender,
+      sexualOrientation: userProfiles.sexualOrientation,
+    })
+    .from(campusMembers)
+    .leftJoin(userProfiles, eq(campusMembers.userId, userProfiles.userId))
+    .where(
+      excludeUserId
+        ? and(eq(campusMembers.campusId, campusId), sql`${campusMembers.userId} != ${excludeUserId}`)
+        : eq(campusMembers.campusId, campusId)
+    )
+    .limit(50);
+  return rows;
+}
+
+export async function getAllCampuses() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(campuses).orderBy(campuses.name);
 }

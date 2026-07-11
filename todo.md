@@ -328,3 +328,29 @@
 - [ ] Add ShoutOut to Navbar user dropdown and MobileBottomNav More sheet
 - [ ] Add "Invite Friends" card to Home dashboard
 - [ ] Add invite stats to Admin Revenue tab (total invites sent, joined, conversion rate)
+
+## WYR Answers → Sally Profile
+- [ ] Read WouldYouRather router to understand answer storage
+- [ ] After each WYR answer, run AI trait extraction and merge into userProfiles
+- [ ] Show 'Sally updated your profile' toast in WYR UI after extraction
+
+## All Games → Sally Profile (Matchmaking Intelligence)
+- [ ] WYR answers: extract traits async after every answer, merge into userProfiles
+- [ ] Game Lobby (Trivia/Icebreaker/Two Truths): extract traits after each answer submitted
+- [ ] Match Games: extract traits from game session answers
+- [ ] Add 'Game Insights' section to Profile page showing traits derived from games
+- [ ] Update matchmaking to weight game-derived traits in compatibility scoring
+
+## Campus / University Dating Pool
+- [ ] Audit existing campus schema (campuses table, campus_members)
+- [ ] Add campus_members table if missing; add joinCampus/leaveCampus tRPC procedures
+- [ ] Seed nearby Wisconsin universities (Carroll, UW-Waukesha, Marquette, UW-Milwaukee, MSOE, etc.)
+- [ ] Build Campus page: browse nearby universities, join/leave campus, see campus member pool
+- [ ] Add Campus link to Navbar and mobile nav
+- [ ] Campus dating pool: filter matches by shared campus affiliation
+
+## Recommend a Friend (Prominent Referral Button)
+- [ ] Add a highly visible "Recommend a Friend" floating button / banner on Home dashboard
+- [ ] Add Recommend button to mobile bottom nav bar (primary tab, not buried in More)
+- [ ] Add Recommend button to Profile page sidebar
+- [ ] Clicking opens ShoutOut page with pre-filled message

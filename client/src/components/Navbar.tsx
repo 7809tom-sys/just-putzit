@@ -31,6 +31,7 @@ export default function Navbar() {
     { href: "/community", icon: Users, label: "Community" },
     { href: "/entertainment", icon: Popcorn, label: "Entertainment" },
     { href: "/shout-out", icon: Megaphone, label: "Shout Out" },
+    { href: "/campus", icon: GraduationCap, label: "Campus" },
   ];
 
   const handleMarkAllRead = async () => {
@@ -163,9 +164,9 @@ export default function Navbar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/campus/carroll">
+                <Link href="/campus">
                   <GraduationCap className="w-4 h-4 mr-2" />
-                  Carroll University
+                  Campus Dating Pool
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -208,6 +209,13 @@ export default function Navbar() {
                   </DropdownMenuItem>
                 </>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/shout-out" className="font-semibold text-orange-600">
+                  <Megaphone className="w-4 h-4 mr-2" />
+                  Recommend a Friend
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="text-destructive">
                 Sign Out

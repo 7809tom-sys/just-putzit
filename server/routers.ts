@@ -90,6 +90,12 @@ import {
   computeWyrCompatibility,
   getCampusStats,
   getCampusLeaderboard,
+  getAllCampuses,
+  joinCampus,
+  leaveCampus,
+  getUserCampuses,
+  getCampusMemberCount,
+  getCampusMemberProfiles,
   generateInviteCode,
   recordReferral,
   getCampusBySlug,
@@ -900,13 +906,36 @@ Return JSON with questions array, each having optionA and optionB.`,
           sallyNarration = (narrationResponse.choices[0]?.message?.content as string) || "What a fantastic game!";
         }
 
-        await updateGameSession(input.sessionId, {
+                await updateGameSession(input.sessionId, {
           questions,
           user1Score,
           user2Score,
           ...(allAnswered ? { status: "completed", completedAt: new Date(), sallyNarration } : {}),
         });
-
+        // Fire-and-forget: when game is complete, extract traits from all Q&A pairs
+        if (allAnswered) {
+          const qaItems = questions
+            .filter(q => q.user1Answer || q.user2Answer)
+            .map(q => ({
+              // GameQuestion uses 'question' field (not 'text')
+              question: q.question || String(q.id) || "game question",
+              answer: input.isUser1 ? (q.user1Answer || "") : (q.user2Answer || ""),
+            }))
+            .filter(qa => qa.answer);
+          if (qaItems.length > 0) {
+            // Resolve player IDs via the match record (gameSessions has matchId, not user IDs directly)
+            const gameSession = await getGameSession(input.sessionId);
+            if (gameSession) {
+              const matchRecord = await getMatchById(gameSession.matchId);
+              extractTraitsFromGameplay({ gameType: "this_or_that", qaItems }).then((traits) => {
+                if (matchRecord) {
+                  mergeGameTraitsIntoProfile(matchRecord.user1Id, traits).catch(() => {});
+                  mergeGameTraitsIntoProfile(matchRecord.user2Id, traits).catch(() => {});
+                }
+              }).catch(() => {});
+            }
+          }
+        }
         return { questions, user1Score, user2Score, isComplete: allAnswered, sallyNarration, matchPercent };
       }),
 
@@ -1006,6 +1035,18 @@ Return JSON with questions array, each having optionA and optionB.`,
       .input(z.object({ roomId: z.number(), questionIndex: z.number(), answer: z.string() }))
       .mutation(async ({ ctx, input }) => {
         await submitGameAnswer(input.roomId, ctx.user.id, input.questionIndex, input.answer);
+        // Fire-and-forget: extract traits from this game answer
+        const room = await getGameRoom(input.roomId);
+        if (room && room.questions) {
+          const questions = room.questions as Array<{ text?: string; id?: number }>;
+          const q = questions[input.questionIndex];
+          if (q?.text) {
+            extractTraitsFromGameplay({
+              gameType: "lobby_game",
+              qaItems: [{ question: q.text, answer: input.answer }],
+            }).then((traits) => mergeGameTraitsIntoProfile(ctx.user.id, traits)).catch(() => {});
+          }
+        }
         return { success: true };
       }),
 
@@ -1659,13 +1700,24 @@ Return JSON with questions array, each having optionA and optionB.`,
       }),
 
     // Records the answer and returns the honest crowd split for that question.
-    // NOTE: No AI call here -> zero token cost per play.
+    // Also fires async trait extraction so Sally learns from every choice.
     answer: protectedProcedure
       .input(z.object({ questionId: z.number(), choice: z.enum(["A", "B"]) }))
       .mutation(async ({ ctx, input }) => {
         await recordWyrAnswer(ctx.user.id, input.questionId, input.choice);
         const split = await getWyrSplit(input.questionId);
         const total = split.a + split.b;
+        // Fire-and-forget: extract personality traits from this WYR choice
+        const question = await getWyrQuestionById(input.questionId);
+        if (question) {
+          const chosenText = input.choice === "A" ? question.optionA : question.optionB;
+          const notChosenText = input.choice === "A" ? question.optionB : question.optionA;
+          extractTraitsFromGameplay({
+            gameType: "wyr",
+            questionText: `Would you rather: "${question.optionA}" OR "${question.optionB}"`,
+            chosenOptionText: `Chose: "${chosenText}" (over "${notChosenText}")`,
+          }).then((traits) => mergeGameTraitsIntoProfile(ctx.user.id, traits)).catch(() => {});
+        }
         return {
           yourChoice: input.choice,
           countA: split.a,
@@ -1673,6 +1725,7 @@ Return JSON with questions array, each having optionA and optionB.`,
           percentA: total === 0 ? 0 : Math.round((split.a / total) * 100),
           percentB: total === 0 ? 0 : Math.round((split.b / total) * 100),
           totalVotes: total,
+          profileUpdated: true,
         };
       }),
 
@@ -1776,6 +1829,54 @@ Return JSON with questions array, each having optionA and optionB.`,
         const result = await recordReferral(input.code, ctx.user.id);
         return { success: !!result };
       }),
+
+    // ── Self-serve campus dating pool ──────────────────────────────────────
+    // List all campuses with member counts and whether the current user has joined
+    listAll: protectedProcedure.query(async ({ ctx }) => {
+      const all = await getAllCampuses();
+      const myCampuses = await getUserCampuses(ctx.user.id);
+      const mySet = new Set(myCampuses.map((m) => m.campusId));
+      return Promise.all(
+        all.map(async (c) => ({
+          ...c,
+          memberCount: await getCampusMemberCount(c.id),
+          isMember: mySet.has(c.id),
+        }))
+      );
+    }),
+
+    // Join a campus dating pool
+    join: protectedProcedure
+      .input(z.object({ campusId: z.number(), verifiedEmail: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await joinCampus(ctx.user.id, input.campusId, input.verifiedEmail);
+        return { success: !!result };
+      }),
+
+    // Leave a campus dating pool
+    leave: protectedProcedure
+      .input(z.object({ campusId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await leaveCampus(ctx.user.id, input.campusId);
+        return { success: true };
+      }),
+
+    // Browse members in a campus dating pool
+    browseMembers: protectedProcedure
+      .input(z.object({ campusId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return getCampusMemberProfiles(input.campusId, ctx.user.id);
+      }),
+
+    // Get campuses the current user has joined
+    myCampuses: protectedProcedure.query(async ({ ctx }) => {
+      const myCampuses = await getUserCampuses(ctx.user.id);
+      const all = await getAllCampuses();
+      return myCampuses.map((m) => ({
+        ...m,
+        campus: all.find((c) => c.id === m.campusId),
+      }));
+    }),
   }),
 
   // ─── Notifications ────────────────────────────────────────────────────────
@@ -2282,4 +2383,96 @@ async function generateProfileSummary(traits: ProfileTraits, userName: string): 
     ],
   });
   return (response.choices[0]?.message?.content as string) || `${userName} is a wonderful person with a great personality!`;
+}
+
+// ─── Game-to-Profile Intelligence ─────────────────────────────────────────────
+// Unified helper: given a game type and the raw gameplay data, ask Sally to
+// extract personality signals and merge them into the user's profile.
+// This is always called fire-and-forget (no await at call site) so it never
+// blocks the response to the player.
+
+interface GameplaySignal {
+  gameType: "wyr" | "trivia" | "icebreaker" | "two_truths" | "this_or_that" | "lobby_game";
+  // For WYR: the question text + chosen option text
+  questionText?: string;
+  chosenOptionText?: string;
+  // For lobby / match games: array of {question, answer} pairs
+  qaItems?: { question: string; answer: string }[];
+}
+
+async function extractTraitsFromGameplay(signal: GameplaySignal): Promise<Partial<ProfileTraits>> {
+  let userContent = "";
+  if (signal.gameType === "wyr") {
+    userContent = `The player chose "${signal.chosenOptionText}" when asked: "${signal.questionText}". What does this reveal about their personality, values, or preferences?`;
+  } else if (signal.qaItems && signal.qaItems.length > 0) {
+    const pairs = signal.qaItems.map(q => `Q: ${q.question}\nA: ${q.answer}`).join("\n\n");
+    userContent = `Game type: ${signal.gameType}. Here are the player's answers:\n\n${pairs}\n\nWhat personality traits, interests, or values do these answers reveal?`;
+  } else {
+    return {};
+  }
+
+  try {
+    const response = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: `You are Sally from Just Putzit. Analyze this gameplay data and extract personality insights. Return a JSON object with any of these fields that are revealed: hobbies (array), favoriteActivities (array), personalityKeywords (array), interests (array), values (array), competitiveStyle (string: "very_competitive"|"casual"|"just_for_fun"), humorStyle (string), adventurousness (string: "low"|"medium"|"high"), socialStyle (string: "introvert"|"extrovert"|"ambivert"). Only include fields with clear evidence.`,
+        },
+        { role: "user", content: userContent },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "game_traits",
+          strict: false,
+          schema: {
+            type: "object",
+            properties: {
+              hobbies: { type: "array", items: { type: "string" } },
+              favoriteActivities: { type: "array", items: { type: "string" } },
+              personalityKeywords: { type: "array", items: { type: "string" } },
+              interests: { type: "array", items: { type: "string" } },
+              values: { type: "array", items: { type: "string" } },
+              competitiveStyle: { type: "string" },
+              humorStyle: { type: "string" },
+              adventurousness: { type: "string" },
+              socialStyle: { type: "string" },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+    const content = response.choices[0]?.message?.content as string | undefined;
+    return JSON.parse(typeof content === "string" ? content : "{}");
+  } catch {
+    return {};
+  }
+}
+
+async function mergeGameTraitsIntoProfile(userId: number, newTraits: Partial<ProfileTraits>): Promise<void> {
+  if (!newTraits || Object.keys(newTraits).length === 0) return;
+  try {
+    const profile = await getProfileByUserId(userId);
+    const existing: ProfileTraits = (profile?.traits as ProfileTraits) ?? {};
+
+    // Deep-merge arrays (deduplicate), overwrite scalar fields only if not already set
+    const merged: ProfileTraits = { ...existing };
+    for (const [key, value] of Object.entries(newTraits)) {
+      if (Array.isArray(value) && value.length > 0) {
+        const existingArr: string[] = (existing as Record<string, unknown>)[key] as string[] ?? [];
+        const combined = Array.from(new Set([...existingArr, ...value]));
+        (merged as Record<string, unknown>)[key] = combined;
+      } else if (value !== undefined && value !== null && value !== "") {
+        // Only overwrite scalar if not already set
+        if (!(merged as Record<string, unknown>)[key]) {
+          (merged as Record<string, unknown>)[key] = value;
+        }
+      }
+    }
+
+    await updateProfile(userId, { traits: merged });
+  } catch {
+    // Silently fail — never block gameplay
+  }
 }

@@ -666,3 +666,14 @@ export const friendInvites = mysqlTable("friend_invites", {
 });
 export type FriendInvite = typeof friendInvites.$inferSelect;
 export type InsertFriendInvite = typeof friendInvites.$inferInsert;
+
+// ─── Campus Members (self-serve campus dating pool) ──────────────────────────
+export const campusMembers = mysqlTable("campus_members", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  campusId: int("campusId").notNull(),
+  verifiedEmail: varchar("verifiedEmail", { length: 200 }),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+});
+export type CampusMember = typeof campusMembers.$inferSelect;
+export type InsertCampusMember = typeof campusMembers.$inferInsert;

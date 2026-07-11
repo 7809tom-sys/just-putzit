@@ -120,6 +120,13 @@
       "when": 1783786951828,
       "tag": "0016_futuristic_zaran",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1783788120498,
+      "tag": "0017_lean_valeria_richards",
+      "breakpoints": true
     }
   ]
 }

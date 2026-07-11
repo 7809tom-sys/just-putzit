@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2 } from "lucide-react";
+import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2 } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import {
@@ -299,6 +299,47 @@ export default function Profile() {
           </p>
         </div>
 
+        {/* Game Insights */}
+        {traits && (traits.wyrInsights?.length > 0 || traits.gameInsights?.length > 0 || traits.triviaStrengths?.length > 0) && (
+          <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
+            <h2 className="font-display font-bold text-xl mb-4 flex items-center gap-2">
+              <Gamepad2 className="w-5 h-5 text-purple-500" /> Game Insights
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">Sally learned these things about you from your game play:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {traits.wyrInsights && traits.wyrInsights.length > 0 && (
+                <TraitCard label="Would You Rather" value={
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {traits.wyrInsights.map((k: string) => (
+                      <Badge key={k} variant="secondary" className="rounded-full text-xs bg-purple-50 text-purple-700">{k}</Badge>
+                    ))}
+                  </div>
+                } />
+              )}
+              {traits.triviaStrengths && traits.triviaStrengths.length > 0 && (
+                <TraitCard label="Trivia Strengths" value={
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {traits.triviaStrengths.map((k: string) => (
+                      <Badge key={k} variant="secondary" className="rounded-full text-xs bg-blue-50 text-blue-700">{k}</Badge>
+                    ))}
+                  </div>
+                } />
+              )}
+              {traits.gameInsights && traits.gameInsights.length > 0 && (
+                <TraitCard label="Game Personality" value={
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {traits.gameInsights.map((k: string) => (
+                      <Badge key={k} variant="secondary" className="rounded-full text-xs bg-green-50 text-green-700">{k}</Badge>
+                    ))}
+                  </div>
+                } />
+              )}
+              {traits.competitiveStyle && (
+                <TraitCard label="Play Style" value={traits.competitiveStyle} />
+              )}
+            </div>
+          </div>
+        )}
         {/* Traits */}
         {traits && Object.keys(traits).filter(k => k !== "aiSummary").length > 0 && (
           <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
