@@ -78,6 +78,9 @@ import {
   recordWyrAnswer,
   getWyrSplit,
   getWyrAnswerCount,
+  getAdminStats,
+  searchUsers,
+  getUserWithProfile,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 
@@ -733,6 +736,25 @@ Return JSON with questions array, each having optionA and optionB.`,
       if (ctx.user.role !== "admin") throw new Error("Forbidden");
       return getAllUsers();
     }),
+
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Forbidden");
+      return getAdminStats();
+    }),
+
+    searchUsers: protectedProcedure
+      .input(z.object({ query: z.string().default(""), limit: z.number().max(100).default(50), offset: z.number().default(0) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Forbidden");
+        return searchUsers(input.query, input.limit, input.offset);
+      }),
+
+    getUserDetail: protectedProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Forbidden");
+        return getUserWithProfile(input.userId);
+      }),
   }),
 
   // ─── Venues & Activities ──────────────────────────────────────────────────

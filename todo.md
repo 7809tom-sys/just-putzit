@@ -115,3 +115,21 @@
 - [x] Wire into route (/would-you-rather) + Navbar menu
 - [x] Vitest tests for answer recording + split counts (5 tests, all 23 pass)
 - [x] Checkpoint and deliver playable demo
+
+## Phase 11: 2-Player Would You Rather (match icebreaker)
+- [ ] Schema: wyr_challenges table (initiatorId, partnerId, status, compatibility%)
+- [ ] Backend: wyr.startChallenge, wyr.getChallenge, wyr.compareAnswers (compute match %)
+- [ ] Seed 20+ additional WYR questions
+- [ ] Frontend: 2-player challenge UI (invite match, answer together, reveal compatibility)
+- [ ] Wire into existing WYR page as a mode toggle (Solo vs. Challenge a Match)
+- [ ] Vitest tests for 2-player flow
+- [ ] Checkpoint and deliver
+
+## Phase 12: Admin Panel (justputzit.com ready)
+- [x] Backend: admin.getStats (total users, new this week, verified, interviewed, matches, messages)
+- [x] Backend: admin.searchUsers (search by name/email, paginated)
+- [x] Backend: admin.getUserDetail (profile + activity counts)
+- [x] Backend: admin.suspendUser / updateReport / resolveFlag
+- [x] Frontend: Admin dashboard with 6 stat cards, Overview, Users, Reports, Flags tabs
+- [x] Frontend: User detail drawer (profile info, network, verified, onboarding, match/message counts, suspend)
+- [x] Checkpoint and deliver

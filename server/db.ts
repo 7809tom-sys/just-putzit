@@ -807,3 +807,82 @@ export async function getWyrAnswerCount(userId: number): Promise<number> {
     .where(eq(wouldYouRatherAnswers.userId, userId));
   return rows.length;
 }
+
+// ─── Admin Stats ──────────────────────────────────────────────────────────────
+
+export async function getAdminStats() {
+  const db = await getDb();
+  if (!db) return { totalUsers: 0, newThisWeek: 0, verifiedCount: 0, interviewedCount: 0, totalMatches: 0, totalMessages: 0 };
+
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [allUsers, newUsers, allMatches, allMessages, allInterviews] = await Promise.all([
+    db.select({ id: users.id, role: users.role }).from(users),
+    db.select({ id: users.id }).from(users).where(sql`${users.createdAt} >= ${oneWeekAgo}`),
+    db.select({ id: matches.id }).from(matches),
+    db.select({ id: chatMessages.id }).from(chatMessages),
+    db.select({ id: interviewSessions.id, userId: interviewSessions.userId })
+      .from(interviewSessions)
+      .where(sql`${interviewSessions.completedAt} IS NOT NULL`),
+  ]);
+
+  const verifiedProfiles = await db
+    .select({ id: userProfiles.id })
+    .from(userProfiles)
+    .where(eq(userProfiles.isVerified, true));
+
+  return {
+    totalUsers: allUsers.length,
+    newThisWeek: newUsers.length,
+    verifiedCount: verifiedProfiles.length,
+    interviewedCount: allInterviews.length,
+    totalMatches: allMatches.length,
+    totalMessages: allMessages.length,
+  };
+}
+
+export async function searchUsers(query: string, limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  const baseQuery = db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .orderBy(desc(users.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  if (!query) return baseQuery;
+  const like = `%${query}%`;
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(or(sql`${users.name} LIKE ${like}`, sql`${users.email} LIKE ${like}`))
+    .orderBy(desc(users.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getUserWithProfile(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!u) return null;
+  const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  const matchCount = await db.select({ id: matches.id }).from(matches)
+    .where(or(eq(matches.user1Id, userId), eq(matches.user2Id, userId)));
+  const msgCount = await db.select({ id: chatMessages.id }).from(chatMessages)
+    .where(eq(chatMessages.senderId, userId));
+  return { user: u, profile: profile ?? null, matchCount: matchCount.length, messageCount: msgCount.length };
+}
