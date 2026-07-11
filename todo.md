@@ -255,3 +255,18 @@
 - [ ] Build photo upload UI on Profile page with city-verification badge
 - [ ] Add Navbar to AuthenticatedHome to fix navigation dead-end
 - [x] Add gender, orientation, age on Home profile card
+
+## Admin Panel
+- [x] Audit existing Admin.tsx and admin tRPC procedures
+- [x] Add admin procedures: getAllUsers, banUser, unbanUser, getUserDetail
+- [x] Add admin procedures: getPendingPhotos, approvePhoto, rejectPhoto
+- [x] Add admin procedures: getReports, resolveReport, getAdminFlags
+- [x] Add admin procedures: getSiteStats (total users, photos, matches, events, revenue)
+- [x] Build Admin Dashboard tab with site stats cards
+- [x] Build Admin Users tab: searchable table, ban/unban, view profile
+- [x] Build Admin Photos tab: grid of unverified/pending photos with approve/reject
+- [x] Build Admin Reports tab: list of reports with resolve action
+- [x] Build Admin Revenue tab: sponsored listings toggle, revenue summary
+- [x] Ensure admin route is protected (adminProcedure / role=admin check)
+- [x] Promote owner account to admin role in DB
+- [x] Add Admin link to Navbar for admin users only

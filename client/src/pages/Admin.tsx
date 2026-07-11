@@ -31,6 +31,12 @@ import {
   Star,
   Zap,
   ToggleLeft,
+  Image,
+  Trash2,
+  UserX,
+  UserCheck2,
+  Camera,
+  MapPin,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
@@ -287,6 +293,12 @@ export default function Admin() {
   const { data: flags, refetch: refetchFlags } = trpc.safety.getFlags.useQuery(undefined, {
     enabled: user?.role === "admin",
   });
+  const { data: statsEnhanced, refetch: refetchStatsEnhanced } = trpc.safety.getStatsEnhanced.useQuery(undefined, {
+    enabled: user?.role === "admin",
+  });
+  const { data: allPhotos, refetch: refetchPhotos } = trpc.safety.getAllPhotos.useQuery(undefined, {
+    enabled: user?.role === "admin" && activeTab === "photos",
+  });
   const searchInput = useMemo(() => ({ query: search, limit: 50, offset: 0 }), [search]);
   const { data: userList, isLoading: usersLoading } = trpc.safety.searchUsers.useQuery(searchInput, {
     enabled: user?.role === "admin",
@@ -313,6 +325,26 @@ export default function Admin() {
   const toggleActivitySponsored = trpc.activities.toggleSponsored.useMutation({
     onSuccess: () => { toast.success("Activity sponsorship updated!"); refetchRevenue(); },
     onError: () => toast.error("Failed to update"),
+  });
+  const banUserMutation = trpc.safety.banUser.useMutation({
+    onSuccess: () => {
+      toast.success("User banned");
+      utils.safety.searchUsers.invalidate();
+      refetchStatsEnhanced();
+    },
+    onError: () => toast.error("Failed to ban user"),
+  });
+  const unbanUserMutation = trpc.safety.unbanUser.useMutation({
+    onSuccess: () => {
+      toast.success("User unbanned");
+      utils.safety.searchUsers.invalidate();
+      refetchStatsEnhanced();
+    },
+    onError: () => toast.error("Failed to unban user"),
+  });
+  const deletePhotoMutation = trpc.safety.deletePhoto.useMutation({
+    onSuccess: () => { toast.success("Photo deleted"); refetchPhotos(); },
+    onError: () => toast.error("Failed to delete photo"),
   });
 
   // ── Access guard ────────────────────────────────────────────────────────────
@@ -401,9 +433,22 @@ export default function Admin() {
           />
           <StatCard
             label="Messages"
-            value={stats?.totalMessages ?? 0}
+            value={statsEnhanced?.totalMessages ?? stats?.totalMessages ?? 0}
             icon={<MessageSquare className="w-5 h-5 text-amber-600" />}
             accent="bg-amber-50"
+          />
+          <StatCard
+            label="Photos"
+            value={statsEnhanced?.totalPhotos ?? 0}
+            icon={<Camera className="w-5 h-5 text-sky-600" />}
+            accent="bg-sky-50"
+            sub={`${statsEnhanced?.verifiedPhotos ?? 0} city-verified`}
+          />
+          <StatCard
+            label="Banned"
+            value={statsEnhanced?.bannedUsers ?? 0}
+            icon={<Ban className="w-5 h-5 text-red-600" />}
+            accent="bg-red-50"
           />
         </div>
 
@@ -433,6 +478,9 @@ export default function Admin() {
               {unresolvedFlags.length > 0 && (
                 <Badge className="bg-orange-500 text-white text-xs ml-0.5 h-4 px-1">{unresolvedFlags.length}</Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="photos" className="rounded-full gap-1.5">
+              <Image className="w-3.5 h-3.5" /> Photos
             </TabsTrigger>
           </TabsList>
 
@@ -672,9 +720,36 @@ export default function Admin() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground hidden sm:block">{fmtDate(u.createdAt)}</span>
-                          <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">
+                          <Badge
+                            variant={u.role === "admin" ? "default" : u.role === "banned" ? "destructive" : "secondary"}
+                            className="text-xs"
+                          >
                             {u.role}
                           </Badge>
+                          {u.role !== "admin" && (
+                            <button
+                              className={`p-1 rounded-full transition-colors ${
+                                u.role === "banned"
+                                  ? "text-green-600 hover:bg-green-50"
+                                  : "text-red-500 hover:bg-red-50"
+                              }`}
+                              title={u.role === "banned" ? "Unban user" : "Ban user"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (u.role === "banned") {
+                                  unbanUserMutation.mutate({ userId: u.id });
+                                } else {
+                                  banUserMutation.mutate({ userId: u.id, reason: "Admin action" });
+                                }
+                              }}
+                            >
+                              {u.role === "banned" ? (
+                                <UserCheck2 className="w-4 h-4" />
+                              ) : (
+                                <UserX className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
                           <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </div>
@@ -942,6 +1017,75 @@ export default function Admin() {
                               </Button>
                             </div>
                           )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── Photos ── */}
+          <TabsContent value="photos">
+            <Card className="border-none shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-sky-500" /> Profile Photos
+                  </CardTitle>
+                  <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={() => refetchPhotos()}>
+                    <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!allPhotos || allPhotos.length === 0 ? (
+                  <div className="text-center py-16">
+                    <Camera className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-muted-foreground">No profile photos uploaded yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {allPhotos.map((photo) => (
+                      <div key={photo.id} className="relative group rounded-xl overflow-hidden border border-border bg-muted/30 aspect-square">
+                        <img
+                          src={photo.url}
+                          alt="Profile photo"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).src = ''; }}
+                        />
+                        {/* Verification badge */}
+                        <div className="absolute top-2 left-2">
+                          {photo.cityVerified === true ? (
+                            <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                              <CheckCircle className="w-3 h-3" /> Verified
+                            </span>
+                          ) : photo.cityVerified === false ? (
+                            <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                              <XCircle className="w-3 h-3" /> Mismatch
+                            </span>
+                          ) : (
+                            <span className="bg-gray-500 text-white text-xs px-1.5 py-0.5 rounded-full">No GPS</span>
+                          )}
+                        </div>
+                        {/* City label */}
+                        {photo.exifCity && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" /> {photo.exifCity}
+                          </div>
+                        )}
+                        {/* Delete button */}
+                        <button
+                          className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                          onClick={() => deletePhotoMutation.mutate({ photoId: photo.id })}
+                          title="Delete photo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        {/* User ID */}
+                        <div className="absolute bottom-6 right-2 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded">
+                          User #{photo.userId}
                         </div>
                       </div>
                     ))}

@@ -116,6 +116,11 @@ import {
   setPrimaryPhoto,
   deleteProfilePhoto,
   updateProfileIdentity,
+  getAllProfilePhotosAdmin,
+  adminDeletePhoto,
+  banUser,
+  unbanUser,
+  getAdminStatsEnhanced,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import bcrypt from "bcryptjs";
@@ -945,6 +950,40 @@ Return JSON with questions array, each having optionA and optionB.`,
       .query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new Error("Forbidden");
         return getUserWithProfile(input.userId);
+      }),
+
+    banUser: protectedProcedure
+      .input(z.object({ userId: z.number(), reason: z.string().default("Violated community guidelines") }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Forbidden");
+        await banUser(input.userId, input.reason);
+        return { success: true };
+      }),
+
+    unbanUser: protectedProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Forbidden");
+        await unbanUser(input.userId);
+        return { success: true };
+      }),
+
+    getStatsEnhanced: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Forbidden");
+      return getAdminStatsEnhanced();
+    }),
+
+    getAllPhotos: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Forbidden");
+      return getAllProfilePhotosAdmin(200);
+    }),
+
+    deletePhoto: protectedProcedure
+      .input(z.object({ photoId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Forbidden");
+        await adminDeletePhoto(input.photoId);
+        return { success: true };
       }),
   }),
 

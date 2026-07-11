@@ -1536,3 +1536,101 @@ export async function updateProfileIdentity(userId: number, data: {
   if (Object.keys(updateData).length === 0) return;
   await db.update(userProfiles).set(updateData as any).where(eq(userProfiles.userId, userId));
 }
+
+// ─── Admin: Photo Moderation ──────────────────────────────────────────────────
+
+export async function getAllProfilePhotosAdmin(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: profilePhotos.id,
+      userId: profilePhotos.userId,
+      url: profilePhotos.url,
+      s3Key: profilePhotos.s3Key,
+      isPrimary: profilePhotos.isPrimary,
+      cityVerified: profilePhotos.cityVerified,
+      exifCity: profilePhotos.exifCity,
+      verificationNote: profilePhotos.verificationNote,
+      createdAt: profilePhotos.createdAt,
+    })
+    .from(profilePhotos)
+    .orderBy(desc(profilePhotos.createdAt))
+    .limit(limit);
+}
+
+export async function adminDeletePhoto(photoId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(profilePhotos).where(eq(profilePhotos.id, photoId));
+}
+
+// ─── Admin: Ban / Unban ───────────────────────────────────────────────────────
+
+export async function banUser(userId: number, reason: string) {
+  const db = await getDb();
+  if (!db) return;
+  // Use role "banned" to mark banned users
+  await db.update(users).set({ role: "banned" as any }).where(eq(users.id, userId));
+  await db.insert(adminFlags).values({
+    userId,
+    flagType: "manual_review",
+    severity: "high",
+    notes: `Banned by admin: ${reason}`,
+  });
+}
+
+export async function unbanUser(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ role: "user" }).where(eq(users.id, userId));
+}
+
+// ─── Admin: Enhanced Stats ────────────────────────────────────────────────────
+
+export async function getAdminStatsEnhanced() {
+  const db = await getDb();
+  if (!db) return null;
+
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [
+    allUsers,
+    newUsers,
+    allMatches,
+    allMessages,
+    allPhotos,
+    verifiedPhotos,
+    allEvents,
+    allActivities,
+  ] = await Promise.all([
+    db.select({ id: users.id, role: users.role }).from(users),
+    db.select({ id: users.id }).from(users).where(sql`${users.createdAt} >= ${oneWeekAgo}`),
+    db.select({ id: matches.id }).from(matches),
+    db.select({ id: chatMessages.id }).from(chatMessages),
+    db.select({ id: profilePhotos.id }).from(profilePhotos),
+    db.select({ id: profilePhotos.id }).from(profilePhotos).where(eq(profilePhotos.cityVerified, true)),
+    db.select({ id: communityEvents.id }).from(communityEvents),
+    db.select({ id: activityListings.id }).from(activityListings),
+  ]);
+
+  const verifiedProfiles = await db
+    .select({ id: userProfiles.id })
+    .from(userProfiles)
+    .where(eq(userProfiles.isVerified, true));
+
+  const bannedUsers = allUsers.filter(u => u.role === "banned");
+
+  return {
+    totalUsers: allUsers.length,
+    newThisWeek: newUsers.length,
+    verifiedCount: verifiedProfiles.length,
+    totalMatches: allMatches.length,
+    totalMessages: allMessages.length,
+    totalPhotos: allPhotos.length,
+    verifiedPhotos: verifiedPhotos.length,
+    totalEvents: allEvents.length,
+    totalActivities: allActivities.length,
+    bannedUsers: bannedUsers.length,
+  };
+}
