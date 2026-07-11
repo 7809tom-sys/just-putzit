@@ -2,10 +2,43 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star } from "lucide-react";
+import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
+
+// PWA install prompt hook
+function usePWAInstall() {
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    setIsIOS(ios);
+    const standalone = (window.navigator as any).standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches;
+    setIsInstalled(standalone);
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const triggerInstall = async () => {
+    if (!installPrompt) return false;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setIsInstalled(true);
+    setInstallPrompt(null);
+    return outcome === 'accepted';
+  };
+
+  return { installPrompt, isInstalled, isIOS, triggerInstall };
+}
 
 export default function Home() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -279,6 +312,9 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* Get the App Section */}
+      <GetTheAppSection />
+
       {/* CTA Section */}
       <section className="py-20 bg-white text-center">
         <div className="container max-w-2xl">
@@ -310,6 +346,143 @@ function LandingPage() {
           <p className="text-sm opacity-60">© 2025 Just Putzit. Connecting you in real life.</p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function GetTheAppSection() {
+  const { installPrompt, isInstalled, isIOS, triggerInstall } = usePWAInstall();
+  const [tab, setTab] = useState<'android' | 'ios'>('android');
+  const [installed, setInstalled] = useState(false);
+
+  if (isInstalled || installed) {
+    return (
+      <section className="py-16 bg-primary/5">
+        <div className="container max-w-xl text-center">
+          <div className="text-5xl mb-4">🎉</div>
+          <h2 className="font-display text-3xl font-bold text-foreground mb-2">App Installed!</h2>
+          <p className="text-muted-foreground">Just Putzit is on your home screen. Tap the orange JP icon to open it anytime.</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="py-20 bg-primary/5">
+      <div className="container max-w-2xl">
+        <div className="text-center mb-10">
+          <Badge className="mb-4 bg-primary/10 text-primary border-0 rounded-full px-4 py-1.5">
+            <Smartphone className="w-3.5 h-3.5 mr-1.5" />
+            Free App
+          </Badge>
+          <h2 className="font-display text-4xl font-bold text-foreground mb-4">
+            Add Just Putzit to Your Phone
+          </h2>
+          <p className="text-muted-foreground text-lg">
+            Install the app for free — no App Store required. Works just like a native app.
+          </p>
+        </div>
+
+        {/* Smart install button for Android Chrome */}
+        {installPrompt && (
+          <div className="text-center mb-8">
+            <Button
+              size="lg"
+              className="gradient-sally text-white border-0 shadow-lg btn-scale rounded-full px-10 text-lg gap-2"
+              onClick={async () => {
+                const ok = await triggerInstall();
+                if (ok) setInstalled(true);
+              }}
+            >
+              <Smartphone className="w-5 h-5" />
+              Install App Now
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">One tap — no app store needed</p>
+          </div>
+        )}
+
+        {/* Tab selector */}
+        <div className="flex rounded-2xl bg-white shadow-sm border border-border p-1 mb-8 max-w-xs mx-auto">
+          <button
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
+              tab === 'android' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setTab('android')}
+          >
+            Android
+          </button>
+          <button
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
+              tab === 'ios' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setTab('ios')}
+          >
+            iPhone
+          </button>
+        </div>
+
+        {/* Instructions */}
+        <div className="bg-white rounded-3xl shadow-lg border border-border p-8">
+          {tab === 'android' ? (
+            <div className="space-y-6">
+              <InstallStep num={1} icon={<Smartphone className="w-5 h-5 text-primary" />}
+                title="Open Chrome on your Android"
+                desc="Visit justputzit.com in Chrome (not another browser)"
+              />
+              <InstallStep num={2} icon={<MoreVertical className="w-5 h-5 text-primary" />}
+                title='Tap the menu (⋮) in the top-right'
+                desc="The three-dot menu in the top-right corner of Chrome"
+              />
+              <InstallStep num={3} icon={<Plus className="w-5 h-5 text-primary" />}
+                title='Tap "Add to Home screen"'
+                desc="Then tap Add — the Just Putzit icon appears on your home screen"
+              />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <InstallStep num={1} icon={<Smartphone className="w-5 h-5 text-primary" />}
+                title="Open Safari on your iPhone"
+                desc="Must be Safari — Chrome on iPhone doesn't support install"
+              />
+              <InstallStep num={2} icon={<Share2 className="w-5 h-5 text-primary" />}
+                title="Tap the Share button at the bottom"
+                desc="The box with an arrow pointing up at the bottom of Safari"
+              />
+              <InstallStep num={3} icon={<Plus className="w-5 h-5 text-primary" />}
+                title='Tap "Add to Home Screen" then Add'
+                desc="The Just Putzit icon appears on your home screen — tap it anytime to open"
+              />
+            </div>
+          )}
+
+          <div className="mt-8 pt-6 border-t border-border flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl gradient-sally flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0">
+              JP
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Just Putzit</p>
+              <p className="text-xs text-muted-foreground">Free · No App Store · Works offline</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function InstallStep({ num, icon, title, desc }: { num: number; icon: React.ReactNode; title: string; desc: string }) {
+  return (
+    <div className="flex gap-4 items-start">
+      <div className="w-8 h-8 rounded-full gradient-sally flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
+        {num}
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-0.5">
+          {icon}
+          <p className="font-semibold text-foreground text-sm">{title}</p>
+        </div>
+        <p className="text-xs text-muted-foreground">{desc}</p>
+      </div>
     </div>
   );
 }

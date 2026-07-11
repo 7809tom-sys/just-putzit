@@ -217,3 +217,16 @@
 - [x] Add iOS-specific meta tags (apple-mobile-web-app-capable, status-bar-style)
 - [x] Test install prompt on Android Chrome
 - [x] Save checkpoint and deliver install instructions
+
+## Phase 18: App Install Section
+- [ ] Add usePWAInstall hook to capture beforeinstallprompt event
+- [ ] Add "Get the App" section to Home.tsx with Android/iPhone tabs
+- [ ] Add smart "Install App" button that triggers native browser install prompt on Android Chrome
+- [ ] Save checkpoint and deliver
+
+## Phase 18: App Install Section
+- [x] Add usePWAInstall hook to capture beforeinstallprompt event
+- [x] Add "Get the App" section to Home.tsx with Android/iPhone tabs and step-by-step instructions
+- [x] Smart "Install App" button triggers native browser install prompt on Android Chrome
+- [x] iPhone tab shows Safari-specific steps with share icon illustration
+- [x] Save checkpoint and deliver
