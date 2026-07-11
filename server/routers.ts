@@ -93,6 +93,11 @@ import {
   generateInviteCode,
   recordReferral,
   getCampusBySlug,
+  getCommunityEvents,
+  createCommunityEvent,
+  rsvpToEvent,
+  getUserEventRsvps,
+  getEventbriteEvents,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import bcrypt from "bcryptjs";
@@ -1501,6 +1506,70 @@ Return JSON with questions array, each having optionA and optionB.`,
       await markAllNotificationsRead(ctx.user.id);
       return { success: true };
     }),
+  }),
+
+  // ─── Community Events ────────────────────────────────────────────────────────
+  events: router({
+    list: publicProcedure
+      .input(
+        z.object({
+          city: z.string().optional(),
+          category: z.string().optional(),
+          isFree: z.boolean().optional(),
+          limit: z.number().int().min(1).max(100).optional(),
+        })
+      )
+      .query(async ({ input }) => {
+        return getCommunityEvents(input);
+      }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          title: z.string().min(1).max(255),
+          description: z.string().optional(),
+          category: z.enum(["music", "food", "market", "sports", "arts", "community", "outdoors", "other"]),
+          eventDate: z.string(), // ISO string
+          endDate: z.string().optional(),
+          venueName: z.string().optional(),
+          address: z.string().optional(),
+          city: z.string().min(1),
+          state: z.string().default("WI"),
+          isFree: z.boolean().default(true),
+          priceCents: z.number().int().min(0).default(0),
+          externalUrl: z.string().url().optional(),
+          imageUrl: z.string().url().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await createCommunityEvent({
+          ...input,
+          eventDate: new Date(input.eventDate),
+          endDate: input.endDate ? new Date(input.endDate) : undefined,
+          source: "admin",
+          postedByUserId: ctx.user.id,
+        });
+        return { success: true };
+      }),
+
+    rsvp: protectedProcedure
+      .input(z.object({ eventId: z.number().int() }))
+      .mutation(async ({ ctx, input }) => {
+        return rsvpToEvent(input.eventId, ctx.user.id);
+      }),
+
+    myRsvps: protectedProcedure.query(async ({ ctx }) => {
+      return getUserEventRsvps(ctx.user.id);
+    }),
+
+    getEventbrite: publicProcedure
+      .input(z.object({ city: z.string().default("Milwaukee") }))
+      .query(async ({ input }) => {
+        const token = process.env.EVENTBRITE_TOKEN ?? "";
+        if (!token) return [];
+        return getEventbriteEvents(input.city, token);
+      }),
   }),
 });
 

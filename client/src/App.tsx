@@ -27,6 +27,7 @@ import CampusWaitlist from "@/pages/CampusWaitlist";
 import SignUp from "@/pages/SignUp";
 import Login from "@/pages/Login";
 import Verify from "@/pages/Verify";
+import Events from "@/pages/Events";
 
 function Router() {
   return (
@@ -53,6 +54,7 @@ function Router() {
       <Route path="/signup" component={SignUp} />
       <Route path="/login" component={Login} />
       <Route path="/verify" component={Verify} />
+      <Route path="/events" component={Events} />
       <Route path="/safety" component={Safety} />
       <Route path="/admin" component={Admin} />
       <Route path="/404" component={NotFound} />

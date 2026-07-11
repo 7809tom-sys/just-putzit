@@ -26,6 +26,10 @@ import {
   wouldYouRatherQuestions,
   wouldYouRatherAnswers,
   wyrChallenges,
+  communityEvents,
+  eventRsvps,
+  type CommunityEvent,
+  type InsertCommunityEvent,
   type ProfileTraits,
   type InterviewMessage,
   type GameQuestion,
@@ -1209,4 +1213,100 @@ export async function saveLocationVerification(
       isVerified: data.verified, // also set the main isVerified flag
     })
     .where(eq(userProfiles.userId, userId));
+}
+
+// ─── Community Events ─────────────────────────────────────────────────────────
+
+export async function getCommunityEvents(filters: {
+  city?: string;
+  category?: string;
+  isFree?: boolean;
+  limit?: number;
+} = {}) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(communityEvents.isActive, true)];
+  if (filters.city) conditions.push(eq(communityEvents.city, filters.city));
+  if (filters.category && filters.category !== "all") {
+    conditions.push(eq(communityEvents.category, filters.category as CommunityEvent["category"]));
+  }
+  if (filters.isFree !== undefined) conditions.push(eq(communityEvents.isFree, filters.isFree));
+  return db
+    .select()
+    .from(communityEvents)
+    .where(and(...conditions))
+    .orderBy(communityEvents.eventDate)
+    .limit(filters.limit ?? 50);
+}
+
+export async function createCommunityEvent(data: InsertCommunityEvent) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [result] = await db.insert(communityEvents).values(data);
+  return result;
+}
+
+export async function rsvpToEvent(eventId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  // Check for existing RSVP
+  const existing = await db
+    .select()
+    .from(eventRsvps)
+    .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)))
+    .limit(1);
+  if (existing.length > 0) return { alreadyRsvped: true };
+  await db.insert(eventRsvps).values({ eventId, userId });
+  await db
+    .update(communityEvents)
+    .set({ rsvpCount: sql`${communityEvents.rsvpCount} + 1` })
+    .where(eq(communityEvents.id, eventId));
+  return { alreadyRsvped: false };
+}
+
+export async function getUserEventRsvps(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({ rsvp: eventRsvps, event: communityEvents })
+    .from(eventRsvps)
+    .innerJoin(communityEvents, eq(eventRsvps.eventId, communityEvents.id))
+    .where(eq(eventRsvps.userId, userId))
+    .orderBy(communityEvents.eventDate);
+}
+
+export async function getEventbriteEvents(city: string, token: string) {
+  if (!token) return [];
+  try {
+    const query = encodeURIComponent(`${city} WI`);
+    const res = await fetch(
+      `https://www.eventbriteapi.com/v3/events/search/?location.address=${query}&location.within=30km&categories=103,110,113&expand=venue&token=${token}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) return [];
+    const json = (await res.json()) as { events?: Array<{
+      id: string; name: { text: string }; description: { text: string };
+      start: { utc: string }; end: { utc: string };
+      url: string; is_free: boolean; logo?: { url: string };
+      venue?: { name: string; address: { localized_address_display: string } };
+    }> };
+    return (json.events ?? []).map((e) => ({
+      id: `eb_${e.id}`,
+      title: e.name.text,
+      description: e.description?.text ?? "",
+      eventDate: e.start.utc,
+      endDate: e.end.utc,
+      venueName: e.venue?.name ?? "",
+      address: e.venue?.address?.localized_address_display ?? "",
+      city,
+      isFree: e.is_free,
+      priceCents: 0,
+      externalUrl: e.url,
+      imageUrl: e.logo?.url ?? null,
+      source: "eventbrite" as const,
+      rsvpCount: 0,
+    }));
+  } catch {
+    return [];
+  }
 }

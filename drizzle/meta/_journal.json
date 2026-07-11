@@ -57,6 +57,13 @@
       "when": 1783775140134,
       "tag": "0007_supreme_hellion",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1783776149968,
+      "tag": "0008_fat_doctor_strange",
+      "breakpoints": true
     }
   ]
 }

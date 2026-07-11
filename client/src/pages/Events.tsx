@@ -1,0 +1,473 @@
+import { useState, useMemo } from "react";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  Users,
+  ExternalLink,
+  Ticket,
+  Music,
+  ShoppingBag,
+  Utensils,
+  TreePine,
+  Palette,
+  Heart,
+  Star,
+  CheckCircle2,
+  Search,
+} from "lucide-react";
+
+const CATEGORIES = [
+  { value: "all", label: "All Events", icon: Star },
+  { value: "music", label: "Music", icon: Music },
+  { value: "market", label: "Markets", icon: ShoppingBag },
+  { value: "food", label: "Food", icon: Utensils },
+  { value: "outdoors", label: "Outdoors", icon: TreePine },
+  { value: "arts", label: "Arts", icon: Palette },
+  { value: "community", label: "Community", icon: Heart },
+];
+
+const CITIES = ["All Cities", "Milwaukee", "Waukesha"];
+
+function formatDate(dateStr: string | Date) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatTime(dateStr: string | Date) {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function categoryColor(cat: string) {
+  const map: Record<string, string> = {
+    music: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+    market: "bg-green-500/20 text-green-300 border-green-500/30",
+    food: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+    outdoors: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    arts: "bg-pink-500/20 text-pink-300 border-pink-500/30",
+    community: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    sports: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+    other: "bg-gray-500/20 text-gray-300 border-gray-500/30",
+  };
+  return map[cat] ?? map.other;
+}
+
+interface EventCardProps {
+  event: {
+    id: number | string;
+    title: string;
+    description?: string | null;
+    category: string;
+    eventDate: Date | string;
+    endDate?: Date | string | null;
+    venueName?: string | null;
+    address?: string | null;
+    city: string;
+    isFree: boolean;
+    priceCents: number;
+    externalUrl?: string | null;
+    imageUrl?: string | null;
+    rsvpCount: number;
+    source?: string;
+  };
+  onRsvp?: (id: number) => void;
+  rsvpLoading?: boolean;
+  hasRsvped?: boolean;
+}
+
+function EventCard({ event, onRsvp, rsvpLoading, hasRsvped }: EventCardProps) {
+  const CatIcon = CATEGORIES.find((c) => c.value === event.category)?.icon ?? Star;
+  const numericId = typeof event.id === "string" ? parseInt(event.id.replace("eb_", ""), 10) : event.id;
+
+  return (
+    <div className="group relative bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-orange-400/40 hover:bg-white/8 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/10">
+      {/* Top accent bar */}
+      <div className={`h-1 w-full ${event.isFree ? "bg-gradient-to-r from-green-400 to-emerald-500" : "bg-gradient-to-r from-orange-400 to-amber-500"}`} />
+
+      <div className="p-5">
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${categoryColor(event.category)}`}>
+              <CatIcon className="w-3 h-3" />
+              {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
+            </span>
+            {event.isFree ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-green-500/20 text-green-300 border border-green-500/30">
+                FREE
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                ${(event.priceCents / 100).toFixed(0)}
+              </span>
+            )}
+          </div>
+          {event.source === "eventbrite" && (
+            <span className="text-xs text-gray-500 shrink-0">via Eventbrite</span>
+          )}
+        </div>
+
+        {/* Title */}
+        <h3 className="font-semibold text-white text-base leading-snug mb-2 group-hover:text-orange-200 transition-colors">
+          {event.title}
+        </h3>
+
+        {/* Description */}
+        {event.description && (
+          <p className="text-sm text-gray-400 line-clamp-2 mb-3">{event.description}</p>
+        )}
+
+        {/* Meta info */}
+        <div className="space-y-1.5 mb-4">
+          <div className="flex items-center gap-2 text-sm text-gray-300">
+            <Calendar className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+            <span>{formatDate(event.eventDate)}</span>
+            <span className="text-gray-500">·</span>
+            <Clock className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+            <span>{formatTime(event.eventDate)}</span>
+          </div>
+          {(event.venueName || event.city) && (
+            <div className="flex items-center gap-2 text-sm text-gray-300">
+              <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+              <span className="truncate">
+                {event.venueName ? `${event.venueName}, ` : ""}{event.city}, WI
+              </span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <Users className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+            <span>{event.rsvpCount} going</span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          {onRsvp && typeof event.id === "number" ? (
+            <Button
+              size="sm"
+              onClick={() => onRsvp(numericId)}
+              disabled={rsvpLoading || hasRsvped}
+              className={`flex-1 text-sm font-medium transition-all ${
+                hasRsvped
+                  ? "bg-green-500/20 text-green-300 border border-green-500/30 cursor-default"
+                  : "bg-orange-500 hover:bg-orange-600 text-white"
+              }`}
+            >
+              {hasRsvped ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Going!
+                </>
+              ) : rsvpLoading ? (
+                "..."
+              ) : (
+                <>
+                  <Ticket className="w-3.5 h-3.5 mr-1.5" /> I'm Going
+                </>
+              )}
+            </Button>
+          ) : null}
+          {event.externalUrl && (
+            <a
+              href={event.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Details
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Events() {
+  const { user } = useAuth();
+  const [category, setCategory] = useState("all");
+  const [city, setCity] = useState("All Cities");
+  const [freeOnly, setFreeOnly] = useState(false);
+  const [rsvpingId, setRsvpingId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const cityFilter = city === "All Cities" ? undefined : city;
+
+  const { data: ebEvents = [] } = trpc.events.getEventbrite.useQuery(
+    { city: cityFilter ?? "Milwaukee" },
+    { enabled: true }
+  );
+
+  const { data: events = [], isLoading, refetch } = trpc.events.list.useQuery({
+    city: cityFilter,
+    category: category === "all" ? undefined : category,
+    isFree: freeOnly ? true : undefined,
+  });
+
+  const { data: myRsvps = [] } = trpc.events.myRsvps.useQuery(undefined, {
+    enabled: !!user,
+  });
+
+  const rsvpedIds = useMemo(() => {
+    return new Set((myRsvps as Array<{ rsvp: { eventId: number } }>).map((r) => r.rsvp.eventId));
+  }, [myRsvps]);
+
+  const rsvpMutation = trpc.events.rsvp.useMutation({
+    onSuccess: (data, variables) => {
+      if ((data as { alreadyRsvped: boolean }).alreadyRsvped) {
+        toast.info("You're already going to this event!");
+      } else {
+        toast.success("You're going! 🎉 See you there.");
+      }
+      setRsvpingId(null);
+      void refetch();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Could not RSVP. Please try again.");
+      setRsvpingId(null);
+    },
+  });
+
+  function handleRsvp(eventId: number) {
+    if (!user) {
+      toast.error("Sign in to RSVP to events!");
+      return;
+    }
+    setRsvpingId(eventId);
+    rsvpMutation.mutate({ eventId });
+  }
+
+  // Merge community + Eventbrite events, then apply search filter
+  const allEvents = useMemo(() => {
+    const combined = [
+      ...(events as Array<{ id: number; title: string; description?: string | null; category: string; eventDate: Date | string; endDate?: Date | string | null; venueName?: string | null; address?: string | null; city: string; isFree: boolean; priceCents: number; externalUrl?: string | null; imageUrl?: string | null; rsvpCount: number; source?: string; }>),
+      ...(ebEvents as Array<{ id: string; title: string; description?: string | null; category: string; eventDate: Date | string; endDate?: Date | string | null; venueName?: string | null; address?: string | null; city: string; isFree: boolean; priceCents: number; externalUrl?: string | null; imageUrl?: string | null; rsvpCount: number; source?: string; }>).map((e) => ({ ...e, id: parseInt(e.id.replace("eb_", ""), 10) || Math.random() })),
+    ];
+    if (!searchQuery.trim()) return combined;
+    const q = searchQuery.toLowerCase();
+    return combined.filter(
+      (e) =>
+        e.title.toLowerCase().includes(q) ||
+        (e.description ?? "").toLowerCase().includes(q) ||
+        (e.venueName ?? "").toLowerCase().includes(q) ||
+        e.city.toLowerCase().includes(q)
+    );
+  }, [events, ebEvents, searchQuery]);
+
+  const freeCount = allEvents.filter((e) => e.isFree).length;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
+      {/* Hero */}
+      <div className="relative overflow-hidden border-b border-white/5">
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-transparent to-amber-500/10 pointer-events-none" />
+        <div className="max-w-5xl mx-auto px-4 py-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-lg">
+              🗓️
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Free & Fun Near You</h1>
+              <p className="text-sm text-gray-400">Milwaukee &amp; Waukesha community events</p>
+            </div>
+          </div>
+
+          {/* Sally tip */}
+          <div className="mt-5 bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-sm shrink-0">
+              💬
+            </div>
+            <div>
+              <p className="text-sm font-medium text-orange-200">Sally says</p>
+              <p className="text-sm text-gray-300 mt-0.5">
+                The best dates don't cost a thing! Farmers markets, free concerts, and community
+                gatherings are perfect for a first meet-up. Browse below and tap "I'm Going" — your
+                match might show up too. 😊
+              </p>
+            </div>
+          </div>
+
+          {/* Stats strip */}
+          {!isLoading && allEvents.length > 0 && (
+            <div className="mt-4 flex gap-4 text-sm text-gray-400">
+              <span><span className="text-white font-semibold">{allEvents.length}</span> upcoming events</span>
+              <span>·</span>
+              <span><span className="text-green-400 font-semibold">{freeCount}</span> free</span>
+              {cityFilter && <><span>·</span><span>in <span className="text-orange-300">{cityFilter}</span></span></>}
+              {ebEvents.length > 0 && <><span>·</span><span className="text-purple-400">{ebEvents.length} via Eventbrite</span></>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="max-w-5xl mx-auto px-4 py-5 space-y-4">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Input
+            placeholder="Search events, venues, cities..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500/50"
+          />
+        </div>
+
+        {/* Category tabs */}
+        <Tabs value={category} onValueChange={setCategory}>
+          <TabsList className="bg-white/5 border border-white/10 h-auto p-1 flex-wrap gap-1">
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <TabsTrigger
+                  key={cat.value}
+                  value={cat.value}
+                  className="data-[state=active]:bg-orange-500 data-[state=active]:text-white text-gray-400 text-sm px-3 py-1.5 rounded-lg transition-all"
+                >
+                  <Icon className="w-3.5 h-3.5 mr-1.5" />
+                  {cat.label}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+
+        {/* City + Free toggle row */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
+            {CITIES.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCity(c)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  city === c
+                    ? "bg-white/15 text-white"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setFreeOnly(!freeOnly)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+              freeOnly
+                ? "bg-green-500/20 border-green-500/40 text-green-300"
+                : "bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/20"
+            }`}
+          >
+            <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${freeOnly ? "bg-green-500 border-green-500" : "border-gray-500"}`}>
+              {freeOnly && <span className="text-white text-xs">✓</span>}
+            </span>
+            Free events only
+          </button>
+        </div>
+      </div>
+
+      {/* Events grid */}
+      <div className="max-w-5xl mx-auto px-4 pb-16">
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white/5 rounded-2xl p-5 space-y-3">
+                <Skeleton className="h-4 w-24 bg-white/10" />
+                <Skeleton className="h-5 w-full bg-white/10" />
+                <Skeleton className="h-4 w-3/4 bg-white/10" />
+                <Skeleton className="h-4 w-1/2 bg-white/10" />
+                <Skeleton className="h-9 w-full bg-white/10" />
+              </div>
+            ))}
+          </div>
+        ) : allEvents.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="text-5xl mb-4">🌻</div>
+            <h3 className="text-lg font-semibold text-white mb-2">No events found</h3>
+            <p className="text-gray-400 text-sm max-w-sm mx-auto">
+              {searchQuery
+                ? `No events match "${searchQuery}" — try a different search term.`
+                : freeOnly || category !== "all" || city !== "All Cities"
+                ? "Try adjusting your filters — there may be events in other categories or cities."
+                : "No events posted yet. Check back soon or ask an admin to post one!"}
+            </p>
+            {(freeOnly || category !== "all" || city !== "All Cities" || searchQuery) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4 border-white/20 text-gray-300 hover:text-white"
+                onClick={() => {
+                  setCategory("all");
+                  setCity("All Cities");
+                  setFreeOnly(false);
+                  setSearchQuery("");
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(allEvents as Array<{
+              id: number;
+              title: string;
+              description?: string | null;
+              category: string;
+              eventDate: Date | string;
+              endDate?: Date | string | null;
+              venueName?: string | null;
+              address?: string | null;
+              city: string;
+              isFree: boolean;
+              priceCents: number;
+              externalUrl?: string | null;
+              imageUrl?: string | null;
+              rsvpCount: number;
+              source?: string;
+            }>).map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onRsvp={user ? handleRsvp : undefined}
+                rsvpLoading={rsvpingId === event.id}
+                hasRsvped={rsvpedIds.has(event.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Eventbrite callout (shown when no token configured) */}
+        <div className="mt-10 bg-white/3 border border-white/8 rounded-2xl p-6 text-center">
+          <p className="text-sm text-gray-500 mb-1">Want even more events?</p>
+          <p className="text-sm text-gray-400">
+            Connect your free{" "}
+            <a
+              href="https://www.eventbrite.com/platform/api"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-orange-400 hover:text-orange-300 underline underline-offset-2"
+            >
+              Eventbrite API key
+            </a>{" "}
+            to pull in hundreds of local events automatically.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

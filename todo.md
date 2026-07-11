@@ -179,3 +179,13 @@
 - [ ] Match filtering: only show verified users in match results
 - [ ] Tests for auth and GPS verification flows
 - [ ] Checkpoint and deliver
+
+## Phase 15: Local Events Discovery
+- [x] Schema: community_events table (title, description, date, time, location, city, category, isFree, price, url, postedByUserId)
+- [x] Backend: events.list (browse + filter by city/category/free), events.create (admin only), events.getEventbrite (proxy to Eventbrite API when key available)
+- [x] Frontend: Events page (/events) with search, category filter, free/low-cost toggle, Sally suggestions
+- [x] Seed real Waukesha/Milwaukee free events (Music on the Square, farmers markets, etc.)
+- [x] Admin panel: post new community events
+- [x] Eventbrite API integration (slots in when EVENTBRITE_TOKEN secret is set)
+- [x] Navbar link to Events page
+- [x] Tests, checkpoint, deliver

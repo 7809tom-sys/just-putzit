@@ -25,6 +25,8 @@ import {
   ChevronRight,
   BarChart3,
   RefreshCw,
+  Calendar,
+  Plus,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
@@ -198,6 +200,52 @@ function UserDetailDrawer({
   );
 }
 
+// ── Post Event Button ────────────────────────────────────────────────────────
+function PostEventButton({
+  form,
+  onSuccess,
+}: {
+  form: {
+    title: string;
+    description: string;
+    category: "music" | "food" | "market" | "sports" | "arts" | "community" | "outdoors" | "other";
+    eventDate: string;
+    endDate: string;
+    venueName: string;
+    address: string;
+    city: string;
+    isFree: boolean;
+    priceCents: number;
+    externalUrl: string;
+  };
+  onSuccess: () => void;
+}) {
+  const createEvent = trpc.events.create.useMutation({
+    onSuccess,
+    onError: (err) => toast.error(err.message || "Failed to post event"),
+  });
+  return (
+    <Button
+      onClick={() => {
+        if (!form.title || !form.eventDate) {
+          toast.error("Title and start date are required");
+          return;
+        }
+        createEvent.mutate({
+          ...form,
+          state: "WI",
+          externalUrl: form.externalUrl || undefined,
+        });
+      }}
+      disabled={createEvent.isPending}
+      className="bg-orange-500 hover:bg-orange-600 text-white"
+    >
+      <Plus className="w-4 h-4 mr-2" />
+      {createEvent.isPending ? "Posting..." : "Post Event"}
+    </Button>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function Admin() {
   const { user } = useAuth();
@@ -205,6 +253,19 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState("overview");
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [eventForm, setEventForm] = useState({
+    title: "",
+    description: "",
+    category: "community" as "music" | "food" | "market" | "sports" | "arts" | "community" | "outdoors" | "other",
+    eventDate: "",
+    endDate: "",
+    venueName: "",
+    address: "",
+    city: "Milwaukee",
+    isFree: true,
+    priceCents: 0,
+    externalUrl: "",
+  });
 
   // Queries
   const { data: stats, refetch: refetchStats } = trpc.safety.getStats.useQuery(undefined, {
@@ -332,6 +393,9 @@ export default function Admin() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 rounded-full">
             <TabsTrigger value="overview" className="rounded-full">Overview</TabsTrigger>
+            <TabsTrigger value="events" className="rounded-full gap-1.5">
+              <Calendar className="w-3.5 h-3.5" /> Events
+            </TabsTrigger>
             <TabsTrigger value="users" className="rounded-full gap-1.5">
               <Users className="w-3.5 h-3.5" /> Users
             </TabsTrigger>
@@ -574,6 +638,131 @@ export default function Admin() {
           </TabsContent>
 
           {/* ── Flags ── */}
+          <TabsContent value="events">
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-orange-400" />
+                  Post Community Event
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="text-sm text-gray-400 mb-1 block">Event Title *</label>
+                    <Input
+                      placeholder="e.g. Music on the Square"
+                      value={eventForm.title}
+                      onChange={(e) => setEventForm((f) => ({ ...f, title: e.target.value }))}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm text-gray-400 mb-1 block">Description</label>
+                    <textarea
+                      placeholder="Describe the event..."
+                      value={eventForm.description}
+                      onChange={(e) => setEventForm((f) => ({ ...f, description: e.target.value }))}
+                      rows={3}
+                      className="w-full bg-white/5 border border-white/10 text-white rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Category *</label>
+                    <select
+                      value={eventForm.category}
+                      onChange={(e) => setEventForm((f) => ({ ...f, category: e.target.value as typeof f.category }))}
+                      className="w-full bg-white/5 border border-white/10 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                    >
+                      {["music","food","market","sports","arts","community","outdoors","other"].map((c) => (
+                        <option key={c} value={c} className="bg-gray-900">{c.charAt(0).toUpperCase()+c.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">City *</label>
+                    <select
+                      value={eventForm.city}
+                      onChange={(e) => setEventForm((f) => ({ ...f, city: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                    >
+                      <option value="Milwaukee" className="bg-gray-900">Milwaukee</option>
+                      <option value="Waukesha" className="bg-gray-900">Waukesha</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Start Date &amp; Time *</label>
+                    <Input
+                      type="datetime-local"
+                      value={eventForm.eventDate}
+                      onChange={(e) => setEventForm((f) => ({ ...f, eventDate: e.target.value }))}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">End Date &amp; Time</label>
+                    <Input
+                      type="datetime-local"
+                      value={eventForm.endDate}
+                      onChange={(e) => setEventForm((f) => ({ ...f, endDate: e.target.value }))}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Venue Name</label>
+                    <Input
+                      placeholder="e.g. Frame Park Bandshell"
+                      value={eventForm.venueName}
+                      onChange={(e) => setEventForm((f) => ({ ...f, venueName: e.target.value }))}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Address</label>
+                    <Input
+                      placeholder="e.g. 1220 Frame Park Dr"
+                      value={eventForm.address}
+                      onChange={(e) => setEventForm((f) => ({ ...f, address: e.target.value }))}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">External URL</label>
+                    <Input
+                      placeholder="https://..."
+                      value={eventForm.externalUrl}
+                      onChange={(e) => setEventForm((f) => ({ ...f, externalUrl: e.target.value }))}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm text-gray-400">Free event?</label>
+                    <button
+                      type="button"
+                      onClick={() => setEventForm((f) => ({ ...f, isFree: !f.isFree }))}
+                      className={`w-10 h-6 rounded-full transition-colors ${eventForm.isFree ? "bg-green-500" : "bg-gray-600"}`}
+                    >
+                      <span className={`block w-4 h-4 bg-white rounded-full mx-1 transition-transform ${eventForm.isFree ? "translate-x-4" : ""}`} />
+                    </button>
+                    {!eventForm.isFree && (
+                      <Input
+                        type="number"
+                        placeholder="Price (cents)"
+                        value={eventForm.priceCents}
+                        onChange={(e) => setEventForm((f) => ({ ...f, priceCents: parseInt(e.target.value) || 0 }))}
+                        className="bg-white/5 border-white/10 text-white w-32"
+                      />
+                    )}
+                  </div>
+                </div>
+                <PostEventButton form={eventForm} onSuccess={() => {
+                  setEventForm({ title:"", description:"", category:"community", eventDate:"", endDate:"", venueName:"", address:"", city:"Milwaukee", isFree:true, priceCents:0, externalUrl:"" });
+                  toast.success("Event posted!");
+                }} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="flags">
             <Card className="border-none shadow-sm">
               <CardHeader>

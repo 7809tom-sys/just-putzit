@@ -474,3 +474,40 @@ export const wyrChallenges = mysqlTable("wyr_challenges", {
 });
 export type WyrChallenge = typeof wyrChallenges.$inferSelect;
 export type InsertWyrChallenge = typeof wyrChallenges.$inferInsert;
+
+// ─── Community Events ─────────────────────────────────────────────────────────
+export const communityEvents = mysqlTable("community_events", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  category: mysqlEnum("category", [
+    "music", "food", "market", "sports", "arts", "community", "outdoors", "other"
+  ]).notNull().default("other"),
+  eventDate: timestamp("eventDate").notNull(),
+  endDate: timestamp("endDate"),
+  venueName: varchar("venueName", { length: 255 }),
+  address: text("address"),
+  city: varchar("city", { length: 100 }).notNull().default("Milwaukee"),
+  state: varchar("state", { length: 50 }).notNull().default("WI"),
+  isFree: boolean("isFree").notNull().default(true),
+  priceCents: int("priceCents").notNull().default(0),
+  externalUrl: text("externalUrl"),
+  imageUrl: text("imageUrl"),
+  source: mysqlEnum("source", ["community", "eventbrite", "admin"]).notNull().default("admin"),
+  externalId: varchar("externalId", { length: 128 }),
+  postedByUserId: int("postedByUserId"),
+  rsvpCount: int("rsvpCount").notNull().default(0),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CommunityEvent = typeof communityEvents.$inferSelect;
+export type InsertCommunityEvent = typeof communityEvents.$inferInsert;
+
+// ─── Event RSVPs ──────────────────────────────────────────────────────────────
+export const eventRsvps = mysqlTable("event_rsvps", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: int("eventId").notNull(),
+  userId: int("userId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EventRsvp = typeof eventRsvps.$inferSelect;
