@@ -230,3 +230,16 @@
 - [x] Smart "Install App" button triggers native browser install prompt on Android Chrome
 - [x] iPhone tab shows Safari-specific steps with share icon illustration
 - [x] Save checkpoint and deliver
+
+## Phase 19: Revenue Streams
+- [ ] Create AdSenseSlot component with publisher ID placeholder and responsive ad unit
+- [ ] Add AdSense script tag to index.html (with placeholder publisher ID)
+- [ ] Place ad slots: between event cards in Events page, below match list in Matches page, in landing page between sections
+- [ ] Add isFeatured/isSponsored column to community_events table and run migration
+- [ ] Add isFeatured/isSponsored column to activities table and run migration
+- [ ] Backend: events.setFeatured and activities.setFeatured admin procedures
+- [ ] Events page: show Sponsored badge and pin featured events to top
+- [ ] Activities page: show Featured badge and pin featured activities to top
+- [ ] Admin panel: toggle featured/sponsored for events and activities
+- [ ] Revenue summary card in Admin panel (ad impressions, login ad spend, featured placements)
+- [ ] Save checkpoint and deliver

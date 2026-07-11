@@ -28,6 +28,7 @@ import SignUp from "@/pages/SignUp";
 import Login from "@/pages/Login";
 import Verify from "@/pages/Verify";
 import Events from "@/pages/Events";
+import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 
 function Router() {
   return (
@@ -70,6 +71,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <FloatingInstallButton />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
