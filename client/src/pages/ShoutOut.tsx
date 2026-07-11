@@ -36,6 +36,7 @@ interface SentInvite {
   contactName: string;
   inviteCode: string;
   link: string;
+  phone?: string; // stored so SMS button can pre-fill the number
 }
 
 export default function ShoutOut() {
@@ -58,10 +59,14 @@ export default function ShoutOut() {
   const sendInvites = trpc.invites.send.useMutation({
     onSuccess: (results) => {
       const appUrl = window.location.origin;
+      // Build a phone lookup from the contacts that were just sent
+      const phoneByName: Record<string, string | undefined> = {};
+      selectedContacts.forEach((c) => { phoneByName[c.name] = c.phone; });
       const newSent: SentInvite[] = results.map((r) => ({
         contactName: r.contactName,
         inviteCode: r.inviteCode,
         link: `${appUrl}/?invite=${r.inviteCode}`,
+        phone: phoneByName[r.contactName],
       }));
       setSentInvites((prev) => [...newSent, ...prev]);
       setContacts((prev) => prev.map((c) => ({ ...c, selected: false })));
@@ -154,18 +159,45 @@ export default function ShoutOut() {
     }
   };
 
-  const smsLink = (invite: SentInvite, phone?: string) => {
+  const smsLink = (invite: SentInvite, overridePhone?: string) => {
     const message = `Join me on Just Putzit! Go to the website: ${invite.link}`;
-    const cleanPhone = (phone ?? "").replace(/[^+\d]/g, "");
-    if (!cleanPhone && navigator.share) {
-      // No phone stored — open native share sheet so user can pick Messages/WhatsApp
-      navigator.share({ title: "Join me on Just Putzit!", text: message, url: invite.link }).catch(() => {});
+    // Use override phone first, then phone stored on the invite, then nothing
+    const rawPhone = overridePhone ?? invite.phone ?? "";
+    const cleanPhone = rawPhone.replace(/[^+\d]/g, "");
+    if (!cleanPhone) {
+      // No phone — open native share sheet so user can pick Messages/WhatsApp/etc.
+      if (navigator.share) {
+        navigator.share({ title: "Join me on Just Putzit!", text: message, url: invite.link }).catch(() => {});
+      } else {
+        // Fallback: open blank SMS compose with pre-filled body
+        window.open(`sms:?body=${encodeURIComponent(message)}`, "_blank");
+      }
       return;
     }
-    // iOS uses sms:number?body=, Android uses sms:number?body= too (both work with ?)
-    // But if there's no number, just use sms:?body= which opens blank compose
-    const prefix = cleanPhone ? `sms:${cleanPhone}` : `sms:`;
-    window.open(`${prefix}?body=${encodeURIComponent(message)}`, "_blank");
+    // Pre-fill both the recipient number AND the message body
+    // sms:<number>?body=<message> works on both iOS and Android
+    window.open(`sms:${cleanPhone}?body=${encodeURIComponent(message)}`, "_blank");
+  };
+
+  // Send SMS to ALL invites that have a phone number in sequence
+  const smsAll = () => {
+    const withPhone = sentInvites.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, ""));
+    const withoutPhone = sentInvites.filter((inv) => !(inv.phone ?? "").replace(/[^+\d]/g, ""));
+    if (withPhone.length === 0 && withoutPhone.length > 0) {
+      // No phones at all — share the first one via share sheet
+      shareLink(sentInvites[0]);
+      toast.info("No phone numbers stored. Opening share sheet for the first invite.");
+      return;
+    }
+    // Open SMS for each invite with a phone number, staggered by 400ms so the OS can handle them
+    withPhone.forEach((inv, i) => {
+      setTimeout(() => smsLink(inv), i * 400);
+    });
+    if (withoutPhone.length > 0) {
+      toast.info(`${withPhone.length} SMS opened. ${withoutPhone.length} contact(s) had no phone number — use Share for those.`);
+    } else {
+      toast.success(`Opening ${withPhone.length} SMS message${withPhone.length > 1 ? "s" : ""}…`);
+    }
   };
 
   if (!isAuthenticated) {
@@ -370,6 +402,16 @@ export default function ShoutOut() {
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Text All button — shown when 2+ invites have phone numbers */}
+              {sentInvites.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, "")).length >= 1 && (
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={smsAll}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Text All {sentInvites.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, "")).length} Friend{sentInvites.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, "")).length !== 1 ? "s" : ""} via SMS
+                </Button>
+              )}
               {sentInvites.map((invite) => (
                 <div key={invite.inviteCode} className="bg-green-50 border border-green-100 rounded-xl p-3 space-y-2">
                   <div className="flex items-center justify-between">
@@ -404,8 +446,10 @@ export default function ShoutOut() {
                       variant="outline"
                       className="flex-1 text-xs border-blue-200 hover:bg-blue-50 text-blue-600"
                       onClick={() => smsLink(invite)}
+                      title={invite.phone ? `Text ${invite.phone}` : "No phone — will open share sheet"}
                     >
-                      <MessageSquare className="w-3 h-3 mr-1" /> SMS
+                      <MessageSquare className="w-3 h-3 mr-1" />
+                      {invite.phone ? "SMS" : "Share"}
                     </Button>
                   </div>
                 </div>
