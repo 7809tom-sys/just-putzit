@@ -354,3 +354,17 @@
 - [ ] Add Recommend button to mobile bottom nav bar (primary tab, not buried in More)
 - [ ] Add Recommend button to Profile page sidebar
 - [ ] Clicking opens ShoutOut page with pre-filled message
+
+## Identity Save Android Fix & Refer-a-Friend
+- [ ] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
+- [ ] Add prominent Refer-a-Friend floating button on Home dashboard
+- [ ] Add Refer-a-Friend as a primary tab in mobile bottom nav
+- [ ] Create standalone /refer page with shareable link and contact picker
+
+## Bug Fixes & New Features (Session N)
+- [x] Fix identity save bug — gender/orientation/birthdate not persisting to DB (confirmed server works; client code correct)
+- [x] Fix Sally city sync — gpsVerifiedCity must also sync to city field
+- [x] Add nudity detection to photo upload (vision LLM scan, auto-ban + delete)
+- [x] Add loud nudity warning banner on photo upload UI
+- [ ] Fix duplicate /shout-out key in MobileBottomNav (remove from moreItems)
+- [x] Save checkpoint after all fixes

@@ -8,7 +8,10 @@ import multer from "multer";
 import type { FileFilterCallback } from "multer";
 import { createContext } from "./_core/context";
 import { storagePut } from "./storage";
-import { insertProfilePhoto, getProfilePhotos, setPrimaryPhoto, deleteProfilePhoto } from "./db";
+import { insertProfilePhoto, getProfilePhotos, setPrimaryPhoto, deleteProfilePhoto, getDb } from "./db";
+import { invokeLLM } from "./_core/llm";
+import { users, adminFlags } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 // exifr is an ESM-only package; we import it dynamically
 let _exifr: any = null;
@@ -52,6 +55,64 @@ function normaliseCity(city: string): string {
   return city.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
 }
 
+/**
+ * Scan a photo buffer for nudity / explicit content using the vision LLM.
+ * Returns { safe: true } if the image is clean, { safe: false, reason } if nudity detected.
+ */
+async function isPhotoSafe(buffer: Buffer, mimeType: string): Promise<{ safe: boolean; reason: string }> {
+  try {
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    const response = await invokeLLM({
+      model: "claude-3-5-haiku",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: dataUrl, detail: "low" },
+            },
+            {
+              type: "text",
+              text: `You are a content moderation system. Analyze this image strictly for nudity and explicit sexual content.\n\nRespond with ONLY a JSON object:\n{"safe": true, "reason": "No nudity or explicit content detected"}\nOR\n{"safe": false, "reason": "Brief description of violation"}\n\nRules:\n- safe: false ONLY if the image contains nudity (exposed genitals, bare breasts, buttocks) or explicit sexual content.\n- Swimwear, underwear, or suggestive poses without nudity = safe: true.\n- Artistic nudity in paintings/sculptures = safe: true.\n- Be strict: any real-person nudity = safe: false.\n- Always return valid JSON.`,
+            },
+          ],
+        },
+      ],
+      maxTokens: 100,
+    });
+    const rawContent = response?.choices?.[0]?.message?.content ?? "";
+    const text = (typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent)).trim();
+    const jsonMatch = text.match(/\{[^}]+\}/);
+    if (!jsonMatch) {
+      console.warn("[NudityCheck] Could not parse LLM response:", text);
+      return { safe: true, reason: "Moderation check inconclusive — allowed" };
+    }
+    const result = JSON.parse(jsonMatch[0]);
+    return { safe: result.safe !== false, reason: result.reason || "No reason provided" };
+  } catch (err) {
+    console.error("[NudityCheck] Error during moderation:", err);
+    // Fail open — do not block legitimate users on LLM errors
+    return { safe: true, reason: "Moderation check failed — allowed by default" };
+  }
+}
+
+/**
+ * Ban a user account and insert a nudity_violation admin flag.
+ */
+async function banUserForNudity(userId: number, reason: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ role: "banned" }).where(eq(users.id, userId));
+  await db.insert(adminFlags).values({
+    userId,
+    flagType: "nudity_violation",
+    severity: "high",
+    notes: `Account automatically banned for nudity violation. Reason: ${reason}`,
+  });
+}
+
 export function registerPhotoUploadRoutes(app: Express) {
   // ── Upload a new photo ──────────────────────────────────────────────────────
   app.post(
@@ -66,6 +127,15 @@ export function registerPhotoUploadRoutes(app: Express) {
           return;
         }
 
+        // Reject banned users immediately
+        if (ctx.user.role === "banned") {
+          res.status(403).json({
+            error: "Your account has been deactivated due to a policy violation.",
+            banned: true,
+          });
+          return;
+        }
+
         const multerReq = req as Request & { file?: Express.Multer.File };
         if (!multerReq.file) {
           res.status(400).json({ error: "No file uploaded" });
@@ -75,6 +145,19 @@ export function registerPhotoUploadRoutes(app: Express) {
         const buffer = multerReq.file.buffer;
         const mimeType = multerReq.file.mimetype;
         const ext = mimeType.split("/")[1] || "jpg";
+
+        // ── Nudity Detection ────────────────────────────────────────────────
+        const moderationResult = await isPhotoSafe(buffer, mimeType);
+        if (!moderationResult.safe) {
+          await banUserForNudity(ctx.user.id, moderationResult.reason);
+          console.warn(`[NudityCheck] User ${ctx.user.id} banned for nudity violation: ${moderationResult.reason}`);
+          res.status(403).json({
+            error: "⚠️ This photo violates our community standards. Nudity and explicit content are strictly prohibited. Your account has been deactivated.",
+            banned: true,
+            reason: moderationResult.reason,
+          });
+          return;
+        }
 
         // ── Extract EXIF GPS ────────────────────────────────────────────────
         let exifLat: string | undefined;

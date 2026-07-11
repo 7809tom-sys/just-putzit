@@ -1274,6 +1274,7 @@ export async function saveLocationVerification(
       gpsVerifiedLat: String(data.lat),
       gpsVerifiedLng: String(data.lng),
       gpsVerifiedCity: data.city,
+      city: data.city, // keep city field in sync with gpsVerifiedCity
       gpsVerifiedAt: new Date(),
       locationVerified: data.verified,
       isVerified: data.verified, // also set the main isVerified flag

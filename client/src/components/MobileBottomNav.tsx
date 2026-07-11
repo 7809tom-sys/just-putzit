@@ -44,13 +44,14 @@ export default function MobileBottomNav() {
     { href: "/", icon: Home, label: "Home" },
     { href: "/matches", icon: Heart, label: "Matches" },
     { href: "/activity-board", icon: LayoutGrid, label: "Activities" },
+    { href: "/shout-out", icon: Megaphone, label: "Refer" },
     { href: "/community", icon: Users, label: "Community" },
   ];
 
   // All extra features in the "More" sheet
   const moreItems = [
     { href: "/entertainment", icon: Popcorn, label: "Entertainment", color: "text-orange-500" },
-    { href: "/shout-out", icon: Megaphone, label: "Shout Out", color: "text-rose-500" },
+    { href: "/shout-out", icon: Megaphone, label: "Refer a Friend", color: "text-rose-500" },
     { href: "/game-lobby", icon: Gamepad2, label: "Game Lobby", color: "text-green-500" },
     { href: "/interview", icon: MessageCircle, label: "Talk to Sally", color: "text-orange-500" },
     { href: "/concierge", icon: Sparkles, label: "Concierge", color: "text-purple-500" },
@@ -61,7 +62,7 @@ export default function MobileBottomNav() {
     { href: "/would-you-rather", icon: Scale, label: "Would You Rather", color: "text-indigo-500" },
     { href: "/wyr-challenge", icon: Swords, label: "WYR Challenge", color: "text-red-500" },
     { href: "/couples", icon: Heart, label: "Couples Network", color: "text-pink-500" },
-    { href: "/campus/carroll", icon: GraduationCap, label: "Carroll University", color: "text-green-600" },
+    { href: "/campus", icon: GraduationCap, label: "Campus Dating Pool", color: "text-green-600" },
     { href: "/vendor", icon: Store, label: "Vendor Portal", color: "text-amber-600" },
     { href: "/verify", icon: MapPin, label: "Verify Location", color: "text-orange-500" },
     { href: "/safety", icon: Shield, label: "Safety & Trust", color: "text-slate-500" },

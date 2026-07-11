@@ -224,7 +224,7 @@ export type Block = typeof blocks.$inferSelect;
 export const adminFlags = mysqlTable("admin_flags", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  flagType: mysqlEnum("flagType", ["bot_behavior", "multiple_reports", "suspicious_location", "identity_mismatch", "manual_review"]).notNull(),
+  flagType: mysqlEnum("flagType", ["bot_behavior", "multiple_reports", "suspicious_location", "identity_mismatch", "manual_review", "nudity_violation"]).notNull(),
   severity: mysqlEnum("severity", ["low", "medium", "high"]).notNull().default("medium"),
   notes: text("notes"),
   resolvedAt: timestamp("resolvedAt"),

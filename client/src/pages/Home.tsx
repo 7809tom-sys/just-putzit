@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus } from "lucide-react";
+import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef } from "react";
@@ -608,6 +608,21 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
               Chat with Sally
             </Button>
           </div>
+        </div>
+
+        {/* Refer a Friend banner */}
+        <div
+          className="bg-gradient-to-r from-orange-500 to-pink-500 rounded-3xl p-5 mb-6 flex items-center gap-4 cursor-pointer card-hover"
+          onClick={() => navigate("/shout-out")}
+        >
+          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <Megaphone className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-white text-base">Refer a Friend 🎉</p>
+            <p className="text-white/80 text-sm">Invite friends from your contacts — the more the merrier!</p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-white flex-shrink-0" />
         </div>
 
         {/* Recent matches */}

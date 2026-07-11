@@ -1,0 +1,1 @@
+ALTER TABLE `admin_flags` MODIFY COLUMN `flagType` enum('bot_behavior','multiple_reports','suspicious_location','identity_mismatch','manual_review','nudity_violation') NOT NULL;

@@ -241,7 +241,13 @@ export const appRouter = router({
   // ─── Profile ──────────────────────────────────────────────────────────────
   profile: router({
     get: protectedProcedure.query(async ({ ctx }) => {
-      return getOrCreateProfile(ctx.user.id);
+      const profile = await getOrCreateProfile(ctx.user.id);
+      // Auto-sync city from gpsVerifiedCity if city is null but gpsVerifiedCity is set
+      if (profile && !profile.city && profile.gpsVerifiedCity) {
+        await updateProfile(ctx.user.id, { city: profile.gpsVerifiedCity });
+        return { ...profile, city: profile.gpsVerifiedCity };
+      }
+      return profile;
     }),
 
     getById: protectedProcedure
