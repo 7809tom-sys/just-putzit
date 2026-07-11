@@ -130,6 +130,12 @@ import {
   submitGameAnswer,
   advanceGameQuestion,
   startGameRoom,
+  recordMovieBookingClick,
+  recordEntertainmentClick,
+  getEntertainmentRevenueSummary,
+  createFriendInvite,
+  getMyInvites,
+  markInviteOpened,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import bcrypt from "bcryptjs";
@@ -2058,6 +2064,89 @@ Return JSON with questions array, each having optionA and optionB.`,
     summary: protectedProcedure.query(async ({ ctx }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       return getRevenueSummary();
+    }),
+    entertainmentSummary: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      return getEntertainmentRevenueSummary();
+    }),
+  }),
+
+  // ── Entertainment Hub ──────────────────────────────────────────────────────
+  entertainment: router({
+    trackMovieClick: publicProcedure
+      .input(z.object({
+        movieId: z.string(),
+        movieTitle: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = ctx.user ? await getUserWithProfile(ctx.user.id) : null;
+        await recordMovieBookingClick({
+          userId: ctx.user?.id,
+          movieId: input.movieId,
+          movieTitle: input.movieTitle,
+          userCity: profile?.profile?.city ?? undefined,
+        });
+        return { ok: true };
+      }),
+
+    trackEntertainmentClick: publicProcedure
+      .input(z.object({
+        category: z.enum(["concert", "theme_park", "adventure", "sports", "comedy", "other"]),
+        eventId: z.string(),
+        eventTitle: z.string(),
+        venueName: z.string().optional(),
+        venueCity: z.string().optional(),
+        affiliateNetwork: z.string(),
+        affiliateUrl: z.string(),
+        estimatedCommissionCents: z.number().optional(),
+        estimatedCommissionPct: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = ctx.user ? await getUserWithProfile(ctx.user.id) : null;
+        await recordEntertainmentClick({
+          ...input,
+          userId: ctx.user?.id,
+          userCity: profile?.profile?.city ?? undefined,
+        });
+        return { ok: true };
+      }),
+  }),
+
+  invites: router({
+    send: protectedProcedure
+      .input(z.array(z.object({
+        contactName: z.string().min(1),
+        contactPhone: z.string().optional(),
+        contactEmail: z.string().email().optional(),
+      })))
+      .mutation(async ({ ctx, input }) => {
+        const results = [];
+        for (const contact of input) {
+          const { inviteCode } = await createFriendInvite({
+            inviterId: ctx.user.id,
+            contactName: contact.contactName,
+            contactPhone: contact.contactPhone,
+            contactEmail: contact.contactEmail,
+          });
+          results.push({ contactName: contact.contactName, inviteCode });
+        }
+        return results;
+      }),
+    myInvites: protectedProcedure.query(async ({ ctx }) => {
+      return getMyInvites(ctx.user.id);
+    }),
+    trackOpen: publicProcedure
+      .input(z.object({ inviteCode: z.string() }))
+      .mutation(async ({ input }) => {
+        await markInviteOpened(input.inviteCode);
+        return { ok: true };
+      }),
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      const myInvites = await getMyInvites(ctx.user.id);
+      const total = myInvites.length;
+      const opened = myInvites.filter(i => i.status === "opened" || i.status === "joined").length;
+      const joined = myInvites.filter(i => i.status === "joined").length;
+      return { total, opened, joined };
     }),
   }),
 });

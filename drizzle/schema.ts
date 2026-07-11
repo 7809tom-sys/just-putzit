@@ -614,3 +614,55 @@ export const gameRoomPlayers = mysqlTable("game_room_players", {
   lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
 });
 export type GameRoomPlayer = typeof gameRoomPlayers.$inferSelect;
+
+// ─── Movie booking clicks (affiliate revenue tracking) ────────────────────────
+export const movieBookingClicks = mysqlTable("movie_booking_clicks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  movieId: varchar("movieId", { length: 32 }).notNull(),
+  movieTitle: varchar("movieTitle", { length: 255 }).notNull(),
+  theaterId: varchar("theaterId", { length: 64 }).notNull().default("marcus-majestic-brookfield"),
+  theaterName: varchar("theaterName", { length: 255 }).notNull().default("Marcus Majestic Cinema"),
+  affiliateNetwork: varchar("affiliateNetwork", { length: 64 }).notNull().default("fandango-cj"),
+  clickedAt: timestamp("clickedAt").defaultNow().notNull(),
+  userCity: varchar("userCity", { length: 128 }),
+  estimatedCommissionCents: int("estimatedCommissionCents").notNull().default(10),
+});
+export type MovieBookingClick = typeof movieBookingClicks.$inferSelect;
+export type InsertMovieBookingClick = typeof movieBookingClicks.$inferInsert;
+
+// ─── Entertainment clicks (concerts, theme parks, adventures) ─────────────────
+export const entertainmentClicks = mysqlTable("entertainment_clicks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  category: mysqlEnum("category", ["concert", "theme_park", "adventure", "sports", "comedy", "other"]).notNull().default("other"),
+  eventId: varchar("eventId", { length: 128 }).notNull(),
+  eventTitle: varchar("eventTitle", { length: 255 }).notNull(),
+  venueName: varchar("venueName", { length: 255 }),
+  venueCity: varchar("venueCity", { length: 128 }),
+  affiliateNetwork: varchar("affiliateNetwork", { length: 64 }).notNull(),
+  affiliateUrl: text("affiliateUrl").notNull(),
+  estimatedCommissionCents: int("estimatedCommissionCents").notNull().default(0),
+  estimatedCommissionPct: int("estimatedCommissionPct").notNull().default(0),
+  clickedAt: timestamp("clickedAt").defaultNow().notNull(),
+  userCity: varchar("userCity", { length: 128 }),
+});
+export type EntertainmentClick = typeof entertainmentClicks.$inferSelect;
+export type InsertEntertainmentClick = typeof entertainmentClicks.$inferInsert;
+
+// ─── Friend Invites / Shout-Out ───────────────────────────────────────────────
+export const friendInvites = mysqlTable("friend_invites", {
+  id: int("id").autoincrement().primaryKey(),
+  inviterId: int("inviterId").notNull(),
+  contactName: varchar("contactName", { length: 128 }).notNull(),
+  contactPhone: varchar("contactPhone", { length: 32 }),
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  inviteCode: varchar("inviteCode", { length: 32 }).notNull().unique(),
+  status: mysqlEnum("status", ["sent", "opened", "joined"]).default("sent").notNull(),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  openedAt: timestamp("openedAt"),
+  joinedAt: timestamp("joinedAt"),
+  joinedUserId: int("joinedUserId"),
+});
+export type FriendInvite = typeof friendInvites.$inferSelect;
+export type InsertFriendInvite = typeof friendInvites.$inferInsert;

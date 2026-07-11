@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap, MapPin, Calendar } from "lucide-react";
+import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap, MapPin, Calendar, Popcorn, Megaphone } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,8 @@ export default function Navbar() {
     { href: "/concierge", icon: Sparkles, label: "Concierge" },
     { href: "/activity-board", icon: LayoutGrid, label: "Activities" },
     { href: "/community", icon: Users, label: "Community" },
+    { href: "/entertainment", icon: Popcorn, label: "Entertainment" },
+    { href: "/shout-out", icon: Megaphone, label: "Shout Out" },
   ];
 
   const handleMarkAllRead = async () => {
@@ -170,6 +172,12 @@ export default function Navbar() {
                 <Link href="/events">
                   <Calendar className="w-4 h-4 mr-2 text-orange-400" />
                   Local Events
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/entertainment">
+                  <Popcorn className="w-4 h-4 mr-2 text-orange-500" />
+                  Movies & Entertainment
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

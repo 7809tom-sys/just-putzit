@@ -29,6 +29,8 @@ import Login from "@/pages/Login";
 import Verify from "@/pages/Verify";
 import Events from "@/pages/Events";
 import GameLobby from "@/pages/GameLobby";
+import Entertainment from "@/pages/Entertainment";
+import ShoutOut from "@/pages/ShoutOut";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
@@ -59,6 +61,8 @@ function Router() {
       <Route path="/verify" component={Verify} />
       <Route path="/events" component={Events} />
       <Route path="/game-lobby" component={GameLobby} />
+      <Route path="/entertainment" component={Entertainment} />
+      <Route path="/shout-out" component={ShoutOut} />
       <Route path="/safety" component={Safety} />
       <Route path="/admin" component={Admin} />
       <Route path="/404" component={NotFound} />

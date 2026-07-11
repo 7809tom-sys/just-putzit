@@ -836,7 +836,7 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          {/* ── Flags ── */}
+          {/* ── Events ── */}
           <TabsContent value="events">
             <Card className="bg-white/5 border-white/10">
               <CardHeader>

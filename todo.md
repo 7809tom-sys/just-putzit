@@ -305,3 +305,26 @@
 - [ ] In-room game play: WYR, trivia, or icebreaker questions with all room members
 - [ ] Geographic filter: show rooms in same city first, then nearby cities
 - [ ] After game, prompt players to connect/match with each other
+
+## Movie Night Feature
+- [ ] Research TMDB API for now-playing movies and trailers
+- [ ] Find Waukesha local theater ticket booking URLs (Marcus Theatres, AMC, etc.)
+- [ ] Add movie_bookings table to DB schema and apply migration
+- [ ] Add tRPC procedures: getNowPlaying, getMovieTrailer, recordMovieBookingClick
+- [ ] Build Movies page with now-playing grid, trailer modal (YouTube embed), theater info
+- [ ] Add Book Tickets CTA linking to local theater with referral tracking
+- [ ] Add Movies to Navbar and mobile bottom nav More sheet
+- [ ] Add Movie Night card to Home dashboard
+- [ ] Add movie booking click revenue to Admin Revenue tab
+
+## Friends Shout-Out / Invite Feature
+- [ ] Add friend_invites table to schema (inviterId, contactName, contactPhone, contactEmail, inviteCode, status, joinedAt)
+- [ ] Generate and apply Drizzle migration for friend_invites
+- [ ] Add tRPC procedures: createInvite, listMyInvites, trackInviteJoin (called on signup with ?ref=CODE)
+- [ ] Build ShoutOut.tsx page with Web Contacts API picker + manual add fallback
+- [ ] Checklist UI: select contacts, preview personalized message, send via SMS/share link
+- [ ] Generate unique invite URL per contact: justputzit.com/join?ref=CODE&from=NAME
+- [ ] Handle ?ref= on signup page to credit the referrer
+- [ ] Add ShoutOut to Navbar user dropdown and MobileBottomNav More sheet
+- [ ] Add "Invite Friends" card to Home dashboard
+- [ ] Add invite stats to Admin Revenue tab (total invites sent, joined, conversion rate)

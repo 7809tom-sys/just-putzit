@@ -1,4 +1,5 @@
 import { and, desc, eq, or, sql } from "drizzle-orm";
+import { randomBytes } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -34,6 +35,9 @@ import {
   venueOutreach,
   gameRooms,
   gameRoomPlayers,
+  movieBookingClicks,
+  entertainmentClicks,
+  friendInvites,
   type CommunityEvent,
   type InsertCommunityEvent,
   type ProfileTraits,
@@ -1804,4 +1808,145 @@ export async function startGameRoom(roomId: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(gameRooms).set({ status: "in_progress", updatedAt: new Date() }).where(eq(gameRooms.id, roomId));
+}
+
+
+// ─── Movie & Entertainment Click Tracking ─────────────────────────────────────
+export async function recordMovieBookingClick(data: {
+  userId?: number;
+  movieId: string;
+  movieTitle: string;
+  userCity?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(movieBookingClicks).values({
+    userId: data.userId,
+    movieId: data.movieId,
+    movieTitle: data.movieTitle,
+    userCity: data.userCity,
+    estimatedCommissionCents: 10,
+  });
+}
+
+export async function recordEntertainmentClick(data: {
+  userId?: number;
+  category: "concert" | "theme_park" | "adventure" | "sports" | "comedy" | "other";
+  eventId: string;
+  eventTitle: string;
+  venueName?: string;
+  venueCity?: string;
+  affiliateNetwork: string;
+  affiliateUrl: string;
+  estimatedCommissionCents?: number;
+  estimatedCommissionPct?: number;
+  userCity?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(entertainmentClicks).values({
+    userId: data.userId,
+    category: data.category,
+    eventId: data.eventId,
+    eventTitle: data.eventTitle,
+    venueName: data.venueName,
+    venueCity: data.venueCity,
+    affiliateNetwork: data.affiliateNetwork,
+    affiliateUrl: data.affiliateUrl,
+    estimatedCommissionCents: data.estimatedCommissionCents ?? 0,
+    estimatedCommissionPct: data.estimatedCommissionPct ?? 0,
+    userCity: data.userCity,
+  });
+}
+
+export async function getEntertainmentRevenueSummary() {
+  const db = await getDb();
+  if (!db) return { movieClicks: 0, movieCommissionCents: 0, entertainmentClicks: 0, entertainmentCommissionCents: 0, totalClicks: 0, totalCommissionCents: 0, byCategory: {} as Record<string, number> };
+
+  const [movieRows, entRows] = await Promise.all([
+    db.select().from(movieBookingClicks),
+    db.select().from(entertainmentClicks),
+  ]);
+
+  const movieCommissionCents = movieRows.reduce((sum, r) => sum + (r.estimatedCommissionCents ?? 0), 0);
+  const entertainmentCommissionCents = entRows.reduce((sum, r) => sum + (r.estimatedCommissionCents ?? 0), 0);
+
+  const byCategory: Record<string, number> = {};
+  for (const r of entRows) {
+    byCategory[r.category] = (byCategory[r.category] ?? 0) + 1;
+  }
+
+  return {
+    movieClicks: movieRows.length,
+    movieCommissionCents,
+    entertainmentClicks: entRows.length,
+    entertainmentCommissionCents,
+    totalClicks: movieRows.length + entRows.length,
+    totalCommissionCents: movieCommissionCents + entertainmentCommissionCents,
+    byCategory,
+  };
+}
+
+// ─── Friend Invites ───────────────────────────────────────────────────────────
+
+export async function createFriendInvite(data: {
+  inviterId: number;
+  contactName: string;
+  contactPhone?: string;
+  contactEmail?: string;
+}) {
+  const inviteCode = randomBytes(8).toString("hex"); // 16-char unique code
+  const db = (await getDb())!;
+  await db.insert(friendInvites).values({
+    inviterId: data.inviterId,
+    contactName: data.contactName,
+    contactPhone: data.contactPhone ?? null,
+    contactEmail: data.contactEmail ?? null,
+    inviteCode,
+  });
+  return { inviteCode };
+}
+
+export async function getMyInvites(inviterId: number) {
+  const db = (await getDb())!;
+  return db
+    .select()
+    .from(friendInvites)
+    .where(eq(friendInvites.inviterId, inviterId))
+    .orderBy(desc(friendInvites.sentAt));
+}
+
+export async function markInviteOpened(inviteCode: string) {
+  const db = (await getDb())!;
+  await db
+    .update(friendInvites)
+    .set({ status: "opened", openedAt: new Date() })
+    .where(and(eq(friendInvites.inviteCode, inviteCode), eq(friendInvites.status, "sent")));
+}
+
+export async function markInviteJoined(inviteCode: string, joinedUserId: number) {
+  const db = (await getDb())!;
+  await db
+    .update(friendInvites)
+    .set({ status: "joined", joinedAt: new Date(), joinedUserId })
+    .where(eq(friendInvites.inviteCode, inviteCode));
+}
+
+export async function getInviteByCode(inviteCode: string) {
+  const db = (await getDb())!;
+  const rows = await db
+    .select()
+    .from(friendInvites)
+    .where(eq(friendInvites.inviteCode, inviteCode))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getInviteStats() {
+  const db = (await getDb())!;
+  const rows = await db.select().from(friendInvites);
+  const total = rows.length;
+  const opened = rows.filter((r: { status: string }) => r.status === "opened" || r.status === "joined").length;
+  const joined = rows.filter((r: { status: string }) => r.status === "joined").length;
+  return { total, opened, joined, conversionRate: total > 0 ? Math.round((joined / total) * 100) : 0 };
 }

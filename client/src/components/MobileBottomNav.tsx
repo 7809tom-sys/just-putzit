@@ -21,6 +21,8 @@ import {
   LogOut,
   ShieldAlert,
   Gamepad2,
+  Popcorn,
+  Megaphone,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +49,8 @@ export default function MobileBottomNav() {
 
   // All extra features in the "More" sheet
   const moreItems = [
+    { href: "/entertainment", icon: Popcorn, label: "Entertainment", color: "text-orange-500" },
+    { href: "/shout-out", icon: Megaphone, label: "Shout Out", color: "text-rose-500" },
     { href: "/game-lobby", icon: Gamepad2, label: "Game Lobby", color: "text-green-500" },
     { href: "/interview", icon: MessageCircle, label: "Talk to Sally", color: "text-orange-500" },
     { href: "/concierge", icon: Sparkles, label: "Concierge", color: "text-purple-500" },
