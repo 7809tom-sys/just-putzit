@@ -98,10 +98,24 @@ import {
   rsvpToEvent,
   getUserEventRsvps,
   getEventbriteEvents,
+  getPasskeysForUser,
+  getPasskeyByCredentialId,
+  savePasskeyCredential,
+  updatePasskeyCounter,
+  deletePasskey,
+  getActiveLoginAd,
+  createLoginAd,
+  recordAdImpression,
+  getLoginAdsForVendor,
+  updateLoginAdStatus,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import bcrypt from "bcryptjs";
-import { getUserByEmail, createEmailUser, verifyUserEmail, checkGpsMatchesCity, saveLocationVerification } from "./db";
+import { getUserByEmail, getUserById, createEmailUser, verifyUserEmail, checkGpsMatchesCity, saveLocationVerification } from "./db";
+import type { AuthenticatorTransport } from "@simplewebauthn/server";
+
+// Temporary in-memory challenge store (keyed by userId; cleared after use)
+const passkeyChallengeTempStore = new Map<number, string>();
 
 export const appRouter = router({
   system: systemRouter,
@@ -1506,6 +1520,185 @@ Return JSON with questions array, each having optionA and optionB.`,
       await markAllNotificationsRead(ctx.user.id);
       return { success: true };
     }),
+  }),
+
+  // ─── Login Ads ────────────────────────────────────────────────────────────────
+  loginAds: router({
+    getActive: publicProcedure.query(async () => {
+      return getActiveLoginAd();
+    }),
+
+    recordImpression: publicProcedure
+      .input(z.object({ adId: z.number().int() }))
+      .mutation(async ({ input }) => {
+        await recordAdImpression(input.adId);
+        return { success: true };
+      }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          title: z.string().min(1).max(255),
+          videoUrl: z.string().url(),
+          ctaText: z.string().max(128).optional(),
+          ctaUrl: z.string().url().optional(),
+          durationSeconds: z.number().int().min(5).max(30).default(10),
+          budgetCents: z.number().int().min(0).default(0),
+          cpmCents: z.number().int().min(1).default(5),
+          startsAt: z.string().optional(),
+          endsAt: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        // Vendor must have a registered venue
+        const venues = await getVenuesByOwner(ctx.user.id);
+        if (venues.length === 0) throw new TRPCError({ code: "FORBIDDEN", message: "Register as a vendor first" });
+        await createLoginAd({
+          ...input,
+          vendorId: venues[0].id,
+          startsAt: input.startsAt ? new Date(input.startsAt) : undefined,
+          endsAt: input.endsAt ? new Date(input.endsAt) : undefined,
+        });
+        return { success: true };
+      }),
+
+    myAds: protectedProcedure.query(async ({ ctx }) => {
+      const venues = await getVenuesByOwner(ctx.user.id);
+      if (venues.length === 0) return [];
+      return getLoginAdsForVendor(venues[0].id);
+    }),
+
+    toggleActive: protectedProcedure
+      .input(z.object({ adId: z.number().int(), isActive: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const venues = await getVenuesByOwner(ctx.user.id);
+        if (venues.length === 0) throw new TRPCError({ code: "FORBIDDEN" });
+        await updateLoginAdStatus(input.adId, input.isActive);
+        return { success: true };
+      }),
+  }),
+
+  // ─── WebAuthn Passkeys ────────────────────────────────────────────────────────────────
+  passkey: router({
+    registrationOptions: protectedProcedure.query(async ({ ctx }) => {
+      const { generateRegistrationOptions } = await import("@simplewebauthn/server");
+      const existingPasskeys = await getPasskeysForUser(ctx.user.id);
+      const options = await generateRegistrationOptions({
+        rpName: "Just Putzit",
+        rpID: process.env.WEBAUTHN_RP_ID ?? "localhost",
+        userName: ctx.user.email ?? ctx.user.name ?? String(ctx.user.id),
+        userDisplayName: ctx.user.name ?? "Just Putzit User",
+        attestationType: "none",
+        excludeCredentials: existingPasskeys.map((pk) => ({
+          id: pk.credentialId,
+          transports: pk.transports ? (JSON.parse(pk.transports) as AuthenticatorTransport[]) : undefined,
+        })),
+        authenticatorSelection: {
+          residentKey: "preferred",
+          userVerification: "preferred",
+        },
+      });
+      // Store challenge in session via a temp mechanism — we'll use a simple in-memory map keyed by userId
+      passkeyChallengeTempStore.set(ctx.user.id, options.challenge);
+      return options;
+    }),
+
+    verifyRegistration: protectedProcedure
+      .input(z.object({ response: z.any() }))
+      .mutation(async ({ ctx, input }) => {
+        const { verifyRegistrationResponse } = await import("@simplewebauthn/server");
+        const expectedChallenge = passkeyChallengeTempStore.get(ctx.user.id);
+        if (!expectedChallenge) throw new TRPCError({ code: "BAD_REQUEST", message: "No challenge found. Start registration again." });
+        const verification = await verifyRegistrationResponse({
+          response: input.response,
+          expectedChallenge,
+          expectedOrigin: process.env.WEBAUTHN_ORIGIN ?? `https://${process.env.WEBAUTHN_RP_ID ?? "localhost"}`,
+          expectedRPID: process.env.WEBAUTHN_RP_ID ?? "localhost",
+        });
+        if (!verification.verified || !verification.registrationInfo) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Biometric registration failed" });
+        }
+        const { credential, credentialDeviceType, aaguid } = verification.registrationInfo;
+        await savePasskeyCredential({
+          userId: ctx.user.id,
+          credentialId: credential.id,
+          publicKey: Buffer.from(credential.publicKey).toString("base64"),
+          counter: credential.counter,
+          deviceType: credentialDeviceType,
+          transports: JSON.stringify(credential.transports ?? []),
+          aaguid,
+        });
+        passkeyChallengeTempStore.delete(ctx.user.id);
+        return { verified: true };
+      }),
+
+    authOptions: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .query(async ({ input }) => {
+        const { generateAuthenticationOptions } = await import("@simplewebauthn/server");
+        const { getUserByEmail } = await import("./db");
+        const user = await getUserByEmail(input.email);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        const passkeys = await getPasskeysForUser(user.id);
+        if (passkeys.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "No passkey registered" });
+        const options = await generateAuthenticationOptions({
+          rpID: process.env.WEBAUTHN_RP_ID ?? "localhost",
+          allowCredentials: passkeys.map((pk) => ({
+            id: pk.credentialId,
+            transports: pk.transports ? (JSON.parse(pk.transports) as AuthenticatorTransport[]) : undefined,
+          })),
+          userVerification: "preferred",
+        });
+        passkeyChallengeTempStore.set(user.id, options.challenge);
+        return { options, userId: user.id };
+      }),
+
+    verifyAuth: publicProcedure
+      .input(z.object({ userId: z.number().int(), response: z.any() }))
+      .mutation(async ({ ctx, input }) => {
+        const { verifyAuthenticationResponse } = await import("@simplewebauthn/server");
+        const expectedChallenge = passkeyChallengeTempStore.get(input.userId);
+        if (!expectedChallenge) throw new TRPCError({ code: "BAD_REQUEST", message: "Challenge expired. Try again." });
+        const passkey = await getPasskeyByCredentialId(input.response.id);
+        if (!passkey || passkey.userId !== input.userId) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Passkey not found" });
+        }
+        const verification = await verifyAuthenticationResponse({
+          response: input.response,
+          expectedChallenge,
+          expectedOrigin: process.env.WEBAUTHN_ORIGIN ?? `https://${process.env.WEBAUTHN_RP_ID ?? "localhost"}`,
+          expectedRPID: process.env.WEBAUTHN_RP_ID ?? "localhost",
+          credential: {
+            id: passkey.credentialId,
+            publicKey: Buffer.from(passkey.publicKey, "base64"),
+            counter: passkey.counter,
+            transports: passkey.transports ? (JSON.parse(passkey.transports) as AuthenticatorTransport[]) : undefined,
+          },
+        });
+        if (!verification.verified) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Biometric verification failed" });
+        }
+        await updatePasskeyCounter(passkey.credentialId, verification.authenticationInfo.newCounter);
+        passkeyChallengeTempStore.delete(input.userId);
+        // Issue session cookie same as email/password login
+        const user = await getUserById(input.userId);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || "", expiresInMs: ONE_YEAR_MS });
+        ctx.res.cookie("session", sessionToken, getSessionCookieOptions(ctx.req));
+        return { success: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+      }),
+
+    myPasskeys: protectedProcedure.query(async ({ ctx }) => {
+      const passkeys = await getPasskeysForUser(ctx.user.id);
+      return passkeys.map((pk) => ({ id: pk.id, deviceType: pk.deviceType, createdAt: pk.createdAt, lastUsedAt: pk.lastUsedAt }));
+    }),
+
+    remove: protectedProcedure
+      .input(z.object({ passkeyId: z.number().int() }))
+      .mutation(async ({ ctx, input }) => {
+        await deletePasskey(input.passkeyId, ctx.user.id);
+        return { success: true };
+      }),
   }),
 
   // ─── Community Events ────────────────────────────────────────────────────────

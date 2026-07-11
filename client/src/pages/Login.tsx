@@ -4,12 +4,99 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, Link } from "wouter";
-import { Eye, EyeOff, Heart } from "lucide-react";
+import { Eye, EyeOff, Heart, Fingerprint, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
+import { startAuthentication } from "@simplewebauthn/browser";
 
+// ─── Login Ad Overlay ─────────────────────────────────────────────────────────
+interface LoginAdProps {
+  ad: { id: number; title: string; videoUrl: string; ctaText?: string | null; ctaUrl?: string | null; durationSeconds: number };
+  onComplete: () => void;
+}
+
+function LoginAdOverlay({ ad, onComplete }: LoginAdProps) {
+  const [secondsLeft, setSecondsLeft] = useState(ad.durationSeconds);
+  const [canSkip, setCanSkip] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const recordImpression = trpc.loginAds.recordImpression.useMutation();
+
+  useEffect(() => {
+    // Record impression once
+    recordImpression.mutate({ adId: ad.id });
+    // Countdown
+    const interval = setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          clearInterval(interval);
+          setCanSkip(true);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
+      {/* Sponsored label */}
+      <div className="absolute top-4 left-4 text-xs text-white/50 bg-white/10 px-2 py-1 rounded">
+        Sponsored
+      </div>
+
+      {/* Video */}
+      <div className="w-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
+        <video
+          ref={videoRef}
+          src={ad.videoUrl}
+          autoPlay
+          muted={false}
+          playsInline
+          className="w-full h-full object-cover"
+          onEnded={() => setCanSkip(true)}
+        />
+      </div>
+
+      {/* Ad title */}
+      <div className="mt-4 text-center">
+        <p className="text-white font-semibold text-lg">{ad.title}</p>
+        <p className="text-white/60 text-sm mt-1">Getting your matches ready...</p>
+      </div>
+
+      {/* CTA + timer */}
+      <div className="mt-6 flex items-center gap-4">
+        {ad.ctaUrl && ad.ctaText && (
+          <a
+            href={ad.ctaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-semibold px-5 py-2 rounded-full transition-colors"
+          >
+            {ad.ctaText}
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        )}
+        {canSkip ? (
+          <button
+            onClick={onComplete}
+            className="bg-white text-black font-semibold px-5 py-2 rounded-full hover:bg-gray-200 transition-colors"
+          >
+            Continue →
+          </button>
+        ) : (
+          <div className="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-mono">
+            {secondsLeft}s
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Login Page ──────────────────────────────────────────────────────────
 export default function Login() {
   const { isAuthenticated, loading, refresh } = useAuth();
   const [, navigate] = useLocation();
@@ -17,21 +104,86 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [showAd, setShowAd] = useState(false);
+  const [pendingNav, setPendingNav] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const utils = trpc.useUtils();
+
+  // Fetch active ad
+  const { data: activeAd } = trpc.loginAds.getActive.useQuery(undefined, { staleTime: 60_000 });
 
   useEffect(() => {
     if (!loading && isAuthenticated) navigate("/");
   }, [loading, isAuthenticated]);
 
-  const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: () => {
-      refresh?.();
-      toast.success("Welcome back!");
+  const handleLoginSuccess = useCallback(() => {
+    refresh?.();
+    toast.success("Welcome back!");
+    if (activeAd) {
+      // Show ad before navigating
+      setShowAd(true);
+      setPendingNav(true);
+    } else {
       navigate("/");
-    },
-    onError: (err) => {
+    }
+  }, [activeAd, refresh, navigate]);
+
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: handleLoginSuccess,
+    onError: () => {
       setError("Invalid email or password. Please try again.");
     },
   });
+
+  // Biometric auth
+  const authOptionsMutation = trpc.passkey.authOptions.useQuery(
+    { email },
+    { enabled: false }
+  );
+  const verifyAuthMutation = trpc.passkey.verifyAuth.useMutation({
+    onSuccess: (data) => {
+      refresh?.();
+      toast.success(`Welcome back, ${data.user.name ?? "there"}! 👋`);
+      if (activeAd) {
+        setShowAd(true);
+        setPendingNav(true);
+      } else {
+        navigate("/");
+      }
+    },
+    onError: (err) => {
+      setError(err.message ?? "Biometric sign-in failed. Try your password.");
+    },
+  });
+
+  async function handleBiometricLogin() {
+    if (!email) {
+      setError("Enter your email address first, then tap the biometric button.");
+      return;
+    }
+    setBiometricLoading(true);
+    setError("");
+    try {
+      // Fetch auth options (challenge) from server
+      const result = await utils.passkey.authOptions.fetch({ email });
+      const { options, userId } = result;
+      // Trigger browser biometric prompt
+      const authResponse = await startAuthentication({ optionsJSON: options });
+      // Verify with server
+      verifyAuthMutation.mutate({ userId, response: authResponse });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("No passkey") || message.includes("not found")) {
+        setError("No biometric registered for this account. Log in with password first, then set it up in Settings.");
+      } else if (message.includes("cancel") || message.includes("abort")) {
+        setError("Biometric cancelled.");
+      } else {
+        setError("Biometric sign-in failed. Try your password.");
+      }
+    } finally {
+      setBiometricLoading(false);
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +196,19 @@ export default function Login() {
   }
 
   if (loading) return null;
+
+  // Show ad overlay after successful login
+  if (showAd && activeAd) {
+    return (
+      <LoginAdOverlay
+        ad={activeAd}
+        onComplete={() => {
+          setShowAd(false);
+          navigate("/");
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-orange-950/10">
@@ -106,13 +271,30 @@ export default function Login() {
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full gradient-sally text-white font-semibold"
-                disabled={loginMutation.isPending}
-              >
-                {loginMutation.isPending ? "Logging in..." : "Log in"}
-              </Button>
+              {/* Login button row: password + biometric side by side */}
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  className="flex-1 gradient-sally text-white font-semibold"
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? "Logging in..." : "Log in"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="px-4 bg-background border-orange-500/30 hover:border-orange-500 hover:bg-orange-500/5 text-orange-500"
+                  onClick={handleBiometricLogin}
+                  disabled={biometricLoading || verifyAuthMutation.isPending}
+                  title="Sign in with Face ID / Fingerprint"
+                >
+                  <Fingerprint className={`w-5 h-5 ${biometricLoading ? "animate-pulse" : ""}`} />
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center -mt-1">
+                Tap <Fingerprint className="w-3 h-3 inline" /> to use Face ID or fingerprint
+              </p>
             </form>
 
             {/* Divider */}
@@ -142,6 +324,24 @@ export default function Login() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Security layers badge */}
+        <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            Email + Password
+          </span>
+          <span>·</span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+            Biometric (Face ID / Fingerprint)
+          </span>
+          <span>·</span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+            GPS Verified
+          </span>
+        </div>
 
         <p className="text-center text-xs text-muted-foreground">
           No fake profiles. No bots. Real people only.

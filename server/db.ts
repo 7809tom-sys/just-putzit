@@ -28,6 +28,8 @@ import {
   wyrChallenges,
   communityEvents,
   eventRsvps,
+  passkeyCredentials,
+  loginAds,
   type CommunityEvent,
   type InsertCommunityEvent,
   type ProfileTraits,
@@ -1105,6 +1107,13 @@ export async function recordReferral(inviteCode: string, inviteeUserId: number) 
 
 // ─── Email Auth Helpers ───────────────────────────────────────────────────────
 
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
 export async function getUserByEmail(email: string) {
   const db = await getDb();
   if (!db) return null;
@@ -1309,4 +1318,120 @@ export async function getEventbriteEvents(city: string, token: string) {
   } catch {
     return [];
   }
+}
+
+// ─── WebAuthn Passkey Credentials ─────────────────────────────────────────────
+
+export async function getPasskeysForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(passkeyCredentials).where(eq(passkeyCredentials.userId, userId));
+}
+
+export async function getPasskeyByCredentialId(credentialId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(passkeyCredentials)
+    .where(eq(passkeyCredentials.credentialId, credentialId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function savePasskeyCredential(data: {
+  userId: number;
+  credentialId: string;
+  publicKey: string;
+  counter: number;
+  deviceType?: string;
+  transports?: string;
+  aaguid?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.insert(passkeyCredentials).values(data);
+}
+
+export async function updatePasskeyCounter(credentialId: string, counter: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(passkeyCredentials)
+    .set({ counter, lastUsedAt: new Date() })
+    .where(eq(passkeyCredentials.credentialId, credentialId));
+}
+
+export async function deletePasskey(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .delete(passkeyCredentials)
+    .where(and(eq(passkeyCredentials.id, id), eq(passkeyCredentials.userId, userId)));
+}
+
+// ─── Login Ads ─────────────────────────────────────────────────────────────────
+
+export async function getActiveLoginAd() {
+  const db = await getDb();
+  if (!db) return null;
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(loginAds)
+    .where(
+      and(
+        eq(loginAds.isActive, true),
+        sql`(${loginAds.startsAt} IS NULL OR ${loginAds.startsAt} <= ${now})`,
+        sql`(${loginAds.endsAt} IS NULL OR ${loginAds.endsAt} >= ${now})`,
+        sql`(${loginAds.budgetCents} = 0 OR ${loginAds.spentCents} < ${loginAds.budgetCents})`
+      )
+    )
+    .orderBy(sql`RAND()`)
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createLoginAd(data: {
+  vendorId: number;
+  title: string;
+  videoUrl: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  durationSeconds?: number;
+  budgetCents?: number;
+  cpmCents?: number;
+  startsAt?: Date;
+  endsAt?: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.insert(loginAds).values(data);
+}
+
+export async function recordAdImpression(adId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const ad = await db.select().from(loginAds).where(eq(loginAds.id, adId)).limit(1);
+  if (!ad[0]) return;
+  const costCents = Math.round(ad[0].cpmCents / 10); // CPM/1000 * 100 = CPM/10
+  await db
+    .update(loginAds)
+    .set({
+      impressions: sql`${loginAds.impressions} + 1`,
+      spentCents: sql`${loginAds.spentCents} + ${costCents}`,
+    })
+    .where(eq(loginAds.id, adId));
+}
+
+export async function getLoginAdsForVendor(vendorId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(loginAds).where(eq(loginAds.vendorId, vendorId)).orderBy(desc(loginAds.createdAt));
+}
+
+export async function updateLoginAdStatus(id: number, isActive: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(loginAds).set({ isActive }).where(eq(loginAds.id, id));
 }

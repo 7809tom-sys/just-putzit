@@ -511,3 +511,40 @@ export const eventRsvps = mysqlTable("event_rsvps", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type EventRsvp = typeof eventRsvps.$inferSelect;
+
+// ─── WebAuthn Passkey Credentials ────────────────────────────────────────────
+export const passkeyCredentials = mysqlTable("passkey_credentials", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  credentialId: varchar("credentialId", { length: 512 }).notNull().unique(),
+  publicKey: text("publicKey").notNull(),
+  counter: int("counter").notNull().default(0),
+  deviceType: varchar("deviceType", { length: 64 }),
+  transports: text("transports"), // JSON array string
+  aaguid: varchar("aaguid", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+});
+export type PasskeyCredential = typeof passkeyCredentials.$inferSelect;
+export type InsertPasskeyCredential = typeof passkeyCredentials.$inferInsert;
+
+// ─── Login Ads ────────────────────────────────────────────────────────────────
+export const loginAds = mysqlTable("login_ads", {
+  id: int("id").autoincrement().primaryKey(),
+  vendorId: int("vendorId").notNull(), // references venue_partners.id
+  title: varchar("title", { length: 255 }).notNull(),
+  videoUrl: text("videoUrl").notNull(),
+  ctaText: varchar("ctaText", { length: 128 }),
+  ctaUrl: text("ctaUrl"),
+  durationSeconds: int("durationSeconds").notNull().default(10),
+  budgetCents: int("budgetCents").notNull().default(0),
+  spentCents: int("spentCents").notNull().default(0),
+  cpmCents: int("cpmCents").notNull().default(5), // cost per 1000 impressions in cents
+  impressions: int("impressions").notNull().default(0),
+  isActive: boolean("isActive").notNull().default(true),
+  startsAt: timestamp("startsAt"),
+  endsAt: timestamp("endsAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LoginAd = typeof loginAds.$inferSelect;
+export type InsertLoginAd = typeof loginAds.$inferInsert;

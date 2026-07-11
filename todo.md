@@ -189,3 +189,21 @@
 - [x] Eventbrite API integration (slots in when EVENTBRITE_TOKEN secret is set)
 - [x] Navbar link to Events page
 - [x] Tests, checkpoint, deliver
+
+## Phase 16: WebAuthn Biometric Authentication (Anti-Bot Layer 2)
+- [x] Install @simplewebauthn/server and @simplewebauthn/browser packages
+- [x] Schema: passkey_credentials table (userId, credentialId, publicKey, counter, deviceType, transports, createdAt)
+- [x] Backend: webauthn.registrationOptions, webauthn.verifyRegistration, webauthn.authOptions, webauthn.verifyAuth tRPC procedures
+- [x] Frontend: BiometricEnroll component (shown after first email/password login)
+- [x] Frontend: "Sign in with Face ID / Fingerprint" button on Login page
+- [x] Show biometric badge on verified profiles (proves real human device)
+- [x] Tests, checkpoint, deliver
+
+## Phase 16b: Biometric Polish (post-delivery follow-up)
+- [ ] Persist WebAuthn challenges in DB (webauthn_challenges table) instead of in-memory Map for serverless safety
+- [ ] Build BiometricEnroll component shown post-login (prompt to register Face ID/fingerprint)
+- [ ] Fix biometric login hook usage in Login.tsx (move trpc utils to component scope)
+- [ ] Add passkey badge to profile page (shows "Biometric verified" when passkey registered)
+- [ ] Add login ads todo items
+- [ ] Login Ads section in Vendor Portal (upload clip, set budget, view impressions) - DONE
+- [ ] Seed a demo login ad for testing

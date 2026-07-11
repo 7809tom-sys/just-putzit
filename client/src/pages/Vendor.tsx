@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Store, Plus, TrendingUp, Ticket, DollarSign, Users, Building2 } from "lucide-react";
+import { Store, Plus, TrendingUp, Ticket, DollarSign, Users, Building2, Play, Eye, ToggleLeft, ToggleRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -51,6 +51,29 @@ export default function Vendor() {
 
   // Add listing form
   const [listingVenueId, setListingVenueId] = useState<number | null>(null);
+
+  // Login Ads state
+  const [adOpen, setAdOpen] = useState(false);
+  const [adTitle, setAdTitle] = useState("");
+  const [adVideoUrl, setAdVideoUrl] = useState("");
+  const [adCtaText, setAdCtaText] = useState("");
+  const [adCtaUrl, setAdCtaUrl] = useState("");
+  const [adBudget, setAdBudget] = useState(1000); // cents
+  const [adCpm, setAdCpm] = useState(5); // cents per 1000 impressions
+
+  const { data: myAds = [], refetch: refetchAds } = trpc.loginAds.myAds.useQuery();
+  const createAdMutation = trpc.loginAds.create.useMutation({
+    onSuccess: () => {
+      toast.success("Login ad created!");
+      setAdOpen(false);
+      setAdTitle(""); setAdVideoUrl(""); setAdCtaText(""); setAdCtaUrl("");
+      refetchAds();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const toggleAdMutation = trpc.loginAds.toggleActive.useMutation({
+    onSuccess: () => refetchAds(),
+  });
   const [lTitle, setLTitle] = useState("");
   const [lCategory, setLCategory] = useState("dining");
   const [lPrice, setLPrice] = useState(15);
@@ -265,6 +288,126 @@ export default function Vendor() {
           </Card>
         )}
       </div>
+
+      {/* ─── Login Ads Section ─── */}
+      {venues && venues.length > 0 && (
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-display text-xl font-bold flex items-center gap-2">
+                <Play className="w-5 h-5 text-orange-500" /> Login Ad Campaigns
+              </h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Your 10-second video plays to users during login. Pay per 1,000 impressions.
+              </p>
+            </div>
+            <Button className="rounded-full gap-2" onClick={() => setAdOpen(true)}>
+              <Plus className="w-4 h-4" /> New Ad
+            </Button>
+          </div>
+
+          {myAds.length === 0 ? (
+            <Card className="border-dashed border-2 bg-muted/30">
+              <CardContent className="p-8 text-center">
+                <div className="text-4xl mb-3">🎬</div>
+                <p className="font-semibold mb-1">No login ads yet</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload a 10-second clip and reach every user who logs in — right when they're excited to meet someone.
+                </p>
+                <Button className="rounded-full" onClick={() => setAdOpen(true)}>Create your first ad</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {myAds.map((ad) => (
+                <Card key={ad.id} className="border-none shadow-sm">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+                      <Play className="w-5 h-5 text-orange-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{ad.title}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {ad.impressions.toLocaleString()} impressions</span>
+                        <span>·</span>
+                        <span>${(ad.spentCents / 100).toFixed(2)} spent</span>
+                        {ad.budgetCents > 0 && <><span>·</span><span>${(ad.budgetCents / 100).toFixed(0)} budget</span></>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleAdMutation.mutate({ adId: ad.id, isActive: !ad.isActive })}
+                      className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+                        ad.isActive
+                          ? "bg-green-500/10 text-green-600 hover:bg-green-500/20"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {ad.isActive ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                      {ad.isActive ? "Live" : "Paused"}
+                    </button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Create Ad Dialog */}
+      <Dialog open={adOpen} onOpenChange={setAdOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Create Login Ad</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="rounded-lg bg-orange-500/10 border border-orange-500/20 p-3 text-sm text-orange-700 dark:text-orange-300">
+              💡 Your video plays for 10 seconds to users during login. Rate: ${(adCpm / 100).toFixed(2)} per 1,000 impressions.
+            </div>
+            <div className="space-y-1.5">
+              <Label>Ad title (internal)</Label>
+              <Input value={adTitle} onChange={e => setAdTitle(e.target.value)} placeholder="Summer Promo 2025" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Video URL</Label>
+              <Input value={adVideoUrl} onChange={e => setAdVideoUrl(e.target.value)} placeholder="https://...mp4" />
+              <p className="text-[11px] text-muted-foreground">Direct link to an .mp4 or .webm file (max 30s, recommended 10s)</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>CTA button text (optional)</Label>
+                <Input value={adCtaText} onChange={e => setAdCtaText(e.target.value)} placeholder="Book Now" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>CTA link (optional)</Label>
+                <Input value={adCtaUrl} onChange={e => setAdCtaUrl(e.target.value)} placeholder="https://yourvenue.com" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Total budget: ${(adBudget / 100).toFixed(0)} (0 = unlimited)</Label>
+              <input
+                type="range" min={0} max={10000} step={100}
+                value={adBudget} onChange={e => setAdBudget(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-full bg-card" onClick={() => setAdOpen(false)}>Cancel</Button>
+            <Button
+              className="rounded-full"
+              disabled={createAdMutation.isPending || !adTitle.trim() || !adVideoUrl.trim()}
+              onClick={() => createAdMutation.mutate({
+                title: adTitle,
+                videoUrl: adVideoUrl,
+                ctaText: adCtaText || undefined,
+                ctaUrl: adCtaUrl || undefined,
+                budgetCents: adBudget,
+                cpmCents: adCpm,
+              })}
+            >
+              {createAdMutation.isPending ? <Spinner className="w-4 h-4" /> : "Launch ad"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add listing dialog */}
       <Dialog open={listingVenueId !== null} onOpenChange={(o) => !o && setListingVenueId(null)}>
