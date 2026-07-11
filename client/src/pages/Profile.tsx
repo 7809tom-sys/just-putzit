@@ -23,9 +23,18 @@ export default function Profile() {
   const { data: photos, refetch: refetchPhotos } = trpc.profile.getPhotos.useQuery();
   const setPrimary = trpc.profile.setPrimaryPhoto.useMutation({ onSuccess: () => refetchPhotos() });
   const deletePhoto = trpc.profile.deletePhoto.useMutation({ onSuccess: () => refetchPhotos() });
+  const utils = trpc.useUtils();
   const updateIdentity = trpc.profile.updateIdentity.useMutation({
-    onSuccess: () => { refetchProfile(); toast.success("Identity updated!"); setIdentityOpen(false); },
-    onError: () => toast.error("Failed to update identity"),
+    onSuccess: (data) => {
+      utils.profile.get.invalidate();
+      utils.profile.getPhotos.invalidate();
+      toast.success("Identity saved!");
+      setIdentityOpen(false);
+    },
+    onError: (err) => {
+      console.error("Identity save error:", err);
+      toast.error("Failed to save identity: " + (err.message || "Unknown error"));
+    },
   });
 
   const [uploading, setUploading] = useState(false);

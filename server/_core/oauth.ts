@@ -1,6 +1,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
-import * as db from "../db";
+import * as db from "../db.js";
+import { getOrCreateProfile } from "../db.js";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -35,6 +36,11 @@ export function registerOAuthRoutes(app: Express) {
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
+      // Ensure profile row exists on every login so identity fields are always writable
+      const loggedInUser = await db.getUserByOpenId(userInfo.openId);
+      if (loggedInUser?.id) {
+        await getOrCreateProfile(loggedInUser.id);
+      }
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",
