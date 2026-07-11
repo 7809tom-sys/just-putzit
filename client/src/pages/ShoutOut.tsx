@@ -71,7 +71,33 @@ export default function ShoutOut() {
       }));
       setSentInvites((prev) => [...newSent, ...prev]);
       setContacts((prev) => prev.map((c) => ({ ...c, selected: false })));
-      toast.success(`${results.length} invite${results.length > 1 ? "s" : ""} created! Share the links below.`);
+
+      // AUTO-FIRE SMS immediately — no extra button tap needed
+      // Stagger by 500ms per contact so the OS can handle multiple SMS windows
+      newSent.forEach((invite, i) => {
+        const message = `Join me on Just Putzit! Go to the website: ${invite.link}`;
+        const cleanPhone = (invite.phone ?? "").replace(/[^+\d]/g, "");
+        setTimeout(() => {
+          if (cleanPhone) {
+            // Open SMS with number and message pre-filled
+            window.open(`sms:${cleanPhone}?body=${encodeURIComponent(message)}`, "_blank");
+          } else if (navigator.share) {
+            // No phone — use native share sheet
+            navigator.share({ title: "Join me on Just Putzit!", text: message, url: invite.link }).catch(() => {});
+          } else {
+            // Last resort: blank SMS compose with message pre-filled
+            window.open(`sms:?body=${encodeURIComponent(message)}`, "_blank");
+          }
+        }, i * 500);
+      });
+
+      const withPhone = newSent.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, "")).length;
+      const withoutPhone = newSent.length - withPhone;
+      if (withoutPhone > 0 && withPhone === 0) {
+        toast.success(`${results.length} invite${results.length > 1 ? "s" : ""} created! Opening share sheet…`);
+      } else {
+        toast.success(`${results.length} invite${results.length > 1 ? "s" : ""} created! Opening SMS…`);
+      }
     },
     onError: () => toast.error("Failed to create invites. Please try again."),
   });
