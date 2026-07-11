@@ -57,11 +57,12 @@ export default function ShoutOut() {
   });
 
   const sendInvites = trpc.invites.send.useMutation({
-    onSuccess: (results) => {
+    // tRPC passes the original mutation variables as the second argument to onSuccess
+    onSuccess: (results, variables) => {
       const appUrl = window.location.origin;
-      // Build a phone lookup from the contacts that were just sent
+      // Build phone lookup from the variables we actually sent — not the stale closure
       const phoneByName: Record<string, string | undefined> = {};
-      selectedContacts.forEach((c) => { phoneByName[c.name] = c.phone; });
+      variables.forEach((v) => { phoneByName[v.contactName] = v.contactPhone ?? undefined; });
       const newSent: SentInvite[] = results.map((r) => ({
         contactName: r.contactName,
         inviteCode: r.inviteCode,
