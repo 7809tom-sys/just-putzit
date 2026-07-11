@@ -74,9 +74,30 @@ export const userProfiles = mysqlTable("user_profiles", {
   gpsVerifiedCity: varchar("gpsVerifiedCity", { length: 100 }),
   gpsVerifiedAt: timestamp("gpsVerifiedAt"),
   locationVerified: boolean("locationVerified").notNull().default(false),
+  gender: mysqlEnum("gender", ["man", "woman", "non_binary", "other", "prefer_not_to_say"]),
+  sexualOrientation: mysqlEnum("sexualOrientation", ["straight", "gay", "lesbian", "bisexual", "pansexual", "asexual", "queer", "other", "prefer_not_to_say"]),
+  birthdate: timestamp("birthdate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+// ─── Profile Photos ───────────────────────────────────────────────────────────
+export const profilePhotos = mysqlTable("profile_photos", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  s3Key: varchar("s3Key", { length: 512 }).notNull(),
+  url: varchar("url", { length: 1024 }).notNull(),
+  isPrimary: boolean("isPrimary").notNull().default(false),
+  exifLat: varchar("exifLat", { length: 20 }),
+  exifLng: varchar("exifLng", { length: 20 }),
+  exifCity: varchar("exifCity", { length: 100 }),
+  cityVerified: boolean("cityVerified").notNull().default(false),
+  verificationNote: varchar("verificationNote", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProfilePhoto = typeof profilePhotos.$inferSelect;
+export type InsertProfilePhoto = typeof profilePhotos.$inferInsert;
 
 export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = typeof userProfiles.$inferInsert;
@@ -263,6 +284,7 @@ export const activityListings = mysqlTable("activity_listings", {
   priceCents: int("priceCents").notNull().default(0), // 0 = free RSVP activity
   hasTickets: boolean("hasTickets").notNull().default(false),
   imageEmoji: varchar("imageEmoji", { length: 10 }).notNull().default("\uD83C\uDF89"),
+  isSponsored: boolean("isSponsored").notNull().default(false),
   isActive: boolean("isActive").notNull().default(true),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -497,6 +519,7 @@ export const communityEvents = mysqlTable("community_events", {
   externalId: varchar("externalId", { length: 128 }),
   postedByUserId: int("postedByUserId"),
   rsvpCount: int("rsvpCount").notNull().default(0),
+  isSponsored: boolean("isSponsored").notNull().default(false),
   isActive: boolean("isActive").notNull().default(true),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

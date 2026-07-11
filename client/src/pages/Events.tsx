@@ -83,6 +83,7 @@ interface EventCardProps {
     imageUrl?: string | null;
     rsvpCount: number;
     source?: string;
+    isSponsored?: boolean;
   };
   onRsvp?: (id: number) => void;
   rsvpLoading?: boolean;
@@ -94,14 +95,24 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped }: EventCardProps) {
   const numericId = typeof event.id === "string" ? parseInt(event.id.replace("eb_", ""), 10) : event.id;
 
   return (
-    <div className="group relative bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-orange-400/40 hover:bg-white/8 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/10">
+    <div className={`group relative bg-white/5 border rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-lg ${
+      event.isSponsored
+        ? "border-amber-500/40 hover:border-amber-400/60 hover:shadow-amber-500/10 ring-1 ring-amber-500/20"
+        : "border-white/10 hover:border-orange-400/40 hover:bg-white/8 hover:shadow-orange-500/10"
+    }`}>
       {/* Top accent bar */}
-      <div className={`h-1 w-full ${event.isFree ? "bg-gradient-to-r from-green-400 to-emerald-500" : "bg-gradient-to-r from-orange-400 to-amber-500"}`} />
+      <div className={`h-1 w-full ${event.isSponsored ? "bg-gradient-to-r from-amber-400 to-yellow-500" : event.isFree ? "bg-gradient-to-r from-green-400 to-emerald-500" : "bg-gradient-to-r from-orange-400 to-amber-500"}`} />
 
       <div className="p-5">
         {/* Header row */}
         <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            {event.isSponsored && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                <Star className="w-3 h-3 fill-amber-400" />
+                Sponsored
+              </span>
+            )}
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${categoryColor(event.category)}`}>
               <CatIcon className="w-3 h-3" />
               {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
@@ -254,18 +265,22 @@ export default function Events() {
   // Merge community + Eventbrite events, then apply search filter
   const allEvents = useMemo(() => {
     const combined = [
-      ...(events as Array<{ id: number; title: string; description?: string | null; category: string; eventDate: Date | string; endDate?: Date | string | null; venueName?: string | null; address?: string | null; city: string; isFree: boolean; priceCents: number; externalUrl?: string | null; imageUrl?: string | null; rsvpCount: number; source?: string; }>),
-      ...(ebEvents as Array<{ id: string; title: string; description?: string | null; category: string; eventDate: Date | string; endDate?: Date | string | null; venueName?: string | null; address?: string | null; city: string; isFree: boolean; priceCents: number; externalUrl?: string | null; imageUrl?: string | null; rsvpCount: number; source?: string; }>).map((e) => ({ ...e, id: parseInt(e.id.replace("eb_", ""), 10) || Math.random() })),
+      ...(events as Array<{ id: number; title: string; description?: string | null; category: string; eventDate: Date | string; endDate?: Date | string | null; venueName?: string | null; address?: string | null; city: string; isFree: boolean; priceCents: number; externalUrl?: string | null; imageUrl?: string | null; rsvpCount: number; source?: string; isSponsored?: boolean; }>),
+      ...(ebEvents as Array<{ id: string; title: string; description?: string | null; category: string; eventDate: Date | string; endDate?: Date | string | null; venueName?: string | null; address?: string | null; city: string; isFree: boolean; priceCents: number; externalUrl?: string | null; imageUrl?: string | null; rsvpCount: number; source?: string; isSponsored?: boolean; }>).map((e) => ({ ...e, id: parseInt(e.id.replace("eb_", ""), 10) || Math.random() })),
     ];
-    if (!searchQuery.trim()) return combined;
-    const q = searchQuery.toLowerCase();
-    return combined.filter(
-      (e) =>
-        e.title.toLowerCase().includes(q) ||
-        (e.description ?? "").toLowerCase().includes(q) ||
-        (e.venueName ?? "").toLowerCase().includes(q) ||
-        e.city.toLowerCase().includes(q)
-    );
+    let filtered = combined;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = combined.filter(
+        (e) =>
+          e.title.toLowerCase().includes(q) ||
+          (e.description ?? "").toLowerCase().includes(q) ||
+          (e.venueName ?? "").toLowerCase().includes(q) ||
+          e.city.toLowerCase().includes(q)
+      );
+    }
+    // Pin sponsored events to the top
+    return [...filtered.filter((e) => e.isSponsored), ...filtered.filter((e) => !e.isSponsored)];
   }, [events, ebEvents, searchQuery]);
 
   const freeCount = allEvents.filter((e) => e.isFree).length;

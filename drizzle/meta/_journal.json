@@ -71,6 +71,20 @@
       "when": 1783777090521,
       "tag": "0009_abandoned_earthquake",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1783782478731,
+      "tag": "0010_left_cassandra_nova",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1783782943255,
+      "tag": "0011_curvy_lockheed",
+      "breakpoints": true
     }
   ]
 }

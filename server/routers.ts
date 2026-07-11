@@ -108,6 +108,14 @@ import {
   recordAdImpression,
   getLoginAdsForVendor,
   updateLoginAdStatus,
+  toggleSponsoredEvent,
+  toggleSponsoredActivity,
+  getRevenueSummary,
+  getProfilePhotos,
+  insertProfilePhoto,
+  setPrimaryPhoto,
+  deleteProfilePhoto,
+  updateProfileIdentity,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import bcrypt from "bcryptjs";
@@ -250,6 +258,55 @@ export const appRouter = router({
         await updateProfile(ctx.user.id, { ...input, onboardingComplete: true });
         return getProfileByUserId(ctx.user.id);
       }),
+
+    updateIdentity: protectedProcedure
+      .input(
+        z.object({
+          gender: z.enum(["man", "woman", "non_binary", "other", "prefer_not_to_say"]).optional(),
+          sexualOrientation: z.enum(["straight", "gay", "lesbian", "bisexual", "pansexual", "asexual", "queer", "other", "prefer_not_to_say"]).optional(),
+          birthdate: z.string().optional(), // ISO date string
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await getOrCreateProfile(ctx.user.id);
+        await updateProfileIdentity(ctx.user.id, {
+          gender: input.gender,
+          sexualOrientation: input.sexualOrientation,
+          birthdate: input.birthdate ? new Date(input.birthdate) : undefined,
+        });
+        return getProfileByUserId(ctx.user.id);
+      }),
+
+    getPhotos: protectedProcedure.query(async ({ ctx }) => {
+      return getProfilePhotos(ctx.user.id);
+    }),
+
+    uploadPhoto: protectedProcedure
+      .input(
+        z.object({
+          base64: z.string(), // data:image/jpeg;base64,...
+          filename: z.string().default("photo.jpg"),
+        })
+      )
+      .mutation(async ({ ctx }) => {
+        // Photo upload is handled via multipart in a separate REST endpoint
+        // This stub returns instructions for the client
+        throw new TRPCError({ code: "METHOD_NOT_SUPPORTED", message: "Use POST /api/photos/upload" });
+      }),
+
+    setPrimaryPhoto: protectedProcedure
+      .input(z.object({ photoId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await setPrimaryPhoto(input.photoId, ctx.user.id);
+        return { success: true };
+      }),
+
+    deletePhoto: protectedProcedure
+      .input(z.object({ photoId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteProfilePhoto(input.photoId, ctx.user.id);
+        return { success: true };
+      }),
   }),
 
   // ─── Interview ────────────────────────────────────────────────────────────
@@ -281,9 +338,20 @@ Rules:
 - Never repeat questions from previous sessions
 - Always address the user by name warmly`;
 
-      const greeting = interviewCount === 0
-        ? `Hi ${userName}! I'm Sally, and I'm SO excited to meet you! 🎉 I'm here to get to know the real you — the fun stuff, the quirky stuff, all of it! Let's kick things off: **What's your idea of a perfect Sunday?** Tell me everything! ☀️`
-        : `Welcome back, ${userName}! 🌟 I've missed you! I already know a few things about you, but there's always more to discover. Today I want to ask you something a little different: **${await generateFollowUpQuestion(existingTraits, interviewCount)}**`;
+      // Check if we're missing identity fields
+      const missingGender = !profile?.gender;
+      const missingOrientation = !profile?.sexualOrientation;
+      const missingBirthdate = !profile?.birthdate;
+
+      let greeting: string;
+      if (interviewCount === 0) {
+        greeting = `Hi ${userName}! I'm Sally, and I'm SO excited to meet you! 🎉 Before we dive into the fun stuff, I'd love to learn a little about you. First — **how do you identify?** You can share your gender (e.g. man, woman, non-binary, or whatever feels right) and your sexual orientation (e.g. straight, gay, bisexual, etc.). And what year were you born? No pressure — you can always say "prefer not to say"! 😊`;
+      } else if (missingGender || missingOrientation || missingBirthdate) {
+        const missing = [missingGender && "gender", missingOrientation && "sexual orientation", missingBirthdate && "age"].filter(Boolean).join(", ");
+        greeting = `Welcome back, ${userName}! 🌟 I noticed I'm still missing a few details — your ${missing}. Could you share those with me? It helps me find you much better matches! 💕`;
+      } else {
+        greeting = `Welcome back, ${userName}! 🌟 I've missed you! I already know a few things about you, but there's always more to discover. Today I want to ask you something a little different: **${await generateFollowUpQuestion(existingTraits, interviewCount)}**`;
+      }
 
       const messages: InterviewMessage[] = [
         { role: "assistant", content: greeting, timestamp: Date.now() },
@@ -311,20 +379,29 @@ Rules:
         const messages = (session.messages as InterviewMessage[]) || [];
         messages.push({ role: "user", content: input.userMessage, timestamp: Date.now() });
 
+        const profileIdentity = {
+          gender: (profile as any)?.gender,
+          sexualOrientation: (profile as any)?.sexualOrientation,
+          birthdate: (profile as any)?.birthdate,
+        };
+
         const llmMessages = [
           {
             role: "system" as const,
             content: `You are Sally, a warm and enthusiastic AI host for Just Putzit. You're conducting a 90-second profile-building interview with ${userName}.
 
 Existing profile traits: ${JSON.stringify(existingTraits)}
+Identity on file: ${JSON.stringify(profileIdentity)}
 
 Rules:
 - Respond warmly to their answer (1-2 sentences acknowledging what they said)
 - Then ask ONE new follow-up question to dig deeper OR pivot to a new topic
 - Keep it conversational and fun
+- If gender/orientation/birthdate are not yet on file, ask about them naturally and warmly (not clinically)
 - After 4-5 exchanges, wrap up warmly saying you've learned so much and will update their profile
 - Use emojis sparingly but naturally
-- Never be clinical or robotic`,
+- Never be clinical or robotic
+- When the user shares their gender, orientation, or birth year, acknowledge it warmly and move on`,
           },
           ...messages.map(m => ({ role: m.role as "assistant" | "user", content: m.content })),
         ];
@@ -347,6 +424,12 @@ Rules:
           // Extract traits from the conversation
           const extractedTraits = await extractTraitsFromInterview(messages, existingTraits);
           await updateInterviewSession(input.sessionId, { extractedTraits });
+
+          // Extract identity fields (gender, orientation, birthdate) from conversation
+          const identityExtracted = await extractIdentityFromInterview(messages);
+          if (identityExtracted.gender || identityExtracted.sexualOrientation || identityExtracted.birthdate) {
+            await updateProfileIdentity(ctx.user.id, identityExtracted);
+          }
 
           // Merge traits into profile
           const mergedTraits = { ...existingTraits, ...extractedTraits };
@@ -1763,6 +1846,33 @@ Return JSON with questions array, each having optionA and optionB.`,
         if (!token) return [];
         return getEventbriteEvents(input.city, token);
       }),
+
+    toggleSponsored: protectedProcedure
+      .input(z.object({ eventId: z.number().int(), isSponsored: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await toggleSponsoredEvent(input.eventId, input.isSponsored);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Activities (sponsored) ────────────────────────────────────────────────
+  activities: router({
+    toggleSponsored: protectedProcedure
+      .input(z.object({ activityId: z.number().int(), isSponsored: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await toggleSponsoredActivity(input.activityId, input.isSponsored);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Revenue Summary ───────────────────────────────────────────────────────
+  revenue: router({
+    summary: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      return getRevenueSummary();
+    }),
   }),
 });
 
@@ -1830,6 +1940,57 @@ async function extractTraitsFromInterview(messages: InterviewMessage[], existing
   const content = response.choices[0]?.message?.content as string | undefined;
   try {
     return JSON.parse(typeof content === "string" ? content : "{}");
+  } catch {
+    return {};
+  }
+}
+
+async function extractIdentityFromInterview(messages: InterviewMessage[]): Promise<{
+  gender?: string;
+  sexualOrientation?: string;
+  birthdate?: Date;
+}> {
+  const conversation = messages.map(m => `${m.role}: ${m.content}`).join("\n");
+  const genderValues = ["man", "woman", "non_binary", "other", "prefer_not_to_say"];
+  const orientationValues = ["straight", "gay", "lesbian", "bisexual", "pansexual", "asexual", "queer", "other", "prefer_not_to_say"];
+
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content: `Extract identity information from this interview conversation. Look for mentions of gender identity, sexual orientation, and birth year/age. Return a JSON object. For gender use one of: ${genderValues.join(", ")}. For sexualOrientation use one of: ${orientationValues.join(", ")}. For birthdate, if the user mentions their age or birth year, calculate the approximate birthdate as an ISO date string (e.g. "1990-01-01"). Only include fields that were clearly mentioned.`,
+      },
+      { role: "user", content: conversation },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "identity_extract",
+        strict: false,
+        schema: {
+          type: "object",
+          properties: {
+            gender: { type: "string" },
+            sexualOrientation: { type: "string" },
+            birthdate: { type: "string" },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  const content = response.choices[0]?.message?.content as string | undefined;
+  try {
+    const parsed = JSON.parse(typeof content === "string" ? content : "{}");
+    const result: { gender?: string; sexualOrientation?: string; birthdate?: Date } = {};
+    if (genderValues.includes(parsed.gender)) result.gender = parsed.gender;
+    if (orientationValues.includes(parsed.sexualOrientation)) result.sexualOrientation = parsed.sexualOrientation;
+    if (parsed.birthdate) {
+      const d = new Date(parsed.birthdate);
+      if (!isNaN(d.getTime())) result.birthdate = d;
+    }
+    return result;
   } catch {
     return {};
   }

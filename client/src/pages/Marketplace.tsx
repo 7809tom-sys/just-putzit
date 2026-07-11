@@ -38,6 +38,7 @@ type Listing = {
   imageEmoji: string;
   maxGroupSize?: number | null;
   recurringSchedule?: string | null;
+  isSponsored?: boolean;
   venue?: { name: string; city?: string | null; address?: string | null } | null;
 };
 
@@ -142,10 +143,22 @@ export default function Marketplace() {
           <div className="flex justify-center py-20"><Spinner /></div>
         ) : listings && listings.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {(listings as Listing[]).map(l => (
-              <Card key={l.id} className="border-none shadow-md overflow-hidden group hover:shadow-lg transition-shadow">
-                <div className="h-32 gradient-sally flex items-center justify-center text-5xl">
+            {([...(listings as Listing[]).filter(l => l.isSponsored), ...(listings as Listing[]).filter(l => !l.isSponsored)]).map(l => (
+              <Card key={l.id} className={`overflow-hidden group transition-shadow ${
+                l.isSponsored
+                  ? "border border-amber-500/40 shadow-md hover:shadow-amber-500/20 ring-1 ring-amber-500/20"
+                  : "border-none shadow-md hover:shadow-lg"
+              }`}>
+                <div className={`h-32 flex items-center justify-center text-5xl relative ${
+                  l.isSponsored ? "bg-gradient-to-br from-amber-500/20 to-yellow-500/10" : "gradient-sally"
+                }`}>
                   {l.imageEmoji}
+                  {l.isSponsored && (
+                    <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/80 text-white">
+                      <Star className="w-3 h-3 fill-white" />
+                      Featured
+                    </span>
+                  )}
                 </div>
                 <CardContent className="p-5 space-y-3">
                   <div className="flex items-start justify-between gap-2">

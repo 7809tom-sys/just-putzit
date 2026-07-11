@@ -6,6 +6,8 @@ import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, St
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef } from "react";
+import { AdSenseSlot } from "@/components/AdSenseSlot";
+import Navbar from "@/components/Navbar";
 
 // PWA install prompt hook
 function usePWAInstall() {
@@ -287,6 +289,13 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* Ad slot — between Safety and Games sections */}
+      <div className="bg-white py-4">
+        <div className="container max-w-3xl">
+          <AdSenseSlot slot="1111111111" format="auto" className="w-full" />
+        </div>
+      </div>
+
       {/* Games Section */}
       <section className="py-20 gradient-warm">
         <div className="container">
@@ -514,6 +523,7 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
 
   return (
     <div className="min-h-screen gradient-warm">
+      <Navbar />
       <div className="container py-8">
         {/* Welcome header */}
         <div className="mb-8">
@@ -562,6 +572,20 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
             onClick={() => navigate("/profile")}
           />
         </div>
+
+        {/* Identity completion prompt */}
+        {(!((profile as any)?.gender) || !((profile as any)?.sexualOrientation) || !((profile as any)?.birthdate)) && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center gap-3">
+            <span className="text-2xl">👤</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-800">Complete your identity info</p>
+              <p className="text-xs text-amber-600">Add your gender, orientation, and age to get better matches</p>
+            </div>
+            <Button size="sm" variant="outline" className="rounded-full border-amber-300 text-amber-700 text-xs" onClick={() => navigate("/profile")}>
+              Add info
+            </Button>
+          </div>
+        )}
 
         {/* Sally suggestion */}
         <div className="bg-white rounded-3xl shadow-sm p-6 mb-8 flex items-start gap-4">

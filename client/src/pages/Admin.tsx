@@ -27,6 +27,10 @@ import {
   RefreshCw,
   Calendar,
   Plus,
+  DollarSign,
+  Star,
+  Zap,
+  ToggleLeft,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
@@ -271,6 +275,12 @@ export default function Admin() {
   const { data: stats, refetch: refetchStats } = trpc.safety.getStats.useQuery(undefined, {
     enabled: user?.role === "admin",
   });
+  const { data: revenueSummary, refetch: refetchRevenue } = trpc.revenue.summary.useQuery(undefined, {
+    enabled: user?.role === "admin",
+  });
+  const { data: allEvents, refetch: refetchEvents } = trpc.events.list.useQuery({}, {
+    enabled: user?.role === "admin" && activeTab === "events",
+  });
   const { data: reports, refetch: refetchReports } = trpc.safety.getReports.useQuery(undefined, {
     enabled: user?.role === "admin",
   });
@@ -295,6 +305,14 @@ export default function Admin() {
       utils.safety.searchUsers.invalidate();
       utils.safety.getStats.invalidate();
     },
+  });
+  const toggleEventSponsored = trpc.events.toggleSponsored.useMutation({
+    onSuccess: () => { toast.success("Event sponsorship updated!"); refetchEvents(); refetchRevenue(); },
+    onError: () => toast.error("Failed to update"),
+  });
+  const toggleActivitySponsored = trpc.activities.toggleSponsored.useMutation({
+    onSuccess: () => { toast.success("Activity sponsorship updated!"); refetchRevenue(); },
+    onError: () => toast.error("Failed to update"),
   });
 
   // ── Access guard ────────────────────────────────────────────────────────────
@@ -391,8 +409,11 @@ export default function Admin() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 rounded-full">
+          <TabsList className="mb-6 rounded-full flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="rounded-full">Overview</TabsTrigger>
+            <TabsTrigger value="revenue" className="rounded-full gap-1.5">
+              <DollarSign className="w-3.5 h-3.5" /> Revenue
+            </TabsTrigger>
             <TabsTrigger value="events" className="rounded-full gap-1.5">
               <Calendar className="w-3.5 h-3.5" /> Events
             </TabsTrigger>
@@ -414,6 +435,109 @@ export default function Admin() {
               )}
             </TabsTrigger>
           </TabsList>
+
+          {/* ── Revenue ── */}
+          <TabsContent value="revenue">
+            <div className="space-y-6">
+              {/* Revenue summary cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <StatCard
+                  label="Ad Impressions"
+                  value={revenueSummary?.totalImpressions ?? 0}
+                  icon={<Zap className="w-5 h-5 text-yellow-600" />}
+                  accent="bg-yellow-50"
+                  sub="login video ads"
+                />
+                <StatCard
+                  label="Ad Revenue"
+                  value={`$${((revenueSummary?.totalAdSpentCents ?? 0) / 100).toFixed(2)}`}
+                  icon={<DollarSign className="w-5 h-5 text-green-600" />}
+                  accent="bg-green-50"
+                  sub="earned from vendors"
+                />
+                <StatCard
+                  label="Active Campaigns"
+                  value={revenueSummary?.activeAdCampaigns ?? 0}
+                  icon={<BarChart3 className="w-5 h-5 text-blue-600" />}
+                  accent="bg-blue-50"
+                  sub="login ad campaigns"
+                />
+                <StatCard
+                  label="Sponsored Events"
+                  value={revenueSummary?.sponsoredEventCount ?? 0}
+                  icon={<Star className="w-5 h-5 text-amber-600" />}
+                  accent="bg-amber-50"
+                  sub="pinned to top"
+                />
+                <StatCard
+                  label="Featured Activities"
+                  value={revenueSummary?.sponsoredActivityCount ?? 0}
+                  icon={<Star className="w-5 h-5 text-orange-600" />}
+                  accent="bg-orange-50"
+                  sub="marketplace featured"
+                />
+              </div>
+
+              {/* AdSense placeholder */}
+              <Card className="border-none shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-green-500" /> Google AdSense
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted/30 rounded-xl p-5 text-sm text-muted-foreground space-y-2">
+                    <p className="font-medium text-foreground">AdSense is ready to activate</p>
+                    <p>Ad slots are placed on the Events, Matches, and Home pages. To enable live ads:</p>
+                    <ol className="list-decimal list-inside space-y-1 ml-2">
+                      <li>Apply at <a href="https://adsense.google.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">adsense.google.com</a></li>
+                      <li>Get your Publisher ID (ca-pub-XXXXXXXXXXXXXXXX)</li>
+                      <li>Uncomment the AdSense script in <code className="bg-muted px-1 rounded">client/index.html</code></li>
+                      <li>Replace the placeholder publisher ID in <code className="bg-muted px-1 rounded">AdSenseSlot.tsx</code></li>
+                    </ol>
+                    <p className="text-xs mt-2">Estimated earnings: $2–$8 CPM for Milwaukee/Waukesha local traffic.</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Sponsored events list */}
+              <Card className="border-none shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-500" /> Sponsored Events
+                    <span className="text-xs font-normal text-muted-foreground ml-auto">Toggle to pin events to top of Events page</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!allEvents || allEvents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No events yet. Post events in the Events tab first.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {(allEvents as Array<{ id: number; title: string; city: string; eventDate: Date | string; isSponsored: boolean }>).map((ev) => (
+                        <div key={ev.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border hover:bg-muted/30 transition-colors">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{ev.title}</p>
+                            <p className="text-xs text-muted-foreground">{ev.city} · {new Date(ev.eventDate).toLocaleDateString()}</p>
+                          </div>
+                          <button
+                            onClick={() => toggleEventSponsored.mutate({ eventId: ev.id, isSponsored: !ev.isSponsored })}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                              ev.isSponsored
+                                ? "bg-amber-500/20 border-amber-500/40 text-amber-700"
+                                : "bg-muted border-border text-muted-foreground hover:border-amber-500/40 hover:text-amber-700"
+                            }`}
+                          >
+                            <Star className={`w-3 h-3 ${ev.isSponsored ? "fill-amber-500 text-amber-500" : ""}`} />
+                            {ev.isSponsored ? "Sponsored" : "Set Sponsored"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           {/* ── Overview ── */}
           <TabsContent value="overview">

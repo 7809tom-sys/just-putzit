@@ -243,3 +243,15 @@
 - [ ] Admin panel: toggle featured/sponsored for events and activities
 - [ ] Revenue summary card in Admin panel (ad impressions, login ad spend, featured placements)
 - [ ] Save checkpoint and deliver
+
+- [ ] Add gender and sexual orientation fields to profile schema and Sally interview
+- [ ] Display gender/orientation on Home authenticated dashboard profile card
+- [ ] Fix Home dashboard navigation dead-end (add Navbar or nav links so users can exit)
+- [x] Add gender, sexual orientation, birthdate columns to profiles table in schema
+- [ ] Add profile_photos table with S3 key, city, verified flag
+- [ ] Add photo upload tRPC procedure with EXIF GPS city-verification
+- [ ] Update Sally interview to ask gender, orientation, age
+- [ ] Update profile tRPC get/update to return gender, orientation, age
+- [ ] Build photo upload UI on Profile page with city-verification badge
+- [ ] Add Navbar to AuthenticatedHome to fix navigation dead-end
+- [x] Add gender, orientation, age on Home profile card

@@ -30,6 +30,7 @@ import {
   eventRsvps,
   passkeyCredentials,
   loginAds,
+  profilePhotos,
   type CommunityEvent,
   type InsertCommunityEvent,
   type ProfileTraits,
@@ -1434,4 +1435,104 @@ export async function updateLoginAdStatus(id: number, isActive: boolean) {
   const db = await getDb();
   if (!db) return;
   await db.update(loginAds).set({ isActive }).where(eq(loginAds.id, id));
+}
+
+// ─── Sponsored / Featured Placement ──────────────────────────────────────────
+
+export async function toggleSponsoredEvent(eventId: number, isSponsored: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(communityEvents).set({ isSponsored }).where(eq(communityEvents.id, eventId));
+}
+
+export async function toggleSponsoredActivity(activityId: number, isSponsored: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(activityListings).set({ isSponsored }).where(eq(activityListings.id, activityId));
+}
+
+export async function getRevenueSummary() {
+  const db = await getDb();
+  if (!db) return { totalImpressions: 0, totalAdSpentCents: 0, sponsoredEventCount: 0, sponsoredActivityCount: 0, activeAdCampaigns: 0 };
+  const [adStats] = await db
+    .select({
+      totalImpressions: sql<number>`COALESCE(SUM(${loginAds.impressions}), 0)`,
+      totalAdSpentCents: sql<number>`COALESCE(SUM(${loginAds.spentCents}), 0)`,
+      activeAdCampaigns: sql<number>`COALESCE(SUM(CASE WHEN ${loginAds.isActive} = 1 THEN 1 ELSE 0 END), 0)`,
+    })
+    .from(loginAds);
+  const [eventStats] = await db
+    .select({ sponsoredEventCount: sql<number>`COALESCE(SUM(CASE WHEN ${communityEvents.isSponsored} = 1 THEN 1 ELSE 0 END), 0)` })
+    .from(communityEvents);
+  const [activityStats] = await db
+    .select({ sponsoredActivityCount: sql<number>`COALESCE(SUM(CASE WHEN ${activityListings.isSponsored} = 1 THEN 1 ELSE 0 END), 0)` })
+    .from(activityListings);
+  return {
+    totalImpressions: Number(adStats?.totalImpressions ?? 0),
+    totalAdSpentCents: Number(adStats?.totalAdSpentCents ?? 0),
+    activeAdCampaigns: Number(adStats?.activeAdCampaigns ?? 0),
+    sponsoredEventCount: Number(eventStats?.sponsoredEventCount ?? 0),
+    sponsoredActivityCount: Number(activityStats?.sponsoredActivityCount ?? 0),
+  };
+}
+
+// ─── Profile Photos ────────────────────────────────────────────────────────────
+
+export async function getProfilePhotos(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(profilePhotos)
+    .where(eq(profilePhotos.userId, userId))
+    .orderBy(desc(profilePhotos.isPrimary), desc(profilePhotos.createdAt));
+}
+
+export async function insertProfilePhoto(data: {
+  userId: number;
+  s3Key: string;
+  url: string;
+  isPrimary?: boolean;
+  exifLat?: string;
+  exifLng?: string;
+  exifCity?: string;
+  cityVerified?: boolean;
+  verificationNote?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  // If this is the first photo, make it primary
+  const existing = await db.select({ id: profilePhotos.id }).from(profilePhotos).where(eq(profilePhotos.userId, data.userId)).limit(1);
+  const isPrimary = data.isPrimary ?? existing.length === 0;
+  await db.insert(profilePhotos).values({ ...data, isPrimary });
+}
+
+export async function setPrimaryPhoto(photoId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Unset all primaries for user
+  await db.update(profilePhotos).set({ isPrimary: false }).where(eq(profilePhotos.userId, userId));
+  // Set the chosen one
+  await db.update(profilePhotos).set({ isPrimary: true }).where(and(eq(profilePhotos.id, photoId), eq(profilePhotos.userId, userId)));
+}
+
+export async function deleteProfilePhoto(photoId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(profilePhotos).where(and(eq(profilePhotos.id, photoId), eq(profilePhotos.userId, userId)));
+}
+
+export async function updateProfileIdentity(userId: number, data: {
+  gender?: string;
+  sexualOrientation?: string;
+  birthdate?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const updateData: Record<string, unknown> = {};
+  if (data.gender !== undefined) updateData.gender = data.gender;
+  if (data.sexualOrientation !== undefined) updateData.sexualOrientation = data.sexualOrientation;
+  if (data.birthdate !== undefined) updateData.birthdate = data.birthdate;
+  if (Object.keys(updateData).length === 0) return;
+  await db.update(userProfiles).set(updateData as any).where(eq(userProfiles.userId, userId));
 }

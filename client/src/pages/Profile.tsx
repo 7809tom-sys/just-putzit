@@ -3,12 +3,37 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import { MessageCircle, Shield, Star, Zap, MapPin, Heart } from "lucide-react";
+import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 export default function Profile() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const { data: profile, isLoading } = trpc.profile.get.useQuery();
+  const { data: profile, isLoading, refetch: refetchProfile } = trpc.profile.get.useQuery();
+  const { data: photos, refetch: refetchPhotos } = trpc.profile.getPhotos.useQuery();
+  const setPrimary = trpc.profile.setPrimaryPhoto.useMutation({ onSuccess: () => refetchPhotos() });
+  const deletePhoto = trpc.profile.deletePhoto.useMutation({ onSuccess: () => refetchPhotos() });
+  const updateIdentity = trpc.profile.updateIdentity.useMutation({
+    onSuccess: () => { refetchProfile(); toast.success("Identity updated!"); setIdentityOpen(false); },
+    onError: () => toast.error("Failed to update identity"),
+  });
+
+  const [uploading, setUploading] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
+  const [gender, setGender] = useState<string>("");
+  const [orientation, setOrientation] = useState<string>("");
+  const [birthYear, setBirthYear] = useState<string>("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   if (isLoading) {
     return (
@@ -19,6 +44,56 @@ export default function Profile() {
   }
 
   const traits = profile?.traits as any;
+  const profileAny = profile as any;
+
+  // Compute age from birthdate
+  const age = profileAny?.birthdate
+    ? Math.floor((Date.now() - new Date(profileAny.birthdate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    : null;
+
+  const genderLabel: Record<string, string> = {
+    man: "Man", woman: "Woman", non_binary: "Non-binary", other: "Other", prefer_not_to_say: "Prefer not to say",
+  };
+  const orientationLabel: Record<string, string> = {
+    straight: "Straight", gay: "Gay", lesbian: "Lesbian", bisexual: "Bisexual",
+    pansexual: "Pansexual", asexual: "Asexual", queer: "Queer", other: "Other", prefer_not_to_say: "Prefer not to say",
+  };
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("photo", file);
+      const resp = await fetch("/api/photos/upload", { method: "POST", body: formData });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Upload failed");
+      refetchPhotos();
+      toast.success(data.verificationNote || "Photo uploaded!");
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function openIdentityDialog() {
+    setGender(profileAny?.gender || "");
+    setOrientation(profileAny?.sexualOrientation || "");
+    setBirthYear(profileAny?.birthdate ? String(new Date(profileAny.birthdate).getFullYear()) : "");
+    setIdentityOpen(true);
+  }
+
+  function saveIdentity() {
+    const birthdateStr = birthYear ? `${birthYear}-01-01` : undefined;
+    updateIdentity.mutate({
+      gender: (gender || undefined) as any,
+      sexualOrientation: (orientation || undefined) as any,
+      birthdate: birthdateStr,
+    });
+  }
 
   return (
     <div className="min-h-screen gradient-warm">
@@ -47,7 +122,7 @@ export default function Profile() {
                 )}
               </div>
               <p className="text-muted-foreground text-sm mb-3">{user?.email}</p>
-              <div className="flex items-center gap-3 justify-center sm:justify-start flex-wrap">
+              <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
                 <Badge variant="secondary" className="rounded-full capitalize">
                   {profile?.networkType === "singles" ? "💙" : profile?.networkType === "couples" ? "💚" : "🧡"} {profile?.networkType} Network
                 </Badge>
@@ -59,6 +134,34 @@ export default function Profile() {
                     <MapPin className="w-3 h-3" /> {profile.city}
                   </Badge>
                 )}
+              </div>
+
+              {/* Identity badges */}
+              <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap mt-2">
+                {profileAny?.gender && (
+                  <Badge className="rounded-full bg-blue-50 text-blue-700 border-0 gap-1">
+                    <User className="w-3 h-3" /> {genderLabel[profileAny.gender] || profileAny.gender}
+                  </Badge>
+                )}
+                {profileAny?.sexualOrientation && (
+                  <Badge className="rounded-full bg-purple-50 text-purple-700 border-0 gap-1">
+                    🏳️‍🌈 {orientationLabel[profileAny.sexualOrientation] || profileAny.sexualOrientation}
+                  </Badge>
+                )}
+                {age !== null && (
+                  <Badge className="rounded-full bg-orange-50 text-orange-700 border-0">
+                    {age} years old
+                  </Badge>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground rounded-full"
+                  onClick={openIdentityDialog}
+                >
+                  <Edit2 className="w-3 h-3 mr-1" />
+                  {(!profileAny?.gender || !profileAny?.sexualOrientation || !profileAny?.birthdate) ? "Add identity info" : "Edit"}
+                </Button>
               </div>
             </div>
           </div>
@@ -90,6 +193,110 @@ export default function Profile() {
               <Heart className="w-4 h-4" /> My Matches
             </Button>
           </div>
+        </div>
+
+        {/* Photos section */}
+        <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-bold text-xl flex items-center gap-2">
+              <Camera className="w-5 h-5 text-primary" /> My Photos
+            </h2>
+            <Button
+              size="sm"
+              className="gradient-sally text-white border-0 rounded-full gap-2 btn-scale"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+            >
+              <ImagePlus className="w-4 h-4" />
+              {uploading ? "Uploading..." : "Add Photo"}
+            </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+          </div>
+
+          {(!photos || photos.length === 0) ? (
+            <div
+              className="border-2 border-dashed border-border rounded-2xl p-10 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => fileRef.current?.click()}
+            >
+              <Camera className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm font-medium text-foreground mb-1">Add your first photo</p>
+              <p className="text-xs text-muted-foreground">Photos with GPS data will be verified against your city</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {photos.map((photo: any) => (
+                <div key={photo.id} className="relative group rounded-2xl overflow-hidden aspect-square bg-muted">
+                  <img
+                    src={photo.url}
+                    alt="Profile photo"
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Primary badge */}
+                  {photo.isPrimary && (
+                    <div className="absolute top-2 left-2">
+                      <Badge className="bg-primary text-white border-0 text-xs rounded-full">Primary</Badge>
+                    </div>
+                  )}
+                  {/* City verification badge */}
+                  <div className="absolute top-2 right-2">
+                    {photo.cityVerified ? (
+                      <div title={photo.verificationNote || "City verified"}>
+                        <CheckCircle2 className="w-5 h-5 text-green-500 drop-shadow" />
+                      </div>
+                    ) : photo.exifCity ? (
+                      <div title={photo.verificationNote || "City mismatch"}>
+                        <XCircle className="w-5 h-5 text-red-400 drop-shadow" />
+                      </div>
+                    ) : null}
+                  </div>
+                  {/* Hover actions */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3 gap-2">
+                    {!photo.isPrimary && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="text-xs rounded-full h-7 px-3"
+                        onClick={() => setPrimary.mutate({ photoId: photo.id })}
+                      >
+                        Set Primary
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="text-xs rounded-full h-7 px-2"
+                      onClick={() => deletePhoto.mutate({ photoId: photo.id })}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  {/* City label */}
+                  {photo.exifCity && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1 truncate">
+                      📍 {photo.exifCity}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {/* Add more button */}
+              <div
+                className="aspect-square border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                <ImagePlus className="w-6 h-6 text-muted-foreground mb-1" />
+                <span className="text-xs text-muted-foreground">Add photo</span>
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground mt-3 text-center">
+            ✅ = photo GPS matches your city &nbsp;|&nbsp; ❌ = city mismatch &nbsp;|&nbsp; No icon = no GPS data
+          </p>
         </div>
 
         {/* Traits */}
@@ -139,9 +346,75 @@ export default function Profile() {
             <VettingItem icon="🎤" label="Dynamic Re-Interview" status={profile?.interviewCount ? "complete" : "pending"} desc={`${profile?.interviewCount || 0} session${profile?.interviewCount !== 1 ? "s" : ""} completed`} />
             <VettingItem icon="🔒" label="Live Background Audit" status="pending" desc="Coming soon" />
             <VettingItem icon="📍" label="GPS Location Verification" status={profile?.latitude ? "complete" : "pending"} desc={profile?.city || "Not set"} />
+            <VettingItem icon="📸" label="Photo Verification" status={photos && photos.some((p: any) => p.cityVerified) ? "complete" : "pending"} desc={photos && photos.length > 0 ? `${photos.filter((p: any) => p.cityVerified).length}/${photos.length} photos city-verified` : "No photos uploaded"} />
           </div>
         </div>
       </div>
+
+      {/* Identity Edit Dialog */}
+      <Dialog open={identityOpen} onOpenChange={setIdentityOpen}>
+        <DialogContent className="rounded-3xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Your Identity</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Gender</Label>
+              <Select value={gender} onValueChange={setGender}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select gender..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="man">Man</SelectItem>
+                  <SelectItem value="woman">Woman</SelectItem>
+                  <SelectItem value="non_binary">Non-binary</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sexual Orientation</Label>
+              <Select value={orientation} onValueChange={setOrientation}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select orientation..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="straight">Straight</SelectItem>
+                  <SelectItem value="gay">Gay</SelectItem>
+                  <SelectItem value="lesbian">Lesbian</SelectItem>
+                  <SelectItem value="bisexual">Bisexual</SelectItem>
+                  <SelectItem value="pansexual">Pansexual</SelectItem>
+                  <SelectItem value="asexual">Asexual</SelectItem>
+                  <SelectItem value="queer">Queer</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Birth Year</Label>
+              <Select value={birthYear} onValueChange={setBirthYear}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select birth year..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {Array.from({ length: 80 }, (_, i) => 2006 - i).map(y => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full gradient-sally text-white border-0 rounded-xl btn-scale"
+              onClick={saveIdentity}
+              disabled={updateIdentity.isPending}
+            >
+              {updateIdentity.isPending ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
