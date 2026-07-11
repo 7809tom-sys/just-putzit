@@ -148,7 +148,14 @@ import {
   createFriendInvite,
   getMyInvites,
   markInviteOpened,
+  getFeaturedVenueListings,
+  createFeaturedVenueListing,
+  rsvpExternalEvent,
+  getUserExternalRsvps,
+  checkMutualEventRsvp,
+  createDateNightPackage,
 } from "./db";
+import { fetchAllExternalEvents } from "./externalEvents";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import bcrypt from "bcryptjs";
 import { getUserByEmail, getUserById, createEmailUser, verifyUserEmail, checkGpsMatchesCity, saveLocationVerification } from "./db";
@@ -1276,6 +1283,78 @@ Return JSON with questions array, each having optionA and optionB.`,
         return getRsvpsForActivity(input.activityId);
       }),
 
+    getLiveEvents: protectedProcedure
+      .input(z.object({ city: z.string(), keyword: z.string().optional() }))
+      .query(async ({ input }) => {
+        return fetchAllExternalEvents(input.city, input.keyword);
+      }),
+    getFeaturedVenues: protectedProcedure
+      .input(z.object({ city: z.string() }))
+      .query(async ({ input }) => {
+        return getFeaturedVenueListings(input.city);
+      }),
+    rsvpLiveEvent: protectedProcedure
+      .input(z.object({
+        externalEventId: z.string(),
+        eventTitle: z.string(),
+        eventDate: z.string().optional(),
+        eventCity: z.string().optional(),
+        matchId: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await rsvpExternalEvent(
+          ctx.user.id,
+          input.externalEventId,
+          input.eventTitle,
+          input.eventDate,
+          input.eventCity
+        );
+        // Check if a match also RSVPed — trigger Date Night upsell
+        let mutualMatch = false;
+        if (input.matchId && !result.alreadyRsvped) {
+          mutualMatch = await checkMutualEventRsvp(ctx.user.id, input.matchId, input.externalEventId);
+        }
+        return { ...result, mutualMatch };
+      }),
+    getMyLiveRsvps: protectedProcedure.query(async ({ ctx }) => {
+      return getUserExternalRsvps(ctx.user.id);
+    }),
+    purchaseDateNightPackage: protectedProcedure
+      .input(z.object({
+        matchId: z.number(),
+        externalEventId: z.string(),
+        externalEventTitle: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return createDateNightPackage(
+          ctx.user.id,
+          input.matchId,
+          input.externalEventId,
+          input.externalEventTitle
+        );
+      }),
+    adminCreateFeaturedVenue: protectedProcedure
+      .input(z.object({
+        venueName: z.string(),
+        venueType: z.string(),
+        city: z.string(),
+        description: z.string().optional(),
+        logoUrl: z.string().optional(),
+        ctaUrl: z.string(),
+        ctaLabel: z.string().optional(),
+        priceMonthly: z.number().optional(),
+        startDate: z.string(),
+        endDate: z.string(),
+        contactEmail: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        return createFeaturedVenueListing({
+          ...input,
+          startDate: new Date(input.startDate),
+          endDate: new Date(input.endDate),
+        });
+      }),
     getSallyRecommendations: protectedProcedure
       .input(z.object({ matchId: z.number().optional() }))
       .query(async ({ ctx, input }) => {

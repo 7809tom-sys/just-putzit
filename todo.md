@@ -376,3 +376,11 @@
 - [ ] Add auto-launch logic: campus goes live when member count hits threshold
 - [ ] Send owner notification when campus is created or goes live
 - [ ] Update Campus UI to show pending/live status and progress bar
+
+## Events Revenue Features
+- [x] Fix mobile nav overlap — hide top nav icons on mobile (bottom nav handles it)
+- [x] Integrate Ticketmaster API with affiliate links for ticket purchases
+- [x] Integrate Eventbrite API with affiliate links for event registrations
+- [x] Add featured venue listings (paid slots at top of Activities feed)
+- [x] Add Date Night Package upsell when two matches RSVP same event
+- [x] Redesign Activities page to show real events + featured slots + Date Night upsell

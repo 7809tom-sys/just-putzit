@@ -40,6 +40,9 @@ import {
   friendInvites,
   campusMembers,
   campusEmailTokens,
+  featuredVenueListings,
+  dateNightPackages,
+  externalEventRsvps,
   type CommunityEvent,
   type InsertCommunityEvent,
   type ProfileTraits,
@@ -2179,3 +2182,151 @@ export async function checkAndLaunchCampus(campusId: number): Promise<boolean> {
 }
 
 
+
+// ─── Featured Venue Listings ──────────────────────────────────────────────────
+export async function getFeaturedVenueListings(city: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const now = new Date();
+  return db
+    .select()
+    .from(featuredVenueListings)
+    .where(
+      and(
+        eq(featuredVenueListings.isActive, true),
+        eq(featuredVenueListings.city, city),
+        sql`${featuredVenueListings.startDate} <= ${now}`,
+        sql`${featuredVenueListings.endDate} >= ${now}`
+      )
+    )
+    .orderBy(featuredVenueListings.createdAt);
+}
+
+export async function createFeaturedVenueListing(data: {
+  venueName: string;
+  venueType: string;
+  city: string;
+  description?: string;
+  logoUrl?: string;
+  ctaUrl: string;
+  ctaLabel?: string;
+  priceMonthly?: number;
+  startDate: Date;
+  endDate: Date;
+  contactEmail?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [result] = await db.insert(featuredVenueListings).values({
+    ...data,
+    isActive: true,
+  });
+  return result;
+}
+
+// ─── External Event RSVPs ─────────────────────────────────────────────────────
+export async function rsvpExternalEvent(
+  userId: number,
+  externalEventId: string,
+  eventTitle: string,
+  eventDate?: string,
+  eventCity?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  // Check if already RSVPed
+  const [existing] = await db
+    .select()
+    .from(externalEventRsvps)
+    .where(
+      and(
+        eq(externalEventRsvps.userId, userId),
+        eq(externalEventRsvps.externalEventId, externalEventId)
+      )
+    )
+    .limit(1);
+  if (existing) return { alreadyRsvped: true, rsvp: existing };
+  await db.insert(externalEventRsvps).values({
+    userId,
+    externalEventId,
+    eventTitle,
+    eventDate,
+    eventCity,
+  });
+  return { alreadyRsvped: false };
+}
+
+export async function getUserExternalRsvps(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(externalEventRsvps)
+    .where(eq(externalEventRsvps.userId, userId))
+    .orderBy(desc(externalEventRsvps.createdAt));
+}
+
+/** Check if a matched user has also RSVPed the same event — triggers Date Night upsell */
+export async function checkMutualEventRsvp(
+  userId: number,
+  matchId: number,
+  externalEventId: string
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const [matchRsvp] = await db
+    .select()
+    .from(externalEventRsvps)
+    .where(
+      and(
+        eq(externalEventRsvps.userId, matchId),
+        eq(externalEventRsvps.externalEventId, externalEventId)
+      )
+    )
+    .limit(1);
+  return !!matchRsvp;
+}
+
+// ─── Date Night Packages ──────────────────────────────────────────────────────
+export async function createDateNightPackage(
+  userId: number,
+  matchId: number,
+  externalEventId: string,
+  externalEventTitle: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  // Idempotent — don't create duplicates
+  const [existing] = await db
+    .select()
+    .from(dateNightPackages)
+    .where(
+      and(
+        eq(dateNightPackages.userId, userId),
+        eq(dateNightPackages.matchId, matchId),
+        eq(dateNightPackages.externalEventId, externalEventId)
+      )
+    )
+    .limit(1);
+  if (existing) return existing;
+  await db.insert(dateNightPackages).values({
+    userId,
+    matchId,
+    externalEventId,
+    externalEventTitle,
+    amount: 999,
+    status: "pending",
+  });
+  const [created] = await db
+    .select()
+    .from(dateNightPackages)
+    .where(
+      and(
+        eq(dateNightPackages.userId, userId),
+        eq(dateNightPackages.matchId, matchId),
+        eq(dateNightPackages.externalEventId, externalEventId)
+      )
+    )
+    .limit(1);
+  return created;
+}
