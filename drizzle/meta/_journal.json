@@ -43,6 +43,13 @@
       "when": 1782503514723,
       "tag": "0005_flawless_sauron",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1783771528513,
+      "tag": "0006_futuristic_magneto",
+      "breakpoints": true
     }
   ]
 }

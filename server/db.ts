@@ -25,6 +25,7 @@ import {
   referrals,
   wouldYouRatherQuestions,
   wouldYouRatherAnswers,
+  wyrChallenges,
   type ProfileTraits,
   type InterviewMessage,
   type GameQuestion,
@@ -885,4 +886,215 @@ export async function getUserWithProfile(userId: number) {
   const msgCount = await db.select({ id: chatMessages.id }).from(chatMessages)
     .where(eq(chatMessages.senderId, userId));
   return { user: u, profile: profile ?? null, matchCount: matchCount.length, messageCount: msgCount.length };
+}
+
+// ─── WYR 2-Player Challenges ──────────────────────────────────────────────────
+
+export async function createWyrChallenge(
+  challengerId: number,
+  challengedId: number,
+  questionIds: number[],
+  matchId?: number
+) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(wyrChallenges).values({
+    challengerId,
+    challengedId,
+    questionIds,
+    matchId: matchId ?? null,
+    status: "pending",
+  });
+  const id = (result as unknown as { insertId: number }).insertId;
+  const [row] = await db.select().from(wyrChallenges).where(eq(wyrChallenges.id, id)).limit(1);
+  return row ?? null;
+}
+
+export async function getWyrChallenge(challengeId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db.select().from(wyrChallenges).where(eq(wyrChallenges.id, challengeId)).limit(1);
+  return row ?? null;
+}
+
+export async function getWyrChallengesForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(wyrChallenges)
+    .where(or(eq(wyrChallenges.challengerId, userId), eq(wyrChallenges.challengedId, userId)))
+    .orderBy(desc(wyrChallenges.createdAt));
+}
+
+export async function updateWyrChallengeStatus(
+  challengeId: number,
+  status: "pending" | "active" | "completed",
+  compatibilityPct?: number
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(wyrChallenges)
+    .set({
+      status,
+      ...(compatibilityPct !== undefined ? { compatibilityPct } : {}),
+      ...(status === "completed" ? { completedAt: new Date() } : {}),
+    })
+    .where(eq(wyrChallenges.id, challengeId));
+}
+
+/** Compare answers between two users for a set of question IDs and return a compatibility % */
+export async function computeWyrCompatibility(
+  userId1: number,
+  userId2: number,
+  questionIds: number[]
+): Promise<number> {
+  if (questionIds.length === 0) return 0;
+  const db = await getDb();
+  if (!db) return 0;
+
+  const answers1 = await db
+    .select()
+    .from(wouldYouRatherAnswers)
+    .where(and(eq(wouldYouRatherAnswers.userId, userId1), sql`${wouldYouRatherAnswers.questionId} IN (${sql.join(questionIds.map((id) => sql`${id}`), sql`, `)})`));
+  const answers2 = await db
+    .select()
+    .from(wouldYouRatherAnswers)
+    .where(and(eq(wouldYouRatherAnswers.userId, userId2), sql`${wouldYouRatherAnswers.questionId} IN (${sql.join(questionIds.map((id) => sql`${id}`), sql`, `)})`));
+
+  const map1 = new Map(answers1.map((a) => [a.questionId, a.choice]));
+  const map2 = new Map(answers2.map((a) => [a.questionId, a.choice]));
+
+  let matches = 0;
+  let compared = 0;
+  for (const qid of questionIds) {
+    const c1 = map1.get(qid);
+    const c2 = map2.get(qid);
+    if (c1 && c2) {
+      compared++;
+      if (c1 === c2) matches++;
+    }
+  }
+  if (compared === 0) return 0;
+  return Math.round((matches / compared) * 100);
+}
+
+// ─── Campus Growth Engine ─────────────────────────────────────────────────────
+
+export async function getCampusById(campusId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db.select().from(campuses).where(eq(campuses.id, campusId)).limit(1);
+  return row ?? null;
+}
+
+export async function getCampusBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Match by lowercased name or emailDomain
+  const all = await db.select().from(campuses);
+  return all.find(
+    (c) => c.name.toLowerCase().replace(/\s+/g, "-") === slug || c.emailDomains === slug
+  ) ?? null;
+}
+
+export async function getCampusStats(campusId: number) {
+  const db = await getDb();
+  if (!db) return { total: 0, threshold: 100, isLive: false };
+  const [campus] = await db.select().from(campuses).where(eq(campuses.id, campusId)).limit(1);
+  if (!campus) return { total: 0, threshold: 100, isLive: false };
+
+  const [countRow] = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(userProfiles)
+    .where(eq(userProfiles.campusId, campusId));
+
+  const total = Number(countRow?.count ?? 0);
+  return {
+    campusId,
+    name: campus.name,
+    city: campus.city,
+    state: campus.state,
+    total,
+    threshold: campus.launchThreshold,
+    isLive: campus.isLive,
+    pct: Math.min(100, Math.round((total / campus.launchThreshold) * 100)),
+  };
+}
+
+export async function getCampusLeaderboard(campusId: number, limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  // Count referrals per inviter for this campus
+  const rows = await db
+    .select({
+      inviterUserId: referrals.inviterUserId,
+      referralCount: sql<number>`COUNT(*)`,
+    })
+    .from(referrals)
+    .where(and(eq(referrals.campusId, campusId), eq(referrals.status, "joined")))
+    .groupBy(referrals.inviterUserId)
+    .orderBy(desc(sql`COUNT(*)`))
+    .limit(limit);
+
+  // Enrich with profile info
+  const enriched = await Promise.all(
+    rows.map(async (r) => {
+      const profile = await getProfileByUserId(r.inviterUserId);
+      return {
+        userId: r.inviterUserId,
+        referralCount: Number(r.referralCount),
+        displayName: profile?.displayName ?? "Anonymous",
+        avatarEmoji: profile?.avatarEmoji ?? "😊",
+        avatarColor: profile?.avatarColor ?? "#f97316",
+        isAmbassador: profile?.isAmbassador ?? false,
+      };
+    })
+  );
+  return enriched;
+}
+
+export async function generateInviteCode(userId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  // Check if user already has a code
+  const [profile] = await db.select({ inviteCode: userProfiles.inviteCode }).from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  if (profile?.inviteCode) return profile.inviteCode;
+  // Generate a short unique code
+  const code = `JP-${userId}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+  await db.update(userProfiles).set({ inviteCode: code }).where(eq(userProfiles.userId, userId));
+  return code;
+}
+
+export async function recordReferral(inviteCode: string, inviteeUserId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  // Find the inviter by invite code
+  const [inviterProfile] = await db.select().from(userProfiles).where(eq(userProfiles.inviteCode, inviteCode)).limit(1);
+  if (!inviterProfile) return null;
+  // Avoid duplicate referral records
+  const existing = await db
+    .select()
+    .from(referrals)
+    .where(and(eq(referrals.inviterUserId, inviterProfile.userId), eq(referrals.inviteeUserId, inviteeUserId)))
+    .limit(1);
+  if (existing.length > 0) return existing[0];
+
+  await db.insert(referrals).values({
+    inviterUserId: inviterProfile.userId,
+    inviteeUserId,
+    inviteCode,
+    campusId: inviterProfile.campusId ?? undefined,
+    status: "joined",
+  });
+  // Promote to ambassador if they now have >= 5 referrals
+  const [countRow] = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(referrals)
+    .where(and(eq(referrals.inviterUserId, inviterProfile.userId), eq(referrals.status, "joined")));
+  if (Number(countRow?.count ?? 0) >= 5) {
+    await db.update(userProfiles).set({ isAmbassador: true }).where(eq(userProfiles.userId, inviterProfile.userId));
+  }
+  return { success: true };
 }

@@ -449,3 +449,18 @@ export const wouldYouRatherAnswers = mysqlTable("would_you_rather_answers", {
 
 export type WouldYouRatherAnswer = typeof wouldYouRatherAnswers.$inferSelect;
 export type InsertWouldYouRatherAnswer = typeof wouldYouRatherAnswers.$inferInsert;
+
+// ─── Would You Rather 2-player challenges ────────────────────────────────────
+export const wyrChallenges = mysqlTable("wyr_challenges", {
+  id: int("id").autoincrement().primaryKey(),
+  challengerId: int("challengerId").notNull(),   // user who sent the challenge
+  challengedId: int("challengedId").notNull(),   // user who received it
+  matchId: int("matchId"),                        // optional: tied to a match
+  questionIds: json("questionIds").$type<number[]>().notNull().$default(() => []),
+  status: mysqlEnum("status", ["pending", "active", "completed"]).notNull().default("pending"),
+  compatibilityPct: int("compatibilityPct"),      // filled in once both finish
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+export type WyrChallenge = typeof wyrChallenges.$inferSelect;
+export type InsertWyrChallenge = typeof wyrChallenges.$inferInsert;

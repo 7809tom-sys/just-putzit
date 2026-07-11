@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale } from "lucide-react";
+import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -149,9 +149,21 @@ export default function Navbar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
+                <Link href="/wyr-challenge">
+                  <Swords className="w-4 h-4 mr-2" />
+                  WYR — Challenge a Match
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
                 <Link href="/couples">
                   <Heart className="w-4 h-4 mr-2" />
                   Couples Network
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/campus/carroll">
+                  <GraduationCap className="w-4 h-4 mr-2" />
+                  Carroll University
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

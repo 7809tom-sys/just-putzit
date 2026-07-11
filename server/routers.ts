@@ -81,6 +81,16 @@ import {
   getAdminStats,
   searchUsers,
   getUserWithProfile,
+  createWyrChallenge,
+  getWyrChallenge,
+  getWyrChallengesForUser,
+  updateWyrChallengeStatus,
+  computeWyrCompatibility,
+  getCampusStats,
+  getCampusLeaderboard,
+  generateInviteCode,
+  recordReferral,
+  getCampusBySlug,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 
@@ -1297,6 +1307,102 @@ Return JSON with questions array, each having optionA and optionB.`,
       const count = await getWyrAnswerCount(ctx.user.id);
       return { answered: count };
     }),
+
+    // ── 2-player challenge flow ──────────────────────────────────────────────
+    // Send a challenge to a match (picks 10 random questions from the pool)
+    sendChallenge: protectedProcedure
+      .input(z.object({ challengedId: z.number(), matchId: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const all = await getWyrQuestions("all");
+        // Pick 10 random questions
+        const shuffled = [...all].sort(() => Math.random() - 0.5).slice(0, 10);
+        const qids = shuffled.map((q) => q.id);
+        const challenge = await createWyrChallenge(ctx.user.id, input.challengedId, qids, input.matchId);
+        return { challenge, questions: shuffled };
+      }),
+
+    // Get a specific challenge (for the challenged user to see and answer)
+    getChallenge: protectedProcedure
+      .input(z.object({ challengeId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const challenge = await getWyrChallenge(input.challengeId);
+        if (!challenge) throw new Error("Challenge not found");
+        if (challenge.challengerId !== ctx.user.id && challenge.challengedId !== ctx.user.id) {
+          throw new Error("Forbidden");
+        }
+        // Fetch the questions for this challenge
+        const allQ = await getWyrQuestions("all");
+        const qMap = new Map(allQ.map((q) => [q.id, q]));
+        const questions = (challenge.questionIds as number[]).map((id) => qMap.get(id)).filter(Boolean);
+        return { challenge, questions };
+      }),
+
+    // List all challenges for the current user
+    myChallenges: protectedProcedure.query(async ({ ctx }) => {
+      return getWyrChallengesForUser(ctx.user.id);
+    }),
+
+    // After both users have answered, compute and store compatibility %
+    computeCompatibility: protectedProcedure
+      .input(z.object({ challengeId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const challenge = await getWyrChallenge(input.challengeId);
+        if (!challenge) throw new Error("Challenge not found");
+        if (challenge.challengerId !== ctx.user.id && challenge.challengedId !== ctx.user.id) {
+          throw new Error("Forbidden");
+        }
+        const pct = await computeWyrCompatibility(
+          challenge.challengerId,
+          challenge.challengedId,
+          challenge.questionIds as number[]
+        );
+        await updateWyrChallengeStatus(challenge.id, "completed", pct);
+        return { compatibilityPct: pct };
+      }),
+  }),
+
+  // ─── Campus Growth Engine ──────────────────────────────────────────────────
+  campus: router({
+    // Get stats for a campus by ID (used on the waitlist page)
+    getStats: publicProcedure
+      .input(z.object({ campusId: z.number() }))
+      .query(async ({ input }) => {
+        return getCampusStats(input.campusId);
+      }),
+
+    // Get stats by slug (e.g. "carroll-university")
+    getStatsBySlug: publicProcedure
+      .input(z.object({ slug: z.string() }))
+      .query(async ({ input }) => {
+        const campus = await getCampusBySlug(input.slug);
+        if (!campus) throw new Error("Campus not found");
+        return getCampusStats(campus.id);
+      }),
+
+    // Get the leaderboard of top inviters for a campus
+    getLeaderboard: publicProcedure
+      .input(z.object({ campusId: z.number(), limit: z.number().min(1).max(50).optional() }))
+      .query(async ({ input }) => {
+        return getCampusLeaderboard(input.campusId, input.limit ?? 10);
+      }),
+
+    // Generate (or retrieve) the current user's personal invite code
+    getMyInviteCode: protectedProcedure.mutation(async ({ ctx }) => {
+      const code = await generateInviteCode(ctx.user.id);
+      const baseUrl = process.env.VITE_SITE_URL ?? "https://putzitapp-6zuussay.manus.space";
+      return {
+        code,
+        inviteUrl: `${baseUrl}/join?ref=${code}`,
+      };
+    }),
+
+    // Record that a new user joined via an invite code
+    useInviteCode: protectedProcedure
+      .input(z.object({ code: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await recordReferral(input.code, ctx.user.id);
+        return { success: !!result };
+      }),
   }),
 
   // ─── Notifications ────────────────────────────────────────────────────────

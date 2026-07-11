@@ -21,7 +21,9 @@ import Marketplace from "./pages/Marketplace";
 import Bookings from "./pages/Bookings";
 import Vendor from "./pages/Vendor";
 import Couples from "./pages/Couples";
-import WouldYouRather from "./pages/WouldYouRather";
+import WouldYouRather from "@/pages/WouldYouRather";
+import WyrChallenge from "@/pages/WyrChallenge";
+import CampusWaitlist from "@/pages/CampusWaitlist";
 
 function Router() {
   return (
@@ -42,6 +44,9 @@ function Router() {
       <Route path="/vendor" component={Vendor} />
       <Route path="/couples" component={Couples} />
       <Route path="/would-you-rather" component={WouldYouRather} />
+      <Route path="/wyr-challenge" component={WyrChallenge} />
+      <Route path="/campus/carroll" component={CampusWaitlist} />
+      <Route path="/campus" component={CampusWaitlist} />
       <Route path="/safety" component={Safety} />
       <Route path="/admin" component={Admin} />
       <Route path="/404" component={NotFound} />

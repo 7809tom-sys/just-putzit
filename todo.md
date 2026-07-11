@@ -133,3 +133,13 @@
 - [x] Frontend: Admin dashboard with 6 stat cards, Overview, Users, Reports, Flags tabs
 - [x] Frontend: User detail drawer (profile info, network, verified, onboarding, match/message counts, suspend)
 - [x] Checkpoint and deliver
+
+## Phase 13: 2-Player WYR + Campus Growth Engine
+- [x] Schema: wyr_challenges table (challengerId, challengedId, questionIds JSON, status)
+- [x] Backend: wyr.sendChallenge, wyr.getChallenge, wyr.myChallenges, wyr.computeCompatibility
+- [x] Frontend: WyrChallenge page (/wyr-challenge) — lobby, solo play, compatibility reveal, navbar link
+- [x] Campus growth: backend getCampusStats, generateInviteCode, recordReferral, getCampusLeaderboard
+- [x] Campus growth: Carroll waitlist page (/campus/carroll) with honest progress bar + invite link
+- [x] Campus growth: Ambassador leaderboard (top inviters, 5+ referrals = Ambassador badge)
+- [x] 23 tests passing, 0 TypeScript errors
+- [ ] Checkpoint and deliver
