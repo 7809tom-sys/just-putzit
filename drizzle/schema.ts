@@ -24,6 +24,7 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  passkeyVerified: boolean("passkeyVerified").notNull().default(false),
 });
 
 export type User = typeof users.$inferSelect;
@@ -224,7 +225,7 @@ export type Block = typeof blocks.$inferSelect;
 export const adminFlags = mysqlTable("admin_flags", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  flagType: mysqlEnum("flagType", ["bot_behavior", "multiple_reports", "suspicious_location", "identity_mismatch", "manual_review", "nudity_violation"]).notNull(),
+  flagType: mysqlEnum("flagType", ["bot_behavior", "multiple_reports", "suspicious_location", "identity_mismatch", "manual_review"]).notNull(),
   severity: mysqlEnum("severity", ["low", "medium", "high"]).notNull().default("medium"),
   notes: text("notes"),
   resolvedAt: timestamp("resolvedAt"),
@@ -677,64 +678,3 @@ export const campusMembers = mysqlTable("campus_members", {
 });
 export type CampusMember = typeof campusMembers.$inferSelect;
 export type InsertCampusMember = typeof campusMembers.$inferInsert;
-// ─── Campus Email Verification Tokens ────────────────────────────────────────
-export const campusEmailTokens = mysqlTable("campus_email_tokens", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
-  token: varchar("token", { length: 8 }).notNull(),
-  expiresAt: timestamp("expiresAt").notNull(),
-  usedAt: timestamp("usedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-export type CampusEmailToken = typeof campusEmailTokens.$inferSelect;
-export type InsertCampusEmailToken = typeof campusEmailTokens.$inferInsert;
-
-// ─── Featured Venue Listings (paid monthly slots at top of Activity Board) ────
-export const featuredVenueListings = mysqlTable("featured_venue_listings", {
-  id: int("id").autoincrement().primaryKey(),
-  venueName: varchar("venueName", { length: 200 }).notNull(),
-  venueType: varchar("venueType", { length: 100 }).notNull().default("restaurant"),
-  city: varchar("city", { length: 100 }).notNull(),
-  description: text("description"),
-  logoUrl: varchar("logoUrl", { length: 500 }),
-  ctaUrl: varchar("ctaUrl", { length: 500 }).notNull(),
-  ctaLabel: varchar("ctaLabel", { length: 100 }).notNull().default("Book Now"),
-  priceMonthly: int("priceMonthly").notNull().default(4900),
-  startDate: timestamp("startDate").notNull(),
-  endDate: timestamp("endDate").notNull(),
-  isActive: boolean("isActive").notNull().default(true),
-  contactEmail: varchar("contactEmail", { length: 320 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-export type FeaturedVenueListing = typeof featuredVenueListings.$inferSelect;
-export type InsertFeaturedVenueListing = typeof featuredVenueListings.$inferInsert;
-
-// ─── Date Night Packages ($9.99 upsell when two matches RSVP same event) ──────
-export const dateNightPackages = mysqlTable("date_night_packages", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  matchId: int("matchId").notNull(),
-  activityId: int("activityId"),
-  externalEventId: varchar("externalEventId", { length: 100 }),
-  externalEventTitle: varchar("externalEventTitle", { length: 300 }),
-  amount: int("amount").notNull().default(999),
-  status: varchar("status", { length: 50 }).notNull().default("pending"),
-  purchasedAt: timestamp("purchasedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-export type DateNightPackage = typeof dateNightPackages.$inferSelect;
-export type InsertDateNightPackage = typeof dateNightPackages.$inferInsert;
-
-// ─── External Event RSVPs (track who RSVPs to Ticketmaster/Eventbrite events) ─
-export const externalEventRsvps = mysqlTable("external_event_rsvps", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  externalEventId: varchar("externalEventId", { length: 100 }).notNull(),
-  eventTitle: varchar("eventTitle", { length: 300 }).notNull(),
-  eventDate: varchar("eventDate", { length: 50 }),
-  eventCity: varchar("eventCity", { length: 100 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-export type ExternalEventRsvp = typeof externalEventRsvps.$inferSelect;
-export type InsertExternalEventRsvp = typeof externalEventRsvps.$inferInsert;

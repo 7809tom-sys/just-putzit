@@ -76,14 +76,7 @@ export default function Profile() {
       formData.append("photo", file);
       const resp = await fetch("/api/photos/upload", { method: "POST", body: formData });
       const data = await resp.json();
-      if (!resp.ok) {
-        if (data.banned) {
-          toast.error(data.error || "Your account has been deactivated.", { duration: 8000 });
-          setTimeout(() => window.location.href = "/", 3000);
-          return;
-        }
-        throw new Error(data.error || "Upload failed");
-      }
+      if (!resp.ok) throw new Error(data.error || "Upload failed");
       refetchPhotos();
       toast.success(data.verificationNote || "Photo uploaded!");
     } catch (err: any) {
@@ -212,18 +205,6 @@ export default function Profile() {
 
         {/* Photos section */}
         <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
-          {/* Nudity Warning Banner */}
-          <div className="mb-5 rounded-2xl border-2 border-red-500 bg-red-50 px-4 py-3 flex gap-3 items-start">
-            <span className="text-2xl flex-shrink-0 mt-0.5">🚫</span>
-            <div>
-              <p className="font-bold text-red-700 text-sm leading-snug">NO NUDITY — ZERO TOLERANCE POLICY</p>
-              <p className="text-red-600 text-xs mt-1 leading-relaxed">
-                Uploading nude, sexually explicit, or inappropriate photos is <strong>strictly prohibited</strong>.
-                Violations are <strong>automatically detected</strong> and will result in your account being
-                <strong> permanently deactivated</strong> without warning.
-              </p>
-            </div>
-          </div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display font-bold text-xl flex items-center gap-2">
               <Camera className="w-5 h-5 text-primary" /> My Photos

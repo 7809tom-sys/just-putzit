@@ -36,7 +36,6 @@ interface SentInvite {
   contactName: string;
   inviteCode: string;
   link: string;
-  phone?: string; // stored so SMS button can pre-fill the number
 }
 
 export default function ShoutOut() {
@@ -57,47 +56,16 @@ export default function ShoutOut() {
   });
 
   const sendInvites = trpc.invites.send.useMutation({
-    // tRPC passes the original mutation variables as the second argument to onSuccess
-    onSuccess: (results, variables) => {
+    onSuccess: (results) => {
       const appUrl = window.location.origin;
-      // Build phone lookup from the variables we actually sent — not the stale closure
-      const phoneByName: Record<string, string | undefined> = {};
-      variables.forEach((v) => { phoneByName[v.contactName] = v.contactPhone ?? undefined; });
       const newSent: SentInvite[] = results.map((r) => ({
         contactName: r.contactName,
         inviteCode: r.inviteCode,
         link: `${appUrl}/?invite=${r.inviteCode}`,
-        phone: phoneByName[r.contactName],
       }));
       setSentInvites((prev) => [...newSent, ...prev]);
       setContacts((prev) => prev.map((c) => ({ ...c, selected: false })));
-
-      // AUTO-FIRE SMS immediately — no extra button tap needed
-      // Stagger by 500ms per contact so the OS can handle multiple SMS windows
-      newSent.forEach((invite, i) => {
-        const message = `Join me on Just Putzit! Go to the website: ${invite.link}`;
-        const cleanPhone = (invite.phone ?? "").replace(/[^+\d]/g, "");
-        setTimeout(() => {
-          if (cleanPhone) {
-            // Open SMS with number and message pre-filled
-            window.open(`sms:${cleanPhone}?body=${encodeURIComponent(message)}`, "_blank");
-          } else if (navigator.share) {
-            // No phone — use native share sheet
-            navigator.share({ title: "Join me on Just Putzit!", text: message, url: invite.link }).catch(() => {});
-          } else {
-            // Last resort: blank SMS compose with message pre-filled
-            window.open(`sms:?body=${encodeURIComponent(message)}`, "_blank");
-          }
-        }, i * 500);
-      });
-
-      const withPhone = newSent.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, "")).length;
-      const withoutPhone = newSent.length - withPhone;
-      if (withoutPhone > 0 && withPhone === 0) {
-        toast.success(`${results.length} invite${results.length > 1 ? "s" : ""} created! Opening share sheet…`);
-      } else {
-        toast.success(`${results.length} invite${results.length > 1 ? "s" : ""} created! Opening SMS…`);
-      }
+      toast.success(`${results.length} invite${results.length > 1 ? "s" : ""} created! Share the links below.`);
     },
     onError: () => toast.error("Failed to create invites. Please try again."),
   });
@@ -178,53 +146,19 @@ export default function ShoutOut() {
   };
 
   const shareLink = (invite: SentInvite) => {
-    const text = `Join me on Just Putzit! Go to the website: ${invite.link}`;
+    const text = `Hey! I'm on Just Putzit — a fun local dating app. Come join me! ${invite.link}`;
     if (navigator.share) {
-      navigator.share({ title: "Join me on Just Putzit!", text, url: invite.link }).catch(() => {});
+      navigator.share({ title: "Join me on Just Putzit!", text, url: invite.link });
     } else {
       copyLink(invite.link, invite.inviteCode);
     }
   };
 
-  const smsLink = (invite: SentInvite, overridePhone?: string) => {
-    const message = `Join me on Just Putzit! Go to the website: ${invite.link}`;
-    // Use override phone first, then phone stored on the invite, then nothing
-    const rawPhone = overridePhone ?? invite.phone ?? "";
-    const cleanPhone = rawPhone.replace(/[^+\d]/g, "");
-    if (!cleanPhone) {
-      // No phone — open native share sheet so user can pick Messages/WhatsApp/etc.
-      if (navigator.share) {
-        navigator.share({ title: "Join me on Just Putzit!", text: message, url: invite.link }).catch(() => {});
-      } else {
-        // Fallback: open blank SMS compose with pre-filled body
-        window.open(`sms:?body=${encodeURIComponent(message)}`, "_blank");
-      }
-      return;
-    }
-    // Pre-fill both the recipient number AND the message body
-    // sms:<number>?body=<message> works on both iOS and Android
-    window.open(`sms:${cleanPhone}?body=${encodeURIComponent(message)}`, "_blank");
-  };
-
-  // Send SMS to ALL invites that have a phone number in sequence
-  const smsAll = () => {
-    const withPhone = sentInvites.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, ""));
-    const withoutPhone = sentInvites.filter((inv) => !(inv.phone ?? "").replace(/[^+\d]/g, ""));
-    if (withPhone.length === 0 && withoutPhone.length > 0) {
-      // No phones at all — share the first one via share sheet
-      shareLink(sentInvites[0]);
-      toast.info("No phone numbers stored. Opening share sheet for the first invite.");
-      return;
-    }
-    // Open SMS for each invite with a phone number, staggered by 400ms so the OS can handle them
-    withPhone.forEach((inv, i) => {
-      setTimeout(() => smsLink(inv), i * 400);
-    });
-    if (withoutPhone.length > 0) {
-      toast.info(`${withPhone.length} SMS opened. ${withoutPhone.length} contact(s) had no phone number — use Share for those.`);
-    } else {
-      toast.success(`Opening ${withPhone.length} SMS message${withPhone.length > 1 ? "s" : ""}…`);
-    }
+  const smsLink = (invite: SentInvite, phone?: string) => {
+    const text = encodeURIComponent(
+      `Hey! I'm on Just Putzit — a fun local dating app in Waukesha. Come join me! ${invite.link}`
+    );
+    window.open(`sms:${phone ?? ""}?body=${text}`, "_blank");
   };
 
   if (!isAuthenticated) {
@@ -429,16 +363,6 @@ export default function ShoutOut() {
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Text All button — shown when 2+ invites have phone numbers */}
-              {sentInvites.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, "")).length >= 1 && (
-                <Button
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={smsAll}
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Text All {sentInvites.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, "")).length} Friend{sentInvites.filter((inv) => (inv.phone ?? "").replace(/[^+\d]/g, "")).length !== 1 ? "s" : ""} via SMS
-                </Button>
-              )}
               {sentInvites.map((invite) => (
                 <div key={invite.inviteCode} className="bg-green-50 border border-green-100 rounded-xl p-3 space-y-2">
                   <div className="flex items-center justify-between">
@@ -473,10 +397,8 @@ export default function ShoutOut() {
                       variant="outline"
                       className="flex-1 text-xs border-blue-200 hover:bg-blue-50 text-blue-600"
                       onClick={() => smsLink(invite)}
-                      title={invite.phone ? `Text ${invite.phone}` : "No phone — will open share sheet"}
                     >
-                      <MessageSquare className="w-3 h-3 mr-1" />
-                      {invite.phone ? "SMS" : "Share"}
+                      <MessageSquare className="w-3 h-3 mr-1" /> SMS
                     </Button>
                   </div>
                 </div>

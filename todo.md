@@ -361,26 +361,12 @@
 - [ ] Add Refer-a-Friend as a primary tab in mobile bottom nav
 - [ ] Create standalone /refer page with shareable link and contact picker
 
-## Bug Fixes & New Features (Session N)
-- [x] Fix identity save bug — gender/orientation/birthdate not persisting to DB (confirmed server works; client code correct)
-- [x] Fix Sally city sync — gpsVerifiedCity must also sync to city field
-- [x] Add nudity detection to photo upload (vision LLM scan, auto-ban + delete)
-- [x] Add loud nudity warning banner on photo upload UI
-- [ ] Fix duplicate /shout-out key in MobileBottomNav (remove from moreItems)
-- [x] Save checkpoint after all fixes
-
-## Automatic Campus Registration
-- [ ] Add university lookup from .edu email domain (Hipolabs API or local dataset)
-- [ ] Auto-create campus record when new .edu domain is verified
-- [ ] Build .edu email verification flow (send 6-digit code, verify, auto-join)
-- [ ] Add auto-launch logic: campus goes live when member count hits threshold
-- [ ] Send owner notification when campus is created or goes live
-- [ ] Update Campus UI to show pending/live status and progress bar
-
-## Events Revenue Features
-- [x] Fix mobile nav overlap — hide top nav icons on mobile (bottom nav handles it)
-- [x] Integrate Ticketmaster API with affiliate links for ticket purchases
-- [x] Integrate Eventbrite API with affiliate links for event registrations
-- [x] Add featured venue listings (paid slots at top of Activities feed)
-- [x] Add Date Night Package upsell when two matches RSVP same event
-- [x] Redesign Activities page to show real events + featured slots + Date Night upsell
+## Mandatory Account Verification Gate
+- [x] Add passkeyVerified boolean field to users table in schema.ts
+- [x] Generate and apply Drizzle migration for passkeyVerified field
+- [x] Add markPasskeyVerified tRPC procedure (sets passkeyVerified=true after successful passkey registration)
+- [x] Add auth.verificationStatus procedure returning { passkeyVerified, gpsPhotoVerified }
+- [x] Build AccountVerify.tsx page with two-step flow: Step 1 passkey setup, Step 2 GPS photo upload
+- [x] Add /verify-account route to App.tsx
+- [x] Add gate logic in App.tsx: redirect logged-in unverified users to /verify-account before any protected page
+- [x] Skip gate for /login, /signup, /verify, /verify-account routes

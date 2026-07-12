@@ -52,8 +52,8 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Nav links — hidden on mobile (bottom nav handles it), visible on desktop */}
-        <div className="hidden md:flex items-center gap-0.5">
+        {/* Nav links */}
+        <div className="flex items-center gap-0.5">
           <Link href="/">
             <Button
               variant="ghost"
@@ -61,7 +61,7 @@ export default function Navbar() {
               className={`gap-2 rounded-full ${location === "/" ? "text-primary font-semibold bg-primary/5" : "text-muted-foreground"}`}
             >
               <Home className="w-4 h-4" />
-              <span className="hidden lg:inline">Home</span>
+              <span className="hidden sm:inline">Home</span>
             </Button>
           </Link>
           {navItems.map(item => (
@@ -72,7 +72,7 @@ export default function Navbar() {
                 className={`gap-2 rounded-full ${location.startsWith(item.href) ? "text-primary font-semibold bg-primary/5" : "text-muted-foreground"}`}
               >
                 <item.icon className="w-4 h-4" />
-                <span className="hidden lg:inline">{item.label}</span>
+                <span className="hidden sm:inline">{item.label}</span>
               </Button>
             </Link>
           ))}

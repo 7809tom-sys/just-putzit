@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "ebc573c2-45d6-4184-a59d-80cbddabd7a7",
+  "id": "549badf8-076c-4d50-a94e-bc9fc51d763b",
   "prevId": "385eec00-8580-442d-9c62-1b43254879bf",
   "tables": {
     "activity_listings": {
@@ -261,7 +261,7 @@
         },
         "flagType": {
           "name": "flagType",
-          "type": "enum('bot_behavior','multiple_reports','suspicious_location','identity_mismatch','manual_review','nudity_violation')",
+          "type": "enum('bot_behavior','multiple_reports','suspicious_location','identity_mismatch','manual_review')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -2956,6 +2956,14 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(now())"
+        },
+        "passkeyVerified": {
+          "name": "passkeyVerified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
         }
       },
       "indexes": {},
