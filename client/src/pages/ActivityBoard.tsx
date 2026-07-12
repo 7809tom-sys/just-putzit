@@ -140,19 +140,19 @@ export default function ActivityBoard() {
         </div>
 
         {/* Category Filter */}
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-8 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-3 mb-8" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
           {CATEGORIES.map(cat => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                 selectedCategory === cat.id
                   ? "bg-primary text-white shadow-md"
                   : "bg-white text-gray-600 border border-gray-200 hover:border-primary/40"
               }`}
             >
-              <span>{cat.emoji}</span>
-              {cat.label}
+              <span className="text-base leading-none flex-shrink-0">{cat.emoji}</span>
+              <span className="flex-shrink-0">{cat.label}</span>
             </button>
           ))}
         </div>
