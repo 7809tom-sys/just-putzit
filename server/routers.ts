@@ -1219,12 +1219,30 @@ Return JSON with questions array, each having optionA and optionB.`,
         return getActivityListings(input.city, input.category);
       }),
 
-    getById: protectedProcedure
+        getById: protectedProcedure
       .input(z.object({ activityId: z.number() }))
       .query(async ({ input }) => {
         return getActivityById(input.activityId);
       }),
-
+    publicGetById: publicProcedure
+      .input(z.object({ activityId: z.number() }))
+      .query(async ({ input }) => {
+        const activity = await getActivityById(input.activityId);
+        if (!activity) throw new TRPCError({ code: "NOT_FOUND" });
+        return {
+          id: activity.id,
+          title: activity.title,
+          description: activity.description,
+          category: activity.category,
+          eventDate: activity.eventDate,
+          durationMinutes: activity.durationMinutes,
+          maxGroupSize: activity.maxGroupSize,
+          isSponsored: activity.isSponsored,
+          venueName: (activity as any).venueName ?? null,
+          venueCity: (activity as any).venueCity ?? null,
+          venueAddress: (activity as any).venueAddress ?? null,
+        };
+      }),
     create: protectedProcedure
       .input(z.object({
         venueId: z.number(),

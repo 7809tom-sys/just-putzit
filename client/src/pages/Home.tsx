@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef } from "react";
 import { AdSenseSlot } from "@/components/AdSenseSlot";
 import Navbar from "@/components/Navbar";
+import { useSEO } from "@/hooks/useSEO";
 
 // PWA install prompt hook
 function usePWAInstall() {
@@ -43,6 +44,21 @@ function usePWAInstall() {
 }
 
 export default function Home() {
+  useSEO({
+    title: "Just Putzit — Real Dates. Real Activities.",
+    description: "Meet locals who actually want to go out. Find matches for activities, date nights, and real connections in your city. Free to join.",
+    canonical: "https://justputzit.com/",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Just Putzit",
+      "operatingSystem": "Web, iOS, Android",
+      "applicationCategory": "SocialNetworkingApplication",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "description": "Meet locals who actually want to go out. Find matches for activities, date nights, and real connections in your city.",
+      "url": "https://justputzit.com",
+    },
+  });
   const { user, isAuthenticated, loading } = useAuth();
   const [, navigate] = useLocation();
   const { data: profile } = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated });

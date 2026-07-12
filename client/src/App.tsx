@@ -34,12 +34,14 @@ import GameLobby from "@/pages/GameLobby";
 import Entertainment from "@/pages/Entertainment";
 import ShoutOut from "@/pages/ShoutOut";
 import AccountVerify from "@/pages/AccountVerify";
+import CityLanding from "@/pages/CityLanding";
+import EventDetail from "@/pages/EventDetail";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { trpc } from "@/lib/trpc";
 
 // Routes that are allowed without account verification
-const PUBLIC_ROUTES = ["/login", "/signup", "/verify", "/verify-account", "/404"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/verify", "/verify-account", "/404", "/city/", "/events/"];
 
 /**
  * Verification gate — runs on every navigation for logged-in users.
@@ -94,6 +96,8 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/verify" component={Verify} />
         <Route path="/verify-account" component={AccountVerify} />
+        <Route path="/city/:citySlug" component={CityLanding} />
+        <Route path="/events/:activityId" component={EventDetail} />
         <Route path="/events" component={Events} />
         <Route path="/game-lobby" component={GameLobby} />
         <Route path="/entertainment" component={Entertainment} />

@@ -370,3 +370,16 @@
 - [x] Add /verify-account route to App.tsx
 - [x] Add gate logic in App.tsx: redirect logged-in unverified users to /verify-account before any protected page
 - [x] Skip gate for /login, /signup, /verify, /verify-account routes
+
+## SEO Infrastructure
+- [x] Create useSEO hook that sets document.title and meta tags dynamically
+- [x] Add Open Graph and Twitter Card meta tags to index.html base
+- [x] Apply useSEO to Home, CityLanding, and public event pages
+- [x] Build CityLanding.tsx page template with local SEO copy
+- [x] Add city routes: /city/:citySlug (e.g. /city/jackson-ms)
+- [x] Add /sitemap.xml server endpoint listing all public pages and city pages
+- [x] Update robots.txt to allow crawling and point to sitemap
+- [x] Add JSON-LD SoftwareApplication structured data to homepage
+- [x] Add JSON-LD LocalBusiness structured data to city landing pages
+- [x] Create public /events/:id page accessible without login for Google indexing
+- [x] Add tRPC publicProcedure for fetching a single event by ID
