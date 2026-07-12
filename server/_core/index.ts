@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerPhotoUploadRoutes } from "../photoUpload";
 import { registerSEORoutes } from "../seo";
+import { scrapeEventsHandler } from "../scheduledScrape";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -40,6 +41,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerPhotoUploadRoutes(app);
   registerSEORoutes(app);
+  // Scheduled jobs (Heartbeat cron callbacks)
+  app.post("/api/scheduled/scrape-events", scrapeEventsHandler);
   // tRPC API
   app.use(
     "/api/trpc",

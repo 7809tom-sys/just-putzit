@@ -2030,3 +2030,95 @@ export async function getAllCampuses() {
   if (!db) return [];
   return db.select().from(campuses).orderBy(campuses.name);
 }
+
+// ─── Community Scraper helpers ────────────────────────────────────────────────
+/** Upsert scraped events from community sources (libraries, universities, etc.).
+ *  Deduplicates by (title, source, eventDate) to avoid flooding the table on
+ *  repeated nightly runs. Returns the count of newly inserted rows.
+ */
+export async function upsertScrapedEvents(events: Array<{
+  title: string;
+  description: string | null;
+  eventDate: Date | null;
+  endDate: Date | null;
+  venueName: string | null;
+  venueAddress: string | null;
+  venueCity: string;
+  category: string;
+  sourceUrl: string;
+  sourceName: string;
+  isFree: boolean;
+  isOnCampus: boolean;
+}>): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  let inserted = 0;
+  for (const ev of events) {
+    if (!ev.title || ev.title.length < 3) continue;
+
+    // Normalize city/state
+    const parts = ev.venueCity.split(",");
+    const city = parts[0]?.trim() ?? ev.venueCity;
+    const state = parts[1]?.trim() ?? "WI";
+
+    // Map sourceName → source enum value
+    const sourceMap: Record<string, string> = {
+      "Milwaukee Public Library": "milwaukee_library",
+      "Waukesha Public Library": "waukesha_library",
+      "UW-Milwaukee": "uwm",
+      "Marquette University": "marquette",
+      "OnMilwaukee": "onmilwaukee",
+    };
+    const source = (sourceMap[ev.sourceName] ?? "scraped") as CommunityEvent["source"];
+
+    // Map scraper category to community_events enum
+    const catMap: Record<string, string> = {
+      bowling: "sports", mini_golf: "sports", kayaking: "outdoors",
+      movies: "arts", dining: "food", coffee: "food",
+      cooking_class: "food", escape_room: "community", wine_tasting: "food",
+      hiking: "outdoors", park: "outdoors", library: "community",
+      church: "community", community_center: "community", sports: "sports",
+      arts: "arts", other: "other",
+    };
+    const category = (catMap[ev.category] ?? "other") as CommunityEvent["category"];
+
+    // Dedup check: same title + source within same day
+    const eventDateStr = ev.eventDate ? ev.eventDate.toISOString().slice(0, 10) : null;
+    const existing = await db
+      .select({ id: communityEvents.id })
+      .from(communityEvents)
+      .where(
+        and(
+          eq(communityEvents.title, ev.title.slice(0, 255)),
+          eq(communityEvents.source, source),
+          eventDateStr
+            ? sql`DATE(${communityEvents.eventDate}) = ${eventDateStr}`
+            : sql`${communityEvents.eventDate} IS NULL`,
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) continue;
+
+    await db.insert(communityEvents).values({
+      title: ev.title.slice(0, 255),
+      description: ev.description?.slice(0, 1000) ?? null,
+      category,
+      eventDate: ev.eventDate ?? new Date(),
+      endDate: ev.endDate ?? undefined,
+      venueName: ev.venueName?.slice(0, 255) ?? null,
+      address: ev.venueAddress ?? null,
+      city,
+      state,
+      isFree: ev.isFree,
+      priceCents: 0,
+      externalUrl: ev.sourceUrl,
+      source,
+      isOnCampus: ev.isOnCampus,
+      isActive: true,
+    });
+    inserted++;
+  }
+  return inserted;
+}

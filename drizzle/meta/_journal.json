@@ -134,6 +134,13 @@
       "when": 1783835163515,
       "tag": "0018_safe_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1783875107343,
+      "tag": "0019_fast_maestro",
+      "breakpoints": true
     }
   ]
 }

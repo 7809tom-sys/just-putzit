@@ -383,3 +383,25 @@
 - [x] Add JSON-LD LocalBusiness structured data to city landing pages
 - [x] Create public /events/:id page accessible without login for Google indexing
 - [x] Add tRPC publicProcedure for fetching a single event by ID
+
+## Meetup + Yelp Integration
+- [ ] Add Meetup GraphQL API fetcher to externalEvents.ts (events by city/lat-lng)
+- [ ] Add Yelp Fusion API fetcher to externalEvents.ts (businesses by category + city)
+- [ ] Add getMeetupEvents and getYelpVenues tRPC procedures
+- [ ] Merge Meetup events + Yelp venues into ActivityBoard Live Events tab
+- [ ] Show source badge (Meetup / Yelp / Ticketmaster / Eventbrite) on each card
+- [ ] Add MEETUP_API_KEY and YELP_API_KEY to secrets
+
+## Milwaukee/Waukesha Community Event Scraper
+- [x] Research and verify scrapable event URLs for Milwaukee/Waukesha libraries, universities, newspapers
+- [x] Install cheerio for HTML parsing
+- [x] Build communityScraper.ts with scrapers for Milwaukee Public Library, Waukesha Public Library, UW-Milwaukee, Marquette University, OnMilwaukee
+- [x] Extend communityEvents source enum in schema.ts (milwaukee_library, waukesha_library, uwm, marquette, onmilwaukee, scraped)
+- [x] Add isOnCampus boolean field to community_events table + apply migration
+- [x] Add upsertScrapedEvents db helper with deduplication logic
+- [x] Build scheduledScrape.ts POST handler for /api/scheduled/scrape-events (Heartbeat cron)
+- [x] Register scrape-events route in server/_core/index.ts
+- [x] Add Community Events tab to ActivityBoard.tsx with source badges (library/university/news)
+- [x] Add Free Events Only and Campus Events Only quick filters
+- [x] Community sources sidebar panel showing all 5 scraped sources
+- [x] 29 tests passing, 0 TypeScript errors
