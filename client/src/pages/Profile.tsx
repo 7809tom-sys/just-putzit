@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2 } from "lucide-react";
+import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
@@ -232,6 +232,18 @@ export default function Profile() {
   return (
     <div className="min-h-screen gradient-warm">
       <div className="container py-8 max-w-2xl">
+        {/* Back navigation */}
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-muted-foreground hover:text-foreground rounded-full"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </Button>
+        </div>
         {/* Profile card */}
         <div className="bg-white rounded-3xl shadow-xl p-8 mb-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">

@@ -47,7 +47,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import { trpc } from "@/lib/trpc";
 
 // Routes that are allowed without account verification
-const PUBLIC_ROUTES = ["/login", "/signup", "/verify", "/verify-account", "/404", "/city/", "/events/"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/verify", "/verify-account", "/404", "/city/", "/events/", "/profile"];
 
 /**
  * Verification gate — runs on every navigation for logged-in users.
@@ -66,8 +66,8 @@ function VerificationGate({ children }: { children: React.ReactNode }) {
     if (!user) return;
     // Don't redirect if already on a public route
     if (PUBLIC_ROUTES.some(r => location.startsWith(r))) return;
-    // If status loaded and not fully verified, redirect
-    if (status && (!status.passkeyVerified || !status.gpsPhotoVerified)) {
+    // Only block if GPS photo is not verified (passkey is optional — not all devices support it)
+    if (status && !status.gpsPhotoVerified) {
       navigate("/verify-account");
     }
   }, [user, status, location, navigate]);

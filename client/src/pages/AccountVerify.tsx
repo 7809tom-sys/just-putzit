@@ -180,6 +180,17 @@ export default function AccountVerify() {
             <p className="text-xs text-gray-400 text-center mt-3">
               Your biometric data never leaves your device. We only store a cryptographic key.
             </p>
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400 text-center mb-2">On a PC or biometrics not available?</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-gray-500 hover:text-gray-700 text-xs"
+                onClick={() => { setPasskeyDone(true); setStep(2); }}
+              >
+                Skip biometric — continue to location step
+              </Button>
+            </div>
           </div>
         )}
 
@@ -264,6 +275,17 @@ export default function AccountVerify() {
             <p className="text-xs text-gray-400 text-center mt-3">
               On desktop, upload any recent photo from your phone. On mobile, tap to open your camera.
             </p>
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400 text-center mb-2">Can't upload a GPS photo right now?</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-gray-500 hover:text-gray-700 text-xs"
+                onClick={() => navigate("/")}
+              >
+                Skip for now — enter the app
+              </Button>
+            </div>
           </div>
         )}
 
