@@ -590,7 +590,7 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
         </div>
 
         {/* Identity completion prompt */}
-        {(!((profile as any)?.gender) || !((profile as any)?.sexualOrientation) || !((profile as any)?.birthdate)) && (
+        {(!((profile as any)?.gender) || !((profile as any)?.sexualOrientation) || !((profile as any)?.birthDate)) && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center gap-3">
             <span className="text-2xl">👤</span>
             <div className="flex-1">

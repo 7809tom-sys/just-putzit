@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   int,
   json,
   mysqlEnum,
@@ -77,7 +78,7 @@ export const userProfiles = mysqlTable("user_profiles", {
   locationVerified: boolean("locationVerified").notNull().default(false),
   gender: mysqlEnum("gender", ["man", "woman", "non_binary", "other", "prefer_not_to_say"]),
   sexualOrientation: mysqlEnum("sexualOrientation", ["straight", "gay", "lesbian", "bisexual", "pansexual", "asexual", "queer", "other", "prefer_not_to_say"]),
-  birthdate: timestamp("birthdate"),
+  birthDate: date("birth_date"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -1597,16 +1597,21 @@ export async function deleteProfilePhoto(photoId: number, userId: number) {
 export async function updateProfileIdentity(userId: number, data: {
   gender?: string;
   sexualOrientation?: string;
-  birthdate?: Date;
+  birthDate?: string; // YYYY-MM-DD format
 }) {
   const db = await getDb();
   if (!db) return;
   const updateData: Record<string, unknown> = {};
   if (data.gender !== undefined) updateData.gender = data.gender;
   if (data.sexualOrientation !== undefined) updateData.sexualOrientation = data.sexualOrientation;
-  if (data.birthdate !== undefined) updateData.birthdate = data.birthdate;
+  if (data.birthDate !== undefined) updateData.birthDate = data.birthDate;
   if (Object.keys(updateData).length === 0) return;
-  await db.update(userProfiles).set(updateData as any).where(eq(userProfiles.userId, userId));
+  try {
+    await db.update(userProfiles).set(updateData as any).where(eq(userProfiles.userId, userId));
+  } catch (err: any) {
+    console.error('[updateProfileIdentity] DB error:', err?.message || err);
+    throw new Error('Failed to update profile: ' + (err?.message || 'Unknown DB error'));
+  }
 }
 
 // ─── Admin: Photo Moderation ──────────────────────────────────────────────────

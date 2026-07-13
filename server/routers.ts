@@ -323,7 +323,7 @@ export const appRouter = router({
         z.object({
           gender: z.enum(["man", "woman", "non_binary", "other", "prefer_not_to_say"]).optional(),
           sexualOrientation: z.enum(["straight", "gay", "lesbian", "bisexual", "pansexual", "asexual", "queer", "other", "prefer_not_to_say"]).optional(),
-          birthdate: z.string().optional(), // ISO date string
+          birthDate: z.string().optional(), // YYYY-MM-DD date string
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -331,7 +331,7 @@ export const appRouter = router({
         await updateProfileIdentity(ctx.user.id, {
           gender: input.gender,
           sexualOrientation: input.sexualOrientation,
-          birthdate: input.birthdate ? new Date(input.birthdate) : undefined,
+          birthDate: input.birthDate,
         });
         return getProfileByUserId(ctx.user.id);
       }),
@@ -400,7 +400,7 @@ Rules:
       // Check if we're missing identity fields
       const missingGender = !profile?.gender;
       const missingOrientation = !profile?.sexualOrientation;
-      const missingBirthdate = !profile?.birthdate;
+      const missingBirthdate = !profile?.birthDate;
 
       let greeting: string;
       if (interviewCount === 0) {
@@ -441,20 +441,20 @@ Rules:
         const profileIdentity = {
           gender: (profile as any)?.gender,
           sexualOrientation: (profile as any)?.sexualOrientation,
-          birthdate: (profile as any)?.birthdate,
+          birthDate: (profile as any)?.birthDate,
         };
 
         // Determine what profile fields are still missing to guide Sally's questions
         const missingFields: string[] = [];
         if (!profileIdentity.gender) missingFields.push("gender identity");
         if (!profileIdentity.sexualOrientation) missingFields.push("sexual orientation");
-        if (!profileIdentity.birthdate) missingFields.push("age or birth year");
+        if (!profileIdentity.birthDate) missingFields.push("age or birth year");
         const traitFields = ["hobbies", "favoriteActivities", "personalityKeywords", "dreamVacation", "favoriteFood", "morningOrNight", "idealWeekend", "lookingFor", "idealDate"];
         const missingTraits = traitFields.filter(f => !(existingTraits as any)[f]);
         if (missingTraits.length > 0) missingFields.push(...missingTraits.slice(0, 3).map(f => f.replace(/([A-Z])/g, ' $1').toLowerCase()));
 
         const profileCompleteness = Math.round(
-          ((traitFields.filter(f => !!(existingTraits as any)[f]).length + (profileIdentity.gender ? 1 : 0) + (profileIdentity.sexualOrientation ? 1 : 0) + (profileIdentity.birthdate ? 1 : 0)) /
+          ((traitFields.filter(f => !!(existingTraits as any)[f]).length + (profileIdentity.gender ? 1 : 0) + (profileIdentity.sexualOrientation ? 1 : 0) + (profileIdentity.birthDate ? 1 : 0)) /
           (traitFields.length + 3)) * 100
         );
 
@@ -534,7 +534,7 @@ Rules:
           }
 
           // Save identity fields if newly discovered
-          if (identityExtracted.gender || identityExtracted.sexualOrientation || identityExtracted.birthdate) {
+          if (identityExtracted.gender || identityExtracted.sexualOrientation || identityExtracted.birthDate) {
             await updateProfileIdentity(ctx.user.id, identityExtracted);
           }
         } catch (err) {
@@ -2725,7 +2725,7 @@ async function extractTraitsFromInterview(messages: InterviewMessage[], existing
 async function extractIdentityFromInterview(messages: InterviewMessage[]): Promise<{
   gender?: string;
   sexualOrientation?: string;
-  birthdate?: Date;
+  birthDate?: string; // YYYY-MM-DD
 }> {
   const conversation = messages.map(m => `${m.role}: ${m.content}`).join("\n");
   const genderValues = ["man", "woman", "non_binary", "other", "prefer_not_to_say"];
@@ -2760,12 +2760,13 @@ async function extractIdentityFromInterview(messages: InterviewMessage[]): Promi
   const content = response.choices[0]?.message?.content as string | undefined;
   try {
     const parsed = JSON.parse(typeof content === "string" ? content : "{}");
-    const result: { gender?: string; sexualOrientation?: string; birthdate?: Date } = {};
+    const result: { gender?: string; sexualOrientation?: string; birthDate?: string } = {};
     if (genderValues.includes(parsed.gender)) result.gender = parsed.gender;
     if (orientationValues.includes(parsed.sexualOrientation)) result.sexualOrientation = parsed.sexualOrientation;
     if (parsed.birthdate) {
+      // Accept YYYY-MM-DD or ISO string, store as YYYY-MM-DD
       const d = new Date(parsed.birthdate);
-      if (!isNaN(d.getTime())) result.birthdate = d;
+      if (!isNaN(d.getTime())) result.birthDate = d.toISOString().split('T')[0];
     }
     return result;
   } catch {

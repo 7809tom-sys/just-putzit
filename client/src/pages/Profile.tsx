@@ -167,9 +167,9 @@ export default function Profile() {
   const traits = profile?.traits as any;
   const profileAny = profile as any;
 
-  // Compute age from birthdate
-  const age = profileAny?.birthdate
-    ? Math.floor((Date.now() - new Date(profileAny.birthdate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+  // Compute age from birth_date (YYYY-MM-DD string)
+  const age = profileAny?.birthDate
+    ? Math.floor((Date.now() - new Date(profileAny.birthDate + 'T12:00:00Z').getTime()) / (365.25 * 24 * 60 * 60 * 1000))
     : null;
 
   const genderLabel: Record<string, string> = {
@@ -203,7 +203,7 @@ export default function Profile() {
   function openIdentityDialog() {
     setGender(profileAny?.gender || "");
     setOrientation(profileAny?.sexualOrientation || "");
-    setBirthYear(profileAny?.birthdate ? String(new Date(profileAny.birthdate).getFullYear()) : "");
+    setBirthYear(profileAny?.birthDate ? profileAny.birthDate.split('-')[0] : "");
     setIdentityOpen(true);
   }
 
@@ -221,9 +221,9 @@ export default function Profile() {
     }
     const monthNum = String(parseInt(birthMonth)).padStart(2, '0');
     const dayNum = String(parseInt(birthDay)).padStart(2, '0');
-    const birthdateStr = `${birthYear}-${monthNum}-${dayNum}T12:00:00.000Z`;
+    const birthDateStr = `${birthYear}-${monthNum}-${dayNum}`;
     updateBirthday.mutate({
-      birthdate: birthdateStr,
+      birthDate: birthDateStr,
     });
   }
 
@@ -296,14 +296,27 @@ export default function Profile() {
                   <Edit2 className="w-3 h-3 mr-1" />
                   {(!profileAny?.gender || !profileAny?.sexualOrientation) ? "Add identity info" : "Edit identity"}
                 </Button>
+                {profileAny?.birthDate && (
+                  <Badge className="rounded-full bg-pink-50 text-pink-700 border-0">
+                    🎂 {new Date(profileAny.birthDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                  </Badge>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-6 px-2 text-xs text-muted-foreground rounded-full"
-                  onClick={() => setBirthdayOpen(true)}
+                  onClick={() => {
+                    if (profileAny?.birthDate) {
+                      const [y, m, d] = profileAny.birthDate.split('-');
+                      setBirthYear(y || '');
+                      setBirthMonth(String(parseInt(m || '0')));
+                      setBirthDay(String(parseInt(d || '0')));
+                    }
+                    setBirthdayOpen(true);
+                  }}
                 >
                   <Edit2 className="w-3 h-3 mr-1" />
-                  {!profileAny?.birthdate ? "Add birthday" : "Edit birthday"}
+                  {!profileAny?.birthDate ? "Add birthday" : "Edit birthday"}
                 </Button>
               </div>
             </div>
@@ -707,9 +720,9 @@ export default function Profile() {
             <Button
               className="w-full gradient-sally text-white border-0 rounded-xl btn-scale"
               onClick={saveBirthday}
-              disabled={updateIdentity.isPending}
+              disabled={updateBirthday.isPending}
             >
-              {updateIdentity.isPending ? "Saving..." : "Save Birthday"}
+              {updateBirthday.isPending ? "Saving..." : "Save Birthday"}
             </Button>
           </div>
         </DialogContent>
