@@ -22,14 +22,41 @@ export default function Profile() {
   const [, navigate] = useLocation();
   const { data: profile, isLoading, refetch: refetchProfile } = trpc.profile.get.useQuery();
   const { data: photos, refetch: refetchPhotos } = trpc.profile.getPhotos.useQuery();
-  const setPrimary = trpc.profile.setPrimaryPhoto.useMutation({ onSuccess: () => refetchPhotos() });
-  const deletePhoto = trpc.profile.deletePhoto.useMutation({ onSuccess: () => refetchPhotos() });
+  const setPrimary = trpc.profile.setPrimaryPhoto.useMutation({
+    onSuccess: () => {
+      refetchPhotos();
+      toast.success("✨ Primary photo updated!", {
+        description: "This photo is now your profile picture.",
+        duration: 2000,
+      });
+    },
+  });
+  const deletePhoto = trpc.profile.deletePhoto.useMutation({
+    onSuccess: () => {
+      refetchPhotos();
+      toast.success("✨ Photo deleted!", {
+        description: "The photo has been removed from your profile.",
+        duration: 2000,
+      });
+    },
+  });
   const utils = trpc.useUtils();
   const updateIdentity = trpc.profile.updateIdentity.useMutation({
     onSuccess: (data) => {
       utils.profile.get.invalidate();
       utils.profile.getPhotos.invalidate();
-      toast.success("Identity saved!");
+      // Show specific success message based on what was saved
+      const savedItems = [];
+      if (gender) savedItems.push("Gender");
+      if (orientation) savedItems.push("Orientation");
+      if (birthYear) savedItems.push("Birth year");
+      const message = savedItems.length > 0 
+        ? `✨ ${savedItems.join(", ")} saved!`
+        : "✨ Identity saved!";
+      toast.success(message, {
+        description: "Your profile has been updated.",
+        duration: 3000,
+      });
       setIdentityOpen(false);
     },
     onError: (err) => {
@@ -54,7 +81,10 @@ export default function Profile() {
   const updateBio = trpc.profile.update.useMutation({
     onSuccess: () => {
       utils.profile.get.invalidate();
-      toast.success("Bio saved!");
+      toast.success("✨ Bio saved!", {
+        description: "Your bio has been updated.",
+        duration: 3000,
+      });
       setBioEditOpen(false);
     },
     onError: (err) => toast.error("Failed to save bio: " + err.message),
