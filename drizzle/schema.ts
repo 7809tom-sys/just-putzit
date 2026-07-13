@@ -517,7 +517,7 @@ export const communityEvents = mysqlTable("community_events", {
   priceCents: int("priceCents").notNull().default(0),
   externalUrl: text("externalUrl"),
   imageUrl: text("imageUrl"),
-  source: mysqlEnum("source", ["community", "eventbrite", "admin", "milwaukee_library", "waukesha_library", "uwm", "marquette", "onmilwaukee", "scraped"]).notNull().default("admin"),
+  source: mysqlEnum("source", ["community", "eventbrite", "admin", "milwaukee_library", "waukesha_library", "uwm", "marquette", "onmilwaukee", "scraped", "jsonline", "milwaukee_journal", "waukesha_freeman", "newspaper"]).notNull().default("admin"),
   isOnCampus: boolean("isOnCampus").notNull().default(false),
   externalId: varchar("externalId", { length: 128 }),
   postedByUserId: int("postedByUserId"),

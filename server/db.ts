@@ -2090,6 +2090,11 @@ export async function upsertScrapedEvents(events: Array<{
       "UW-Milwaukee": "uwm",
       "Marquette University": "marquette",
       "OnMilwaukee": "onmilwaukee",
+      "Milwaukee Journal Sentinel": "jsonline",
+      "Journal Sentinel": "jsonline",
+      "jsonline": "jsonline",
+      "Waukesha Freeman": "waukesha_freeman",
+      "Milwaukee Journal": "milwaukee_journal",
     };
     const source = (sourceMap[ev.sourceName] ?? "scraped") as CommunityEvent["source"];
 

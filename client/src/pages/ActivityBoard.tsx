@@ -43,11 +43,19 @@ const SOURCE_META: Record<string, { label: string; colorClass: string; icon: str
   uwm: { label: "UW-Milwaukee", colorClass: "bg-yellow-100 text-yellow-800", icon: "🎓" },
   marquette: { label: "Marquette", colorClass: "bg-yellow-100 text-yellow-800", icon: "🎓" },
   onmilwaukee: { label: "OnMilwaukee", colorClass: "bg-green-100 text-green-700", icon: "📰" },
+  jsonline: { label: "Journal Sentinel", colorClass: "bg-red-100 text-red-700", icon: "📰" },
+  milwaukee_journal: { label: "Milwaukee Journal", colorClass: "bg-red-100 text-red-700", icon: "📰" },
+  waukesha_freeman: { label: "Waukesha Freeman", colorClass: "bg-red-100 text-red-700", icon: "📰" },
+  newspaper: { label: "Local News", colorClass: "bg-red-100 text-red-700", icon: "📰" },
   community: { label: "Community", colorClass: "bg-purple-100 text-purple-700", icon: "🤝" },
   eventbrite: { label: "Eventbrite", colorClass: "bg-orange-100 text-orange-700", icon: "🎟️" },
   scraped: { label: "Local", colorClass: "bg-gray-100 text-gray-600", icon: "📍" },
   admin: { label: "Just Putzit", colorClass: "bg-primary/10 text-primary", icon: "✅" },
 };
+
+// Source groups for quick filtering
+const LIBRARY_SOURCES = ["milwaukee_library", "waukesha_library"];
+const NEWSPAPER_SOURCES = ["jsonline", "milwaukee_journal", "waukesha_freeman", "newspaper", "onmilwaukee"];
 
 export default function ActivityBoard() {
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -57,6 +65,8 @@ export default function ActivityBoard() {
   const [activeTab, setActiveTab] = useState<"activities" | "community">("activities");
   const [showFreeOnly, setShowFreeOnly] = useState(false);
   const [showCampusOnly, setShowCampusOnly] = useState(false);
+  const [showLibrariesOnly, setShowLibrariesOnly] = useState(false);
+  const [showNewspapersOnly, setShowNewspapersOnly] = useState(false);
 
   const { data: profile } = trpc.profile.get.useQuery();
   const userCity = profile?.city ?? undefined;
@@ -125,7 +135,10 @@ export default function ActivityBoard() {
       e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (e.description ?? "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCampus = !showCampusOnly || (e as any).isOnCampus;
-    return matchesSearch && matchesCampus;
+    const src = (e as any).source ?? "admin";
+    const matchesLibrary = !showLibrariesOnly || LIBRARY_SOURCES.includes(src);
+    const matchesNewspaper = !showNewspapersOnly || NEWSPAPER_SOURCES.includes(src);
+    return matchesSearch && matchesCampus && matchesLibrary && matchesNewspaper;
   });
 
   const categoryEmoji: Record<string, string> = Object.fromEntries(
@@ -267,6 +280,26 @@ export default function ActivityBoard() {
               >
                 🎓 Campus Events Only
               </button>
+              <button
+                onClick={() => { setShowLibrariesOnly(v => !v); setShowNewspapersOnly(false); }}
+                className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  showLibrariesOnly
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-400"
+                }`}
+              >
+                📚 Libraries Only
+              </button>
+              <button
+                onClick={() => { setShowNewspapersOnly(v => !v); setShowLibrariesOnly(false); }}
+                className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  showNewspapersOnly
+                    ? "bg-red-500 text-white border-red-500"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-red-400"
+                }`}
+              >
+                📰 Newspapers Only
+              </button>
             </div>
           </div>
         )}
@@ -406,7 +439,7 @@ export default function ActivityBoard() {
                     <div className="text-6xl mb-4">🏛️</div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">Community Events Coming Soon</h3>
                     <p className="text-gray-500 max-w-sm mx-auto">
-                      Just Putzit scrapes local libraries, universities, and news sites nightly. Check back tomorrow for fresh events!
+                      Just Putzit scrapes local libraries, universities, and newspapers nightly. Check back tomorrow for fresh events!
                     </p>
                     <div className="mt-6 grid grid-cols-2 gap-3 max-w-xs mx-auto text-sm text-gray-600">
                       {[
@@ -414,8 +447,8 @@ export default function ActivityBoard() {
                         { icon: "📚", text: "Waukesha Public Library" },
                         { icon: "🎓", text: "UW-Milwaukee" },
                         { icon: "🎓", text: "Marquette University" },
-                        { icon: "📰", text: "OnMilwaukee" },
-                        { icon: "🔜", text: "More coming soon" },
+                        { icon: "📰", text: "Milwaukee Journal Sentinel" },
+                        { icon: "📰", text: "Waukesha Freeman" },
                       ].map((s, i) => (
                         <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
                           <span>{s.icon}</span>
@@ -527,6 +560,8 @@ export default function ActivityBoard() {
                     { icon: "🎓", name: "UW-Milwaukee", type: "University" },
                     { icon: "🎓", name: "Marquette University", type: "University" },
                     { icon: "📰", name: "OnMilwaukee", type: "News" },
+                    { icon: "📰", name: "Milwaukee Journal Sentinel", type: "Newspaper" },
+                    { icon: "📰", name: "Waukesha Freeman", type: "Newspaper" },
                   ].map((s, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
