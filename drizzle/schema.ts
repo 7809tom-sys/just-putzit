@@ -148,8 +148,8 @@ export const chatMessages = mysqlTable("chat_messages", {
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 
-// ─── Game question type ───────────────────────────────────────────────────────
-export type GameQuestion = {
+// ─── Match game question type (used for newlywed/two-truths/this-or-that games) ─
+export type MatchGameQuestion = {
   id: string;
   question: string;
   targetUserId: number;
@@ -172,7 +172,7 @@ export const gameSessions = mysqlTable("game_sessions", {
   id: int("id").autoincrement().primaryKey(),
   matchId: int("matchId").notNull(),
   gameType: mysqlEnum("gameType", ["newlywed", "two_truths", "this_or_that"]).notNull().default("newlywed"),
-  questions: json("questions").$type<GameQuestion[]>().notNull().$default(() => []),
+  questions: json("questions").$type<MatchGameQuestion[]>().notNull().$default(() => []),
   status: mysqlEnum("status", ["waiting", "in_progress", "completed"]).notNull().default("waiting"),
   user1Score: int("user1Score").notNull().default(0),
   user2Score: int("user2Score").notNull().default(0),
@@ -819,16 +819,28 @@ export const jeopardyCategories = mysqlTable("jeopardy_categories", {
 });
 export type JeopardyCategory = typeof jeopardyCategories.$inferSelect;
 
-export const jeopardyQuestions = mysqlTable("jeopardy_questions", {
+// Unified question pool — shared by both Jeopardy and Trivia Pursuit
+export const gameQuestions = mysqlTable("game_questions", {
   id: int("id").autoincrement().primaryKey(),
   categoryId: int("categoryId").notNull(),
-  clue: text("clue").notNull(),
-  answer: varchar("answer", { length: 300 }).notNull(),
-  value: int("value").notNull(), // 200, 400, 600, 800, 1000
+  // Jeopardy fields
+  clue: text("clue"),                                        // Jeopardy clue text (also used as question text)
+  answer: varchar("answer", { length: 300 }),                // Jeopardy free-text answer
+  value: int("value").default(400),                         // Jeopardy point value (200/400/600/800/1000)
+  // Trivia Pursuit fields
+  optionA: varchar("optionA", { length: 300 }),
+  optionB: varchar("optionB", { length: 300 }),
+  optionC: varchar("optionC", { length: 300 }),
+  optionD: varchar("optionD", { length: 300 }),
+  correctAnswer: mysqlEnum("correctAnswer", ["A", "B", "C", "D"]),
+  // Shared fields
   difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull().default("medium"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
-export type JeopardyQuestion = typeof jeopardyQuestions.$inferSelect;
+export type GameQuestion = typeof gameQuestions.$inferSelect;
+// Legacy aliases so existing code keeps compiling while we migrate
+export const jeopardyQuestions = gameQuestions;
+export type JeopardyQuestion = GameQuestion;
 
 export const jeopardyRooms = mysqlTable("jeopardy_rooms", {
   id: int("id").autoincrement().primaryKey(),
@@ -879,19 +891,9 @@ export const triviaPursuitCategories = mysqlTable("trivia_pursuit_categories", {
 });
 export type TriviaPursuitCategory = typeof triviaPursuitCategories.$inferSelect;
 
-export const triviaPursuitQuestions = mysqlTable("trivia_pursuit_questions", {
-  id: int("id").autoincrement().primaryKey(),
-  categoryId: int("categoryId").notNull(),
-  question: text("question").notNull(),
-  optionA: varchar("optionA", { length: 300 }).notNull(),
-  optionB: varchar("optionB", { length: 300 }).notNull(),
-  optionC: varchar("optionC", { length: 300 }).notNull(),
-  optionD: varchar("optionD", { length: 300 }).notNull(),
-  correctAnswer: mysqlEnum("correctAnswer", ["A", "B", "C", "D"]).notNull(),
-  difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull().default("medium"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-export type TriviaPursuitQuestion = typeof triviaPursuitQuestions.$inferSelect;
+// Legacy alias — Trivia Pursuit now queries game_questions
+export const triviaPursuitQuestions = gameQuestions;
+export type TriviaPursuitQuestion = GameQuestion;
 
 export const triviaPursuitRooms = mysqlTable("trivia_pursuit_rooms", {
   id: int("id").autoincrement().primaryKey(),

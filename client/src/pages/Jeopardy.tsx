@@ -118,7 +118,7 @@ export default function Jeopardy() {
   const handleSelectClue = async (clueId: number, value: number) => {
     try {
       const result = await selectClueMutation.mutateAsync({ roomId: roomId!, clueId });
-      setCurrentClue({ clueId, clue: result.clue, value });
+      setCurrentClue({ clueId, clue: result.clue ?? "", value });
       setUserAnswer("");
       setAnswerRevealed(false);
     } catch (error) {

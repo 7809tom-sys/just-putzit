@@ -59,7 +59,7 @@ import {
   type InsertCommunityEvent,
   type ProfileTraits,
   type InterviewMessage,
-  type GameQuestion,
+  type MatchGameQuestion as GameQuestion,
   type ConciergePlanItem,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";

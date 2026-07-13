@@ -174,7 +174,7 @@ import {
   addTripItem,
   removeTripItem,
 } from "./db";
-import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
+import type { ProfileTraits, InterviewMessage, MatchGameQuestion as GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import { familyProfiles, communityEvents } from "../drizzle/schema";
 import { and, eq, ne, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";

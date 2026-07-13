@@ -171,8 +171,9 @@ export const jeopardyRouter = router({
       }
 
       // Simple answer matching (can be improved with fuzzy matching)
-      const isCorrect = input.answer.toLowerCase().trim() === clue.answer.toLowerCase().trim();
-      const pointsAwarded = isCorrect ? clue.value : 0;
+      const correctAns = clue.answer ?? "";
+      const isCorrect = input.answer.toLowerCase().trim() === correctAns.toLowerCase().trim();
+      const pointsAwarded = isCorrect ? (clue.value ?? 400) : 0;
 
       // Save answer
       await db.insert(jeopardyAnswers).values({

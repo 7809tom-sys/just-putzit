@@ -126,7 +126,7 @@ export const triviaPursuitRouter = router({
         gameCode: room.gameCode,
         status: room.status,
         players: players.map((p) => ({ userId: p.userId, score: p.score, correctAnswers: p.correctAnswers, isReady: p.isReady })),
-        questions: questions.map((q) => ({ id: q.id, categoryId: q.categoryId, question: q.question, answered: false })),
+        questions: questions.map((q) => ({ id: q.id, categoryId: q.categoryId, question: q.clue ?? "", answered: false })),
         currentQuestionIndex: room.currentQuestionIndex,
       };
     }),
@@ -167,13 +167,13 @@ export const triviaPursuitRouter = router({
 
       return {
         questionId: question.id,
-        question: question.question,
-        optionA: question.optionA,
-        optionB: question.optionB,
-        optionC: question.optionC,
-        optionD: question.optionD,
+        question: question.clue ?? "",
+        optionA: question.optionA ?? "",
+        optionB: question.optionB ?? "",
+        optionC: question.optionC ?? "",
+        optionD: question.optionD ?? "",
         // Client will use TTS on this question text
-        ttsText: question.question,
+        ttsText: question.clue ?? "",
       };
     }),
 
@@ -195,7 +195,7 @@ export const triviaPursuitRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Question not found" });
       }
 
-      const isCorrect = input.answer === question.correctAnswer;
+      const isCorrect = input.answer === (question.correctAnswer ?? "");
       const pointsAwarded = isCorrect ? 100 : 0;
 
       // Save answer
@@ -225,7 +225,7 @@ export const triviaPursuitRouter = router({
         }
       }
 
-      return { isCorrect, pointsAwarded, correctAnswer: question.correctAnswer };
+      return { isCorrect, pointsAwarded, correctAnswer: question.correctAnswer ?? null };
     }),
 
   // Send chat message
