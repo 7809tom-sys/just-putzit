@@ -805,3 +805,138 @@ export const gameChatMessages = mysqlTable("game_chat_messages", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type GameChatMessage = typeof gameChatMessages.$inferSelect;
+
+
+// ─── Jeopardy Game Tables ─────────────────────────────────────────────────────
+export const jeopardyCategories = mysqlTable("jeopardy_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  emoji: varchar("emoji", { length: 10 }),
+  color: varchar("color", { length: 20 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type JeopardyCategory = typeof jeopardyCategories.$inferSelect;
+
+export const jeopardyQuestions = mysqlTable("jeopardy_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  categoryId: int("categoryId").notNull(),
+  clue: text("clue").notNull(),
+  answer: varchar("answer", { length: 300 }).notNull(),
+  value: int("value").notNull(), // 200, 400, 600, 800, 1000
+  difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull().default("medium"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type JeopardyQuestion = typeof jeopardyQuestions.$inferSelect;
+
+export const jeopardyRooms = mysqlTable("jeopardy_rooms", {
+  id: int("id").autoincrement().primaryKey(),
+  gameCode: varchar("gameCode", { length: 8 }).notNull().unique(),
+  hostUserId: int("hostUserId").notNull(),
+  status: mysqlEnum("status", ["waiting", "in_progress", "completed"]).notNull().default("waiting"),
+  maxPlayers: int("maxPlayers").notNull().default(10),
+  categoryIds: json("categoryIds").$type<number[]>().notNull(), // selected categories
+  currentClueIndex: int("currentClueIndex").notNull().default(0),
+  clueOrder: json("clueOrder").$type<number[]>().default([]), // shuffled clue IDs
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+});
+export type JeopardyRoom = typeof jeopardyRooms.$inferSelect;
+
+export const jeopardyRoomPlayers = mysqlTable("jeopardy_room_players", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  userId: int("userId").notNull(),
+  score: int("score").notNull().default(0),
+  isReady: boolean("isReady").notNull().default(false),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+});
+export type JeopardyRoomPlayer = typeof jeopardyRoomPlayers.$inferSelect;
+
+export const jeopardyAnswers = mysqlTable("jeopardy_answers", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  userId: int("userId").notNull(),
+  questionId: int("questionId").notNull(),
+  answer: varchar("answer", { length: 300 }).notNull(),
+  isCorrect: boolean("isCorrect").notNull().default(false),
+  pointsAwarded: int("pointsAwarded").notNull().default(0),
+  answeredAtMs: int("answeredAtMs").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type JeopardyAnswer = typeof jeopardyAnswers.$inferSelect;
+
+// ─── Trivia Pursuit Game Tables ───────────────────────────────────────────────
+export const triviaPursuitCategories = mysqlTable("trivia_pursuit_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  emoji: varchar("emoji", { length: 10 }),
+  color: varchar("color", { length: 20 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TriviaPursuitCategory = typeof triviaPursuitCategories.$inferSelect;
+
+export const triviaPursuitQuestions = mysqlTable("trivia_pursuit_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  categoryId: int("categoryId").notNull(),
+  question: text("question").notNull(),
+  optionA: varchar("optionA", { length: 300 }).notNull(),
+  optionB: varchar("optionB", { length: 300 }).notNull(),
+  optionC: varchar("optionC", { length: 300 }).notNull(),
+  optionD: varchar("optionD", { length: 300 }).notNull(),
+  correctAnswer: mysqlEnum("correctAnswer", ["A", "B", "C", "D"]).notNull(),
+  difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull().default("medium"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TriviaPursuitQuestion = typeof triviaPursuitQuestions.$inferSelect;
+
+export const triviaPursuitRooms = mysqlTable("trivia_pursuit_rooms", {
+  id: int("id").autoincrement().primaryKey(),
+  gameCode: varchar("gameCode", { length: 8 }).notNull().unique(),
+  hostUserId: int("hostUserId").notNull(),
+  status: mysqlEnum("status", ["waiting", "in_progress", "completed"]).notNull().default("waiting"),
+  maxPlayers: int("maxPlayers").notNull().default(10),
+  categoryIds: json("categoryIds").$type<number[]>().notNull(),
+  currentQuestionIndex: int("currentQuestionIndex").notNull().default(0),
+  questionIds: json("questionIds").$type<number[]>().default([]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+});
+export type TriviaPursuitRoom = typeof triviaPursuitRooms.$inferSelect;
+
+export const triviaPursuitRoomPlayers = mysqlTable("trivia_pursuit_room_players", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  userId: int("userId").notNull(),
+  score: int("score").notNull().default(0),
+  correctAnswers: int("correctAnswers").notNull().default(0),
+  isReady: boolean("isReady").notNull().default(false),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+});
+export type TriviaPursuitRoomPlayer = typeof triviaPursuitRoomPlayers.$inferSelect;
+
+export const triviaPursuitAnswers = mysqlTable("trivia_pursuit_answers", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  userId: int("userId").notNull(),
+  questionId: int("questionId").notNull(),
+  answer: mysqlEnum("answer", ["A", "B", "C", "D"]).notNull(),
+  isCorrect: boolean("isCorrect").notNull().default(false),
+  answeredAtMs: int("answeredAtMs").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TriviaPursuitAnswer = typeof triviaPursuitAnswers.$inferSelect;
+
+// Update gameChatMessages to support new game types
+export const gameChatMessagesUpdated = mysqlTable("game_chat_messages_v2", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  roomType: mysqlEnum("roomType", ["trivia", "jeopardy", "trivia_pursuit", "match_game"]).notNull().default("trivia"),
+  userId: int("userId").notNull(),
+  content: varchar("content", { length: 500 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type GameChatMessageV2 = typeof gameChatMessagesUpdated.$inferSelect;

@@ -6,6 +6,8 @@ import { TRPCError } from "@trpc/server";
 import { sdk } from "./_core/sdk";
 import { invokeLLM } from "./_core/llm";
 import { z } from "zod";
+import { jeopardyRouter } from "./routers/jeopardy";
+import { triviaPursuitRouter } from "./routers/trivia-pursuit";
 import {
   getOrCreateProfile,
   updateProfile,
@@ -2646,6 +2648,9 @@ Return JSON with questions array, each having optionA and optionB.`,
         return { success: true };
       }),
   }),
+
+  jeopardy: jeopardyRouter,
+  triviaPursuit: triviaPursuitRouter,
 });
 
 export type AppRouter = typeof appRouter;

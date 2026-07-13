@@ -485,3 +485,31 @@
 - [x] Add navigation links to MobileBottomNav for Family and Trip Planner
 - [x] Vitest tests for family and trip planner procedures (29 tests passing)
 - [x] Checkpoint and deliver
+
+
+## Phase 27: Jeopardy & Trivia Pursuit Games
+- [x] Create Jeopardy router with 8 procedures (createRoom, joinRoom, selectClue, submitAnswer, chat, getScoreboard, startGame, endGame)
+- [x] Create Trivia Pursuit router with 9 procedures (createRoom, joinRoom, nextQuestion, submitAnswer, chat, getScoreboard, startGame, endGame)
+- [x] Build Jeopardy frontend page with TTS speaker icon support
+- [x] Build Trivia Pursuit frontend page with TTS speaker icon support
+- [x] Add routes to App.tsx (/jeopardy, /trivia-pursuit)
+- [x] Integrate both games into GamesHub with cards
+- [x] Add navigation links to MobileBottomNav
+- [x] Create seed script with 1000 questions (500 Jeopardy + 500 Trivia)
+- [ ] Seed questions into database (connection issues - retry later)
+- [ ] Add game_results and player_stats tracking tables
+- [ ] Update routers to record game stats
+- [ ] Extract knowledge traits from game performance
+- [ ] Add game stats section to Profile page
+- [ ] Update matching algorithm to factor in knowledge compatibility
+- [ ] Write vitest tests for game stats and matching
+
+## Phase 28: Game Stats & Knowledge-Based Matching
+- [ ] Retry seeding 1000 questions into database
+- [ ] Add game_results and player_stats tracking tables
+- [ ] Update Jeopardy/Trivia Pursuit routers to record game stats
+- [ ] Extract knowledge traits from game performance
+- [ ] Add game stats section to Profile page
+- [ ] Update matching algorithm to factor in knowledge compatibility
+- [ ] Write vitest tests for game stats and matching
+- [ ] Checkpoint and deliver
