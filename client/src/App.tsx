@@ -36,6 +36,8 @@ import ShoutOut from "@/pages/ShoutOut";
 import AccountVerify from "@/pages/AccountVerify";
 import CityLanding from "@/pages/CityLanding";
 import EventDetail from "@/pages/EventDetail";
+import TriviaGame from "@/pages/TriviaGame";
+import GamesHub from "@/pages/GamesHub";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { trpc } from "@/lib/trpc";
@@ -98,6 +100,9 @@ function Router() {
         <Route path="/verify-account" component={AccountVerify} />
         <Route path="/city/:citySlug" component={CityLanding} />
         <Route path="/events/:activityId" component={EventDetail} />
+        <Route path="/trivia" component={TriviaGame} />
+        <Route path="/games-hub" component={GamesHub} />
+        <Route path="/games-hub/:gameId" component={GamesHub} />
         <Route path="/events" component={Events} />
         <Route path="/game-lobby" component={GameLobby} />
         <Route path="/entertainment" component={Entertainment} />

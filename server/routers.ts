@@ -142,6 +142,35 @@ import {
   createFriendInvite,
   getMyInvites,
   markInviteOpened,
+  // Trivia
+  getTriviaQuestions,
+  getTriviaQuestionById,
+  createTriviaRoom,
+  getTriviaRoomByCode,
+  getTriviaRoomById,
+  getOpenTriviaRooms,
+  updateTriviaRoom,
+  joinTriviaRoom,
+  getTriviaRoomPlayers,
+  setPlayerReady,
+  submitTriviaAnswer,
+  getTriviaAnswersForRoom,
+  sendGameChatMessage,
+  getGameChatMessages,
+  getOrCreateFamilyProfile,
+  getFamilyProfileByUserId,
+  updateFamilyProfile,
+  getFamilyChildren,
+  addFamilyChild,
+  removeFamilyChild,
+  findNearbyFamilies,
+  connectFamilies,
+  getTripPlans,
+  createTripPlan,
+  updateTripPlan,
+  deleteTripPlan,
+  addTripItem,
+  removeTripItem,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import bcrypt from "bcryptjs";
@@ -654,6 +683,22 @@ Return a JSON object with:
 
   // ─── Games ────────────────────────────────────────────────────────────────
   games: router({
+    recordGameAnswer: protectedProcedure
+      .input(z.object({
+        gameType: z.string(),
+        questionId: z.number(),
+        answer: z.string(),
+        traitKey: z.string().optional(),
+        traitValue: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Merge trait into profile if provided
+        if (input.traitKey && input.traitValue) {
+          await mergeGameTraitsIntoProfile(ctx.user.id, { [input.traitKey]: input.traitValue });
+        }
+        return { ok: true };
+      }),
+
     startNewlywed: protectedProcedure
       .input(z.object({ matchId: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -2287,6 +2332,132 @@ Return JSON with questions array, each having optionA and optionB.`,
       const joined = myInvites.filter(i => i.status === "joined").length;
       return { total, opened, joined };
     }),
+  }),
+
+  // ─── Trivia Game ────────────────────────────────────────────────────────────
+  trivia: router({
+    getQuestions: publicProcedure
+      .input(z.object({ category: z.string().optional(), limit: z.number().optional() }))
+      .query(async ({ input }) => {
+        return getTriviaQuestions(input.category, input.limit ?? 30);
+      }),
+
+    createRoom: protectedProcedure
+      .input(z.object({ maxPlayers: z.number().min(1).max(8).default(8) }))
+      .mutation(async ({ ctx, input }) => {
+        const room = await createTriviaRoom(ctx.user.id, input.maxPlayers);
+        if (!room) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to create room' });
+        // Auto-join as host
+        await joinTriviaRoom(room.id, ctx.user.id);
+        return room;
+      }),
+
+    joinRoom: protectedProcedure
+      .input(z.object({ gameCode: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const room = await getTriviaRoomByCode(input.gameCode.toUpperCase());
+        if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Room not found' });
+        if (room.status !== 'waiting') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Game already started' });
+        const players = await getTriviaRoomPlayers(room.id);
+        if (players.length >= room.maxPlayers) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Room is full' });
+        const player = await joinTriviaRoom(room.id, ctx.user.id);
+        return { room, player };
+      }),
+
+    getRoom: protectedProcedure
+      .input(z.object({ roomId: z.number() }))
+      .query(async ({ input }) => {
+        const room = await getTriviaRoomById(input.roomId);
+        if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Room not found' });
+        const players = await getTriviaRoomPlayers(room.id);
+        return { room, players };
+      }),
+
+    getOpenRooms: publicProcedure.query(async () => {
+      return getOpenTriviaRooms();
+    }),
+
+    setReady: protectedProcedure
+      .input(z.object({ roomId: z.number(), isReady: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await setPlayerReady(input.roomId, ctx.user.id, input.isReady);
+        // Check if all players are ready and auto-start
+        const players = await getTriviaRoomPlayers(input.roomId);
+        const room = await getTriviaRoomById(input.roomId);
+        if (room && room.status === 'waiting' && players.length >= 1 && players.every(p => p.isReady)) {
+          await updateTriviaRoom(input.roomId, { status: 'in_progress', startedAt: new Date() });
+        }
+        return { ok: true };
+      }),
+
+    startRoom: protectedProcedure
+      .input(z.object({ roomId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const room = await getTriviaRoomById(input.roomId);
+        if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Room not found' });
+        if (room.hostUserId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Only host can start' });
+        await updateTriviaRoom(input.roomId, { status: 'in_progress', startedAt: new Date() });
+        return { ok: true };
+      }),
+
+    submitAnswer: protectedProcedure
+      .input(z.object({
+        roomId: z.number(),
+        questionId: z.number(),
+        answer: z.enum(['A', 'B', 'C', 'D']),
+        answeredAtMs: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const question = await getTriviaQuestionById(input.questionId);
+        if (!question) throw new TRPCError({ code: 'NOT_FOUND', message: 'Question not found' });
+        const isCorrect = question.correctAnswer === input.answer;
+        const result = await submitTriviaAnswer(
+          input.roomId, ctx.user.id, input.questionId,
+          input.answer, isCorrect, input.answeredAtMs
+        );
+        // Extract profile trait if question has one
+        if (question.profileTraitKey && isCorrect) {
+          await mergeGameTraitsIntoProfile(ctx.user.id, {
+            [question.profileTraitKey]: question.category,
+          });
+        }
+        return { isCorrect, correctAnswer: question.correctAnswer, result };
+      }),
+
+    getAnswers: protectedProcedure
+      .input(z.object({ roomId: z.number(), questionId: z.number().optional() }))
+      .query(async ({ input }) => {
+        return getTriviaAnswersForRoom(input.roomId, input.questionId);
+      }),
+
+    advanceQuestion: protectedProcedure
+      .input(z.object({ roomId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const room = await getTriviaRoomById(input.roomId);
+        if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Room not found' });
+        if (room.hostUserId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Only host can advance' });
+        const questionIds = (room.questionIds as number[]) ?? [];
+        const nextIndex = (room.currentQuestionIndex ?? 0) + 1;
+        if (nextIndex >= questionIds.length) {
+          await updateTriviaRoom(input.roomId, { status: 'completed', completedAt: new Date() });
+          return { done: true, nextIndex };
+        }
+        await updateTriviaRoom(input.roomId, { currentQuestionIndex: nextIndex });
+        return { done: false, nextIndex };
+      }),
+
+    // ─── Game Chat ─────────────────────────────────────────────────────────
+    sendChat: protectedProcedure
+      .input(z.object({ roomId: z.number(), content: z.string().max(500) }))
+      .mutation(async ({ ctx, input }) => {
+        return sendGameChatMessage(input.roomId, ctx.user.id, input.content, 'trivia');
+      }),
+
+    getChat: protectedProcedure
+      .input(z.object({ roomId: z.number(), limit: z.number().optional() }))
+      .query(async ({ input }) => {
+        return getGameChatMessages(input.roomId, input.limit ?? 50);
+      }),
   }),
 });
 

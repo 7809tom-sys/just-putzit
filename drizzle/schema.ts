@@ -679,3 +679,129 @@ export const campusMembers = mysqlTable("campus_members", {
 });
 export type CampusMember = typeof campusMembers.$inferSelect;
 export type InsertCampusMember = typeof campusMembers.$inferInsert;
+
+// ─── Family Network ───────────────────────────────────────────────────────────
+export const familyProfiles = mysqlTable("family_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  familyName: varchar("familyName", { length: 128 }).notNull(),
+  bio: text("bio"),
+  neighborhoodCity: varchar("neighborhoodCity", { length: 128 }),
+  interests: json("interests").$type<string[]>().default([]),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type FamilyProfile = typeof familyProfiles.$inferSelect;
+export type InsertFamilyProfile = typeof familyProfiles.$inferInsert;
+
+export const familyChildren = mysqlTable("family_children", {
+  id: int("id").autoincrement().primaryKey(),
+  familyProfileId: int("familyProfileId").notNull(),
+  ageYears: int("ageYears").notNull(),
+  gender: mysqlEnum("gender", ["boy", "girl", "nonbinary", "prefer_not_to_say"]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FamilyChild = typeof familyChildren.$inferSelect;
+export type InsertFamilyChild = typeof familyChildren.$inferInsert;
+
+export const familyMatches = mysqlTable("family_matches", {
+  id: int("id").autoincrement().primaryKey(),
+  family1Id: int("family1Id").notNull(),
+  family2Id: int("family2Id").notNull(),
+  compatibilityScore: int("compatibilityScore").default(0).notNull(),
+  status: mysqlEnum("status", ["pending", "connected", "declined"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FamilyMatch = typeof familyMatches.$inferSelect;
+export type InsertFamilyMatch = typeof familyMatches.$inferInsert;
+
+// ─── Trip Plans ───────────────────────────────────────────────────────────────
+export type TripItem = {
+  id: string;
+  title: string;
+  type: "activity" | "event" | "venue" | "custom";
+  time?: string;
+  location?: string;
+  url?: string;
+  notes?: string;
+};
+
+export const tripPlans = mysqlTable("trip_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  tripDate: varchar("tripDate", { length: 10 }).notNull(), // YYYY-MM-DD stored as string
+  city: varchar("city", { length: 128 }),
+  notes: text("notes"),
+  items: json("items").$type<TripItem[]>().default([]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TripPlan = typeof tripPlans.$inferSelect;
+export type InsertTripPlan = typeof tripPlans.$inferInsert;
+
+// ─── Trivia Game ──────────────────────────────────────────────────────────────
+export const triviaQuestions = mysqlTable("trivia_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  question: text("question").notNull(),
+  optionA: varchar("optionA", { length: 300 }).notNull(),
+  optionB: varchar("optionB", { length: 300 }).notNull(),
+  optionC: varchar("optionC", { length: 300 }).notNull(),
+  optionD: varchar("optionD", { length: 300 }).notNull(),
+  correctAnswer: mysqlEnum("correctAnswer", ["A", "B", "C", "D"]).notNull(),
+  category: mysqlEnum("category", ["relationships", "pop_culture", "local_knowledge", "food_drinks", "sports_outdoors", "wild_card"]).notNull(),
+  difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull().default("medium"),
+  profileTraitKey: varchar("profileTraitKey", { length: 64 }), // optional: which trait this answer reveals
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TriviaQuestion = typeof triviaQuestions.$inferSelect;
+
+export const triviaRooms = mysqlTable("trivia_rooms", {
+  id: int("id").autoincrement().primaryKey(),
+  gameCode: varchar("gameCode", { length: 8 }).notNull().unique(),
+  hostUserId: int("hostUserId").notNull(),
+  status: mysqlEnum("status", ["waiting", "in_progress", "completed"]).notNull().default("waiting"),
+  maxPlayers: int("maxPlayers").notNull().default(8),
+  currentQuestionIndex: int("currentQuestionIndex").notNull().default(0),
+  questionIds: json("questionIds").$type<number[]>().default([]),
+  questionTimerSeconds: int("questionTimerSeconds").notNull().default(15),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+});
+export type TriviaRoom = typeof triviaRooms.$inferSelect;
+
+export const triviaRoomPlayers = mysqlTable("trivia_room_players", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  userId: int("userId").notNull(),
+  score: int("score").notNull().default(0),
+  streak: int("streak").notNull().default(0),
+  isReady: boolean("isReady").notNull().default(false),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+});
+export type TriviaRoomPlayer = typeof triviaRoomPlayers.$inferSelect;
+
+export const triviaAnswers = mysqlTable("trivia_answers", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  userId: int("userId").notNull(),
+  questionId: int("questionId").notNull(),
+  answer: mysqlEnum("answer", ["A", "B", "C", "D"]).notNull(),
+  isCorrect: boolean("isCorrect").notNull().default(false),
+  answeredAtMs: int("answeredAtMs").notNull().default(0), // ms since question shown (for speed bonus)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TriviaAnswer = typeof triviaAnswers.$inferSelect;
+
+// ─── Game Chat Messages ───────────────────────────────────────────────────────
+export const gameChatMessages = mysqlTable("game_chat_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  roomType: mysqlEnum("roomType", ["trivia", "match_game"]).notNull().default("trivia"),
+  userId: int("userId").notNull(),
+  content: varchar("content", { length: 500 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type GameChatMessage = typeof gameChatMessages.$inferSelect;

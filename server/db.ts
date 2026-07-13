@@ -39,6 +39,22 @@ import {
   entertainmentClicks,
   friendInvites,
   campusMembers,
+  familyProfiles,
+  familyChildren,
+  familyMatches,
+  tripPlans,
+  triviaQuestions,
+  triviaRooms,
+  triviaRoomPlayers,
+  triviaAnswers,
+  gameChatMessages,
+  type TriviaQuestion,
+  type TriviaRoom,
+  type TriviaRoomPlayer,
+  type TriviaAnswer,
+  type GameChatMessage,
+  type TripItem,
+  type TripPlan,
   type CommunityEvent,
   type InsertCommunityEvent,
   type ProfileTraits,
@@ -2121,4 +2137,286 @@ export async function upsertScrapedEvents(events: Array<{
     inserted++;
   }
   return inserted;
+}
+
+// ─── Family Network ───────────────────────────────────────────────────────────
+
+export async function getOrCreateFamilyProfile(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await db.select().from(familyProfiles).where(eq(familyProfiles.userId, userId)).limit(1);
+  if (existing[0]) return existing[0];
+  await db.insert(familyProfiles).values({ userId, familyName: "Our Family" });
+  const created = await db.select().from(familyProfiles).where(eq(familyProfiles.userId, userId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function getFamilyProfileByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(familyProfiles).where(eq(familyProfiles.userId, userId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function updateFamilyProfile(userId: number, data: Partial<typeof familyProfiles.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(familyProfiles).set(data).where(eq(familyProfiles.userId, userId));
+}
+
+export async function getFamilyChildren(familyProfileId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(familyChildren).where(eq(familyChildren.familyProfileId, familyProfileId));
+}
+
+export async function addFamilyChild(familyProfileId: number, ageYears: number, gender?: "boy" | "girl" | "nonbinary" | "prefer_not_to_say") {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(familyChildren).values({ familyProfileId, ageYears, gender });
+  const result = await db.select().from(familyChildren)
+    .where(eq(familyChildren.familyProfileId, familyProfileId))
+    .orderBy(desc(familyChildren.createdAt)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function removeFamilyChild(childId: number, familyProfileId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(familyChildren).where(and(eq(familyChildren.id, childId), eq(familyChildren.familyProfileId, familyProfileId)));
+}
+
+export async function findNearbyFamilies(userId: number, city: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(familyProfiles)
+    .where(and(eq(familyProfiles.isActive, true), eq(familyProfiles.neighborhoodCity, city)))
+    .orderBy(desc(familyProfiles.createdAt))
+    .limit(20);
+}
+
+export async function connectFamilies(family1Id: number, family2Id: number) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(familyMatches)
+    .where(or(
+      and(eq(familyMatches.family1Id, family1Id), eq(familyMatches.family2Id, family2Id)),
+      and(eq(familyMatches.family1Id, family2Id), eq(familyMatches.family2Id, family1Id))
+    )).limit(1);
+  if (existing[0]) {
+    await db.update(familyMatches).set({ status: "connected" }).where(eq(familyMatches.id, existing[0].id));
+  } else {
+    await db.insert(familyMatches).values({ family1Id, family2Id, status: "connected", compatibilityScore: 80 });
+  }
+}
+
+// ─── Trip Plans ───────────────────────────────────────────────────────────────
+
+export async function getTripPlans(userId: number): Promise<TripPlan[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(tripPlans).where(eq(tripPlans.userId, userId)).orderBy(tripPlans.tripDate);
+}
+
+export async function createTripPlan(userId: number, title: string, tripDate: string, city?: string, notes?: string): Promise<TripPlan | null> {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(tripPlans).values({ userId, title, tripDate, city, notes, items: [] });
+  const result = await db.select().from(tripPlans)
+    .where(eq(tripPlans.userId, userId))
+    .orderBy(desc(tripPlans.createdAt)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function updateTripPlan(planId: number, userId: number, data: Partial<typeof tripPlans.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(tripPlans).set(data).where(and(eq(tripPlans.id, planId), eq(tripPlans.userId, userId)));
+}
+
+export async function deleteTripPlan(planId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(tripPlans).where(and(eq(tripPlans.id, planId), eq(tripPlans.userId, userId)));
+}
+
+export async function addTripItem(planId: number, userId: number, item: TripItem) {
+  const db = await getDb();
+  if (!db) return;
+  const plan = await db.select().from(tripPlans).where(and(eq(tripPlans.id, planId), eq(tripPlans.userId, userId))).limit(1);
+  if (!plan[0]) return;
+  const items = (plan[0].items as TripItem[]) ?? [];
+  items.push(item);
+  await db.update(tripPlans).set({ items }).where(eq(tripPlans.id, planId));
+}
+
+export async function removeTripItem(planId: number, userId: number, itemId: string) {
+  const db = await getDb();
+  if (!db) return;
+  const plan = await db.select().from(tripPlans).where(and(eq(tripPlans.id, planId), eq(tripPlans.userId, userId))).limit(1);
+  if (!plan[0]) return;
+  const items = ((plan[0].items as TripItem[]) ?? []).filter(i => i.id !== itemId);
+  await db.update(tripPlans).set({ items }).where(eq(tripPlans.id, planId));
+}
+
+// ─── Trivia Game ──────────────────────────────────────────────────────────────
+
+export async function getTriviaQuestions(category?: string, limit = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  if (category && category !== 'all') {
+    return db.select().from(triviaQuestions)
+      .where(eq(triviaQuestions.category, category as TriviaQuestion['category']))
+      .orderBy(sql`RAND()`).limit(limit);
+  }
+  return db.select().from(triviaQuestions).orderBy(sql`RAND()`).limit(limit);
+}
+
+export async function getTriviaQuestionById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(triviaQuestions).where(eq(triviaQuestions.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createTriviaRoom(hostUserId: number, maxPlayers = 8): Promise<TriviaRoom | null> {
+  const db = await getDb();
+  if (!db) return null;
+  // Generate unique 6-char game code
+  const gameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  // Pick 30 random question IDs
+  const qs = await db.select({ id: triviaQuestions.id }).from(triviaQuestions).orderBy(sql`RAND()`).limit(30);
+  const questionIds = qs.map(q => q.id);
+  await db.insert(triviaRooms).values({ gameCode, hostUserId, maxPlayers, questionIds, status: 'waiting' });
+  const result = await db.select().from(triviaRooms).where(eq(triviaRooms.gameCode, gameCode)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getTriviaRoomByCode(gameCode: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(triviaRooms).where(eq(triviaRooms.gameCode, gameCode)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getTriviaRoomById(roomId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(triviaRooms).where(eq(triviaRooms.id, roomId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getOpenTriviaRooms() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(triviaRooms).where(eq(triviaRooms.status, 'waiting')).orderBy(desc(triviaRooms.createdAt)).limit(20);
+}
+
+export async function updateTriviaRoom(roomId: number, data: Partial<TriviaRoom>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(triviaRooms).set(data).where(eq(triviaRooms.id, roomId));
+}
+
+export async function joinTriviaRoom(roomId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await db.select().from(triviaRoomPlayers)
+    .where(and(eq(triviaRoomPlayers.roomId, roomId), eq(triviaRoomPlayers.userId, userId))).limit(1);
+  if (existing[0]) return existing[0];
+  await db.insert(triviaRoomPlayers).values({ roomId, userId, score: 0, streak: 0, isReady: false });
+  const result = await db.select().from(triviaRoomPlayers)
+    .where(and(eq(triviaRoomPlayers.roomId, roomId), eq(triviaRoomPlayers.userId, userId))).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getTriviaRoomPlayers(roomId: number): Promise<TriviaRoomPlayer[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(triviaRoomPlayers).where(eq(triviaRoomPlayers.roomId, roomId));
+}
+
+export async function setPlayerReady(roomId: number, userId: number, isReady: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(triviaRoomPlayers).set({ isReady }).where(
+    and(eq(triviaRoomPlayers.roomId, roomId), eq(triviaRoomPlayers.userId, userId))
+  );
+}
+
+export async function submitTriviaAnswer(
+  roomId: number, userId: number, questionId: number,
+  answer: 'A' | 'B' | 'C' | 'D', isCorrect: boolean, answeredAtMs: number
+): Promise<TriviaAnswer | null> {
+  const db = await getDb();
+  if (!db) return null;
+  // Check not already answered
+  const existing = await db.select().from(triviaAnswers)
+    .where(and(eq(triviaAnswers.roomId, roomId), eq(triviaAnswers.userId, userId), eq(triviaAnswers.questionId, questionId))).limit(1);
+  if (existing[0]) return existing[0];
+  await db.insert(triviaAnswers).values({ roomId, userId, questionId, answer, isCorrect, answeredAtMs });
+  // Update score and streak
+  if (isCorrect) {
+    const player = await db.select().from(triviaRoomPlayers)
+      .where(and(eq(triviaRoomPlayers.roomId, roomId), eq(triviaRoomPlayers.userId, userId))).limit(1);
+    if (player[0]) {
+      const newStreak = (player[0].streak ?? 0) + 1;
+      const bonus = newStreak >= 3 ? 1 : 0; // streak bonus
+      await db.update(triviaRoomPlayers).set({
+        score: (player[0].score ?? 0) + 1 + bonus,
+        streak: newStreak,
+      }).where(and(eq(triviaRoomPlayers.roomId, roomId), eq(triviaRoomPlayers.userId, userId)));
+    }
+  } else {
+    // Reset streak on wrong answer
+    await db.update(triviaRoomPlayers).set({ streak: 0 })
+      .where(and(eq(triviaRoomPlayers.roomId, roomId), eq(triviaRoomPlayers.userId, userId)));
+  }
+  const result = await db.select().from(triviaAnswers)
+    .where(and(eq(triviaAnswers.roomId, roomId), eq(triviaAnswers.userId, userId), eq(triviaAnswers.questionId, questionId))).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getTriviaAnswersForRoom(roomId: number, questionId?: number): Promise<TriviaAnswer[]> {
+  const db = await getDb();
+  if (!db) return [];
+  if (questionId) {
+    return db.select().from(triviaAnswers)
+      .where(and(eq(triviaAnswers.roomId, roomId), eq(triviaAnswers.questionId, questionId)));
+  }
+  return db.select().from(triviaAnswers).where(eq(triviaAnswers.roomId, roomId));
+}
+
+// ─── Game Chat Messages ───────────────────────────────────────────────────────
+
+export async function sendGameChatMessage(
+  roomId: number, userId: number, content: string,
+  roomType: 'trivia' | 'match_game' = 'trivia'
+) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(gameChatMessages).values({ roomId, userId, content, roomType });
+  const result = await db.select().from(gameChatMessages)
+    .where(eq(gameChatMessages.roomId, roomId))
+    .orderBy(desc(gameChatMessages.createdAt)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getGameChatMessages(roomId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(gameChatMessages)
+    .where(eq(gameChatMessages.roomId, roomId))
+    .orderBy(gameChatMessages.createdAt).limit(limit);
+}
+
+// ─── Game Trait Extraction ────────────────────────────────────────────────────
+export async function mergeGameTraitsIntoProfile(userId: number, newTraits: Record<string, string>) {
+  const db = await getDb();
+  if (!db) return;
+  const profile = await getOrCreateProfile(userId);
+  if (!profile) return;
+  const existing = (profile.traits as Record<string, unknown>) ?? {};
+  const merged = { ...existing, ...newTraits };
+  await db.update(userProfiles).set({ traits: merged }).where(eq(userProfiles.userId, userId));
 }

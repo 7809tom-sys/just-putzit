@@ -405,3 +405,65 @@
 - [x] Add Free Events Only and Campus Events Only quick filters
 - [x] Community sources sidebar panel showing all 5 scraped sources
 - [x] 29 tests passing, 0 TypeScript errors
+
+## Family Network
+- [ ] Schema: family_profiles table (userId, familyName, bio, neighborhoodCity, interests JSON, isActive)
+- [ ] Schema: family_children table (familyProfileId, ageYears, gender optional)
+- [ ] Schema: family_matches table (family1Id, family2Id, status, compatibilityScore)
+- [ ] Apply DB migration
+- [ ] DB helpers: getOrCreateFamilyProfile, updateFamilyProfile, addChild, removeChild, getFamilyMatches, findFamilyMatches
+- [ ] Backend: family.getProfile, family.setup, family.addChild, family.removeChild, family.findMatches, family.getMatches, family.getFamilyEvents
+- [ ] Frontend: /family page with 3 sections — Setup (if no profile), Family Matches, Kid-Friendly Events
+- [ ] Family profile setup form: family name, neighborhood, kids' ages, family interests
+- [ ] Family matching card: show other families with kids same age range, connect button
+- [ ] Kid-friendly events feed: filter community events by age-appropriate categories (library, arts, outdoors, sports)
+- [ ] Add Family nav link to Navbar
+- [ ] Add /family to public routes (gate still applies — must be verified)
+- [ ] TypeScript check, tests, checkpoint
+
+## Family Network + Trip Planner
+- [ ] Apply family_profiles, family_children, family_matches DB migration
+- [ ] DB helpers: getOrCreateFamilyProfile, updateFamilyProfile, addChild, removeChild, findFamilyMatches, getFamilyMatches, connectFamilies
+- [ ] Schema: trip_plans table (userId, title, date, items JSON array of activity/event IDs + notes)
+- [ ] DB helpers: createTripPlan, getTripPlans, addTripItem, removeTripItem, deleteTripPlan
+- [ ] Backend: family.getProfile, family.setup, family.addChild, family.removeChild, family.findMatches, family.connectFamily, family.getFamilyEvents (GPS-based, kid-friendly filter)
+- [ ] Backend: tripPlanner.create, tripPlanner.list, tripPlanner.addItem, tripPlanner.removeItem, tripPlanner.delete, tripPlanner.exportIcs
+- [ ] Frontend: /family page — GPS auto-detects location, shows kid-friendly events nearby, family profile setup, family matching cards
+- [ ] Frontend: /trip-planner page — create trip, add activities/events to date slots, export to .ics (Google Calendar / Apple Calendar / Outlook)
+- [ ] "Add to Trip" button on every activity card and event card throughout the app
+- [ ] .ics file generation on server (RFC 5545 compliant) with event title, date, location, URL
+- [ ] Google Calendar deep-link as alternative to .ics download
+- [ ] Add Family and Trip Planner links to navbar/More menu
+- [ ] TypeScript check, tests, checkpoint
+
+## Voice-to-Text Profile Input
+- [ ] Build VoiceBio reusable component using Web Speech API (SpeechRecognition) with Whisper API fallback
+- [ ] Mic button shows recording state (pulsing red), transcribes in real time, stops on tap
+- [ ] Wire VoiceBio into profile bio field on Profile edit page
+- [ ] Wire VoiceBio into family profile bio field on Family Network setup
+- [ ] Wire VoiceBio into Sally interview text input (speak answers instead of typing)
+- [ ] Show "AI-written" vs "Voice-recorded" badge on bio so other users know it's authentic
+- [ ] TypeScript check, tests, checkpoint
+
+## Games Suite (Multiplayer + Profile-Building)
+- [ ] Schema: trivia_questions table (question, optionA-D, correctAnswer, category, difficulty)
+- [ ] Schema: trivia_rooms table (hostUserId, status, maxPlayers, currentQuestion, gameCode)
+- [ ] Schema: trivia_room_players table (roomId, userId, score, isReady)
+- [ ] Schema: trivia_answers table (roomId, userId, questionId, answer, isCorrect, answeredAt)
+- [ ] Apply DB migration for trivia tables
+- [ ] Seed 200+ trivia questions across 6 categories (Relationships, Pop Culture, Local Knowledge, Food & Drinks, Sports & Outdoors, Wild Card)
+- [ ] DB helpers: createTriviaRoom, joinTriviaRoom, getTriviaRoom, submitTriviaAnswer, getTriviaScores, listOpenRooms
+- [ ] Backend: trivia.createRoom, trivia.joinRoom, trivia.listRooms, trivia.getRoom, trivia.submitAnswer, trivia.nextQuestion, trivia.endGame
+- [ ] Frontend: TriviaGame.tsx — lobby with player list + ready-up, 15-second countdown timer per question, scoreboard, in-game chat panel
+- [ ] Add /games/trivia route and Games nav entry
+- [ ] Backend + Frontend: HotTakes game (rapid-fire agree/disagree, reveal match %)
+- [ ] Backend + Frontend: FinishMySentence game (Sally prompts, both users complete, compare)
+- [ ] Backend + Frontend: CompatibilityQuiz game (10 values-alignment questions, Sally scores)
+- [ ] Backend + Frontend: MemoryLane game (quiz on things your match said in chat)
+- [ ] Backend + Frontend: SallyCompatibilityChallenge (guess your match's profile answers)
+- [ ] Wire ALL game answers to profile trait extraction (async merge into traits JSON)
+- [ ] Add "Game Insights" section to Profile page showing traits derived from games
+- [ ] Update matchmaking to weight game-derived traits in compatibility scoring
+- [ ] Admin: Sally Training panel (match rule editor, accuracy score, trait frequency heatmap)
+- [ ] Add "Challenge your match" button in existing chat screen
+- [ ] TypeScript check, tests, checkpoint
