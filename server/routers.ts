@@ -173,6 +173,8 @@ import {
   removeTripItem,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, GameQuestion, ConciergePlanItem } from "../drizzle/schema";
+import { familyProfiles, communityEvents } from "../drizzle/schema";
+import { and, eq, ne, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { getUserByEmail, getUserById, createEmailUser, verifyUserEmail, checkGpsMatchesCity, saveLocationVerification, getDb } from "./db";
 import type { AuthenticatorTransport } from "@simplewebauthn/server";
@@ -2457,6 +2459,191 @@ Return JSON with questions array, each having optionA and optionB.`,
       .input(z.object({ roomId: z.number(), limit: z.number().optional() }))
       .query(async ({ input }) => {
         return getGameChatMessages(input.roomId, input.limit ?? 50);
+      }),
+  }),
+
+  family: router({
+    getProfile: protectedProcedure
+      .query(async ({ ctx }) => {
+        return getFamilyProfileByUserId(ctx.user.id);
+      }),
+
+    setup: protectedProcedure
+      .input(z.object({
+        familyName: z.string().min(1),
+        bio: z.string().optional(),
+        neighborhoodCity: z.string(),
+        interests: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await getOrCreateFamilyProfile(ctx.user.id);
+        if (!profile) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await updateFamilyProfile(ctx.user.id, {
+          familyName: input.familyName,
+          bio: input.bio,
+          neighborhoodCity: input.neighborhoodCity,
+          interests: input.interests,
+          isActive: true,
+        });
+        return { success: true };
+      }),
+
+    addChild: protectedProcedure
+      .input(z.object({
+        ageYears: z.number().min(0).max(25),
+        gender: z.enum(["boy", "girl", "nonbinary", "prefer_not_to_say"]).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await getOrCreateFamilyProfile(ctx.user.id);
+        if (!profile) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await addFamilyChild(profile.id, input.ageYears, input.gender);
+        return { success: true };
+      }),
+
+    removeChild: protectedProcedure
+      .input(z.object({ childId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await getOrCreateFamilyProfile(ctx.user.id);
+        if (!profile) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await removeFamilyChild(input.childId, profile.id);
+        return { success: true };
+      }),
+
+    getChildren: protectedProcedure
+      .query(async ({ ctx }) => {
+        const profile = await getOrCreateFamilyProfile(ctx.user.id);
+        if (!profile) return [];
+        return getFamilyChildren(profile.id);
+      }),
+
+    findMatches: protectedProcedure
+      .input(z.object({
+        maxDistance: z.number().optional(),
+        minChildAge: z.number().optional(),
+        maxChildAge: z.number().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const profile = await getOrCreateFamilyProfile(ctx.user.id);
+        if (!profile) return [];
+        const children = await getFamilyChildren(profile.id);
+        const childAges = children.map(c => c.ageYears);
+        const minAge = input.minChildAge ?? Math.min(...childAges, 0);
+        const maxAge = input.maxChildAge ?? Math.max(...childAges, 18);
+        const db = await getDb();
+        if (!db) return [];
+        const matches = await db.select().from(familyProfiles)
+          .where(and(
+            ne(familyProfiles.id, profile.id),
+            eq(familyProfiles.isActive, true)
+          ))
+          .limit(20);
+        return matches;
+      }),
+
+    getFamilyEvents: protectedProcedure
+      .input(z.object({
+        lat: z.number().optional(),
+        lng: z.number().optional(),
+        maxDistanceKm: z.number().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const profile = await getOrCreateFamilyProfile(ctx.user.id);
+        if (!profile) return [];
+        const db = await getDb();
+        if (!db) return [];
+        const events = await db.select().from(communityEvents)
+          .where(and(
+            eq(communityEvents.isOnCampus, false),
+            or(
+              eq(communityEvents.source, 'milwaukee_library'),
+              eq(communityEvents.source, 'waukesha_library')
+            )
+          ))
+          .orderBy(communityEvents.eventDate)
+          .limit(50);
+        return events;
+      }),
+
+    connectFamily: protectedProcedure
+      .input(z.object({ otherFamilyId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await getOrCreateFamilyProfile(ctx.user.id);
+        if (!profile) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await connectFamilies(profile.id, input.otherFamilyId);
+        return { success: true };
+      }),
+
+    getTripPlans: protectedProcedure
+      .query(async ({ ctx }) => {
+        return getTripPlans(ctx.user.id);
+      }),
+
+    createTripPlan: protectedProcedure
+      .input(z.object({
+        title: z.string().min(1),
+        tripDate: z.string(),
+        city: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await createTripPlan(ctx.user.id, input.title, input.tripDate, input.city, input.notes);
+        return result || { success: false };
+      }),
+
+    updateTripPlan: protectedProcedure
+      .input(z.object({
+        planId: z.number(),
+        title: z.string().optional(),
+        tripDate: z.string().optional(),
+        city: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const data: any = {};
+        if (input.title) data.title = input.title;
+        if (input.tripDate) data.tripDate = input.tripDate;
+        if (input.city) data.city = input.city;
+        if (input.notes) data.notes = input.notes;
+        await updateTripPlan(input.planId, ctx.user.id, data);
+        return { success: true };
+      }),
+
+    deleteTripPlan: protectedProcedure
+      .input(z.object({ planId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteTripPlan(input.planId, ctx.user.id);
+        return { success: true };
+      }),
+
+    addTripItem: protectedProcedure
+      .input(z.object({
+        planId: z.number(),
+        title: z.string().min(1),
+        type: z.enum(["activity", "event", "venue", "custom"]),
+        time: z.string().optional(),
+        location: z.string().optional(),
+        url: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const item = {
+          id: Date.now().toString(),
+          title: input.title,
+          type: input.type,
+          time: input.time,
+          location: input.location,
+          url: input.url,
+          notes: input.notes,
+        };
+        await addTripItem(input.planId, ctx.user.id, item);
+        return { success: true };
+      }),
+
+    removeTripItem: protectedProcedure
+      .input(z.object({ planId: z.number(), itemId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await removeTripItem(input.planId, ctx.user.id, input.itemId);
+        return { success: true };
       }),
   }),
 });

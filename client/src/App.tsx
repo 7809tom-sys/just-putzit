@@ -38,6 +38,8 @@ import CityLanding from "@/pages/CityLanding";
 import EventDetail from "@/pages/EventDetail";
 import TriviaGame from "@/pages/TriviaGame";
 import GamesHub from "@/pages/GamesHub";
+import Family from "@/pages/Family";
+import TripPlanner from "@/pages/TripPlanner";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { trpc } from "@/lib/trpc";
@@ -103,6 +105,8 @@ function Router() {
         <Route path="/trivia" component={TriviaGame} />
         <Route path="/games-hub" component={GamesHub} />
         <Route path="/games-hub/:gameId" component={GamesHub} />
+        <Route path="/family" component={Family} />
+        <Route path="/trip-planner" component={TripPlanner} />
         <Route path="/events" component={Events} />
         <Route path="/game-lobby" component={GameLobby} />
         <Route path="/entertainment" component={Entertainment} />

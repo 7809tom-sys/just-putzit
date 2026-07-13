@@ -469,6 +469,19 @@
 - [ ] TypeScript check, tests, checkpoint
 
 ## Bug Fixes (Jul 13)
-- [ ] Add voice-to-text mic button to profile edit page bio field
-- [ ] Fix age and sex fields not saving on profile edit
-- [ ] Fix movie trailers not playing
+- [x] Add voice-to-text mic button to profile edit page bio field
+- [x] Fix age and sex fields not saving on profile edit (confirmed columns exist, data saves correctly)
+- [x] Fix movie trailers not playing (added mute=1 and playsinline=1 for mobile autoplay)
+
+
+## Phase 26: Family Network & Trip Planner
+- [x] Schema: family_profiles, family_children, family_matches, trip_plans tables
+- [x] DB helpers: family profile CRUD, child management, family matching, trip plan helpers
+- [x] Backend: family router with 8 procedures (getProfile, setup, addChild, removeChild, getChildren, findMatches, getFamilyEvents, connectFamily)
+- [x] Backend: trip planner procedures (getTripPlans, createTripPlan, updateTripPlan, deleteTripPlan, addTripItem, removeTripItem)
+- [x] Frontend: Family.tsx page with profile setup, child management, family discovery, kid-friendly activity feed
+- [x] Frontend: TripPlanner.tsx page with trip creation, itinerary management, ICS calendar export
+- [x] Routes: /family and /trip-planner added to App.tsx
+- [ ] Add navigation links to MobileBottomNav for Family and Trip Planner
+- [ ] Vitest tests for family and trip planner procedures
+- [ ] Checkpoint and deliver
