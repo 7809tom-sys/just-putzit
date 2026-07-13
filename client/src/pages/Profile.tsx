@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2 } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -14,6 +14,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Mic, MicOff, Pencil, Check, X } from "lucide-react";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -42,6 +44,69 @@ export default function Profile() {
   const [orientation, setOrientation] = useState<string>("");
   const [birthYear, setBirthYear] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Bio edit state
+  const [bioEditOpen, setBioEditOpen] = useState(false);
+  const [bioText, setBioText] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const updateBio = trpc.profile.update.useMutation({
+    onSuccess: () => {
+      utils.profile.get.invalidate();
+      toast.success("Bio saved!");
+      setBioEditOpen(false);
+    },
+    onError: (err) => toast.error("Failed to save bio: " + err.message),
+  });
+
+  function openBioEdit() {
+    setBioText(profile?.bio || "");
+    setBioEditOpen(true);
+  }
+
+  function saveBio() {
+    updateBio.mutate({ bio: bioText });
+  }
+
+  const startListening = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Voice input is not supported in this browser. Try Chrome on Android or Safari on iOS.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognitionRef.current = recognition;
+
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setBioText(transcript);
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+    recognition.start();
+    setIsListening(true);
+  }, []);
+
+  function stopListening() {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+  }
+
+  // Stop recognition when dialog closes
+  useEffect(() => {
+    if (!bioEditOpen) stopListening();
+  }, [bioEditOpen]);
 
   if (isLoading) {
     return (
@@ -172,6 +237,21 @@ export default function Profile() {
                 </Button>
               </div>
             </div>
+          </div>
+
+          {/* Bio section */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">About Me</span>
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground rounded-full" onClick={openBioEdit}>
+                <Pencil className="w-3 h-3 mr-1" />{profile?.bio ? "Edit" : "Add bio"}
+              </Button>
+            </div>
+            {profile?.bio ? (
+              <p className="text-sm text-foreground leading-relaxed">{profile.bio}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">Tap "Add bio" to tell people about yourself — or use your voice!</p>
+            )}
           </div>
 
           {/* AI Summary */}
@@ -399,6 +479,55 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Bio Edit Dialog */}
+      <Dialog open={bioEditOpen} onOpenChange={setBioEditOpen}>
+        <DialogContent className="rounded-3xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">About Me</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">Write your bio or tap the mic to speak it — your words, not AI.</p>
+            <div className="relative">
+              <Textarea
+                value={bioText}
+                onChange={e => setBioText(e.target.value)}
+                placeholder="Tell people about yourself, what you enjoy, what you're looking for..."
+                className="min-h-[120px] rounded-xl resize-none pr-12"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={`absolute bottom-2 right-2 h-8 w-8 p-0 rounded-full transition-colors ${
+                  isListening ? "bg-red-100 text-red-600 hover:bg-red-200" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                }`}
+                onClick={isListening ? stopListening : startListening}
+                title={isListening ? "Stop recording" : "Speak your bio"}
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
+            </div>
+            {isListening && (
+              <p className="text-xs text-red-500 flex items-center gap-1 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Listening... speak now
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setBioEditOpen(false)}>
+                <X className="w-4 h-4 mr-1" /> Cancel
+              </Button>
+              <Button
+                className="flex-1 gradient-sally text-white border-0 rounded-xl btn-scale"
+                onClick={saveBio}
+                disabled={updateBio.isPending}
+              >
+                <Check className="w-4 h-4 mr-1" />{updateBio.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Identity Edit Dialog — uses native <select> for full Android Chrome compatibility */}
       <Dialog open={identityOpen} onOpenChange={setIdentityOpen}>

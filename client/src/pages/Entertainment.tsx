@@ -266,10 +266,10 @@ function TrailerModal({ movie, onClose, onBookTickets }: TrailerModalProps) {
       <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl">
         <div className="aspect-video bg-black">
           <iframe
-            src={`https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1&rel=0`}
+            src={`https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1&mute=1&rel=0&playsinline=1`}
             title={`${movie.title} Trailer`}
             className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
           />
         </div>

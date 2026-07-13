@@ -467,3 +467,8 @@
 - [ ] Admin: Sally Training panel (match rule editor, accuracy score, trait frequency heatmap)
 - [ ] Add "Challenge your match" button in existing chat screen
 - [ ] TypeScript check, tests, checkpoint
+
+## Bug Fixes (Jul 13)
+- [ ] Add voice-to-text mic button to profile edit page bio field
+- [ ] Fix age and sex fields not saving on profile edit
+- [ ] Fix movie trailers not playing
