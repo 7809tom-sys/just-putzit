@@ -67,8 +67,11 @@ export default function Profile() {
 
   const [uploading, setUploading] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
+  const [birthdayOpen, setBirthdayOpen] = useState(false);
   const [gender, setGender] = useState<string>("");
   const [orientation, setOrientation] = useState<string>("");
+  const [birthMonth, setBirthMonth] = useState<string>("");
+  const [birthDay, setBirthDay] = useState<string>("");
   const [birthYear, setBirthYear] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -190,15 +193,19 @@ export default function Profile() {
   }
 
   function saveIdentity() {
-    let birthdateStr: string | undefined = undefined;
-    if (birthYear) {
-      // Convert birth year to ISO timestamp (Jan 1 of that year at midnight UTC)
-      const date = new Date(`${birthYear}-01-01T00:00:00Z`);
-      birthdateStr = date.toISOString();
-    }
     updateIdentity.mutate({
       gender: (gender || undefined) as any,
       sexualOrientation: (orientation || undefined) as any,
+    });
+  }
+
+  function saveBirthday() {
+    if (!birthMonth || !birthDay || !birthYear) {
+      toast.error("Please select month, day, and year");
+      return;
+    }
+    const birthdateStr = `${birthYear}-${String(parseInt(birthMonth)).padStart(2, "0")}-${String(parseInt(birthDay)).padStart(2, "0")}T00:00:00Z`;
+    updateIdentity.mutate({
       birthdate: birthdateStr,
     });
   }
@@ -605,20 +612,6 @@ export default function Profile() {
                 <option value="queer">Queer</option>
                 <option value="other">Other</option>
                 <option value="prefer_not_to_say">Prefer not to say</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="id-birthyear">Birth Year</Label>
-              <select
-                id="id-birthyear"
-                value={birthYear}
-                onChange={e => setBirthYear(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">Select birth year…</option>
-                {Array.from({ length: 80 }, (_, i) => 2006 - i).map(y => (
-                  <option key={y} value={String(y)}>{y}</option>
-                ))}
               </select>
             </div>
             <Button

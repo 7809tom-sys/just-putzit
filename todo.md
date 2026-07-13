@@ -523,3 +523,16 @@
 - [ ] Update matching algorithm to factor in knowledge compatibility
 - [ ] Write vitest tests for game stats and matching
 - [ ] Checkpoint and deliver
+
+
+## Phase 29: Birthday Feature (Clean Rebuild)
+- [x] Remove old birth year field from identity dialog
+- [x] Create new dedicated Birthday section in Profile with month/day/year pickers
+- [x] Add birthday backend router (saveBirthday, getBirthday) - uses existing updateIdentity
+- [x] Display full birthday on profile card (e.g., "Birthday: June 15, 1967")
+- [ ] Calculate and display age automatically from full date
+- [ ] Add birthday notifications for matches
+- [ ] Add birthday badges and celebration UI
+- [ ] Create birthday events feature in Activities
+- [ ] Write vitest tests for birthday feature
+- [ ] Save checkpoint
