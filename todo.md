@@ -504,6 +504,16 @@
 - [ ] Update matching algorithm to factor in knowledge compatibility
 - [ ] Write vitest tests for game stats and matching
 
+## Phase 28: Unified Game Lobby
+- [x] Consolidate all games into GameLobby (Jeopardy, Trivia Pursuit, Would You Rather, Trivia Challenge, Icebreaker, Two Truths & a Lie, Hot Takes, Finish My Sentence, Compatibility Quiz)
+- [x] Add solo/multiplayer mode toggle
+- [x] Update game type selector to include all games
+- [x] Conditional UI for solo vs multiplayer (room name, max players, city info)
+- [x] Dynamic button text based on game mode
+- [ ] Implement solo game navigation
+- [ ] Write vitest tests for GameLobby
+- [ ] Save checkpoint and deliver
+
 ## Phase 28: Game Stats & Knowledge-Based Matching
 - [ ] Retry seeding 1000 questions into database
 - [ ] Add game_results and player_stats tracking tables

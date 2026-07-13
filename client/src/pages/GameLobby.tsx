@@ -11,10 +11,15 @@ import { Users, Plus, MapPin, Play, LogIn, Gamepad2, RefreshCw, Trophy, ArrowLef
 import Navbar from "@/components/Navbar";
 
 const GAME_TYPE_LABELS: Record<string, { label: string; emoji: string; description: string }> = {
+  jeopardy: { label: "Jeopardy!", emoji: "🎬", description: "Answer clues for points with 1-10 players. Hear clues read aloud!" },
+  trivia_pursuit: { label: "Trivia Pursuit", emoji: "🎯", description: "Multiple choice trivia with 1-10 players. Click to hear questions!" },
   would_you_rather: { label: "Would You Rather", emoji: "🤔", description: "Pick between two fun options and see who agrees!" },
-  trivia: { label: "Trivia", emoji: "🧠", description: "Test your knowledge with pop culture & fun facts!" },
+  trivia: { label: "Trivia Challenge", emoji: "🧠", description: "Test your knowledge with pop culture & fun facts!" },
   icebreaker: { label: "Icebreaker", emoji: "🧊", description: "Open-ended questions to spark real conversations." },
   two_truths: { label: "Two Truths & a Lie", emoji: "🎭", description: "Share statements and guess which one is the lie!" },
+  hot_takes: { label: "Hot Takes", emoji: "🔥", description: "Rapid-fire agree/disagree on spicy statements." },
+  finish_sentence: { label: "Finish My Sentence", emoji: "✍️", description: "Complete open-ended prompts and reveal your personality." },
+  compatibility: { label: "Compatibility Quiz", emoji: "💕", description: "Answer the same 10 questions. Sally scores how aligned you are." },
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -27,7 +32,8 @@ export default function GameLobby() {
   const [activeRoomId, setActiveRoomId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
-  const [newGameType, setNewGameType] = useState<"would_you_rather" | "trivia" | "icebreaker" | "two_truths">("would_you_rather");
+  const [newGameType, setNewGameType] = useState<string>("jeopardy");
+  const [gameMode, setGameMode] = useState<"solo" | "multiplayer">("multiplayer");
   const [newMaxPlayers, setNewMaxPlayers] = useState(6);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answeredIndices, setAnsweredIndices] = useState<Set<number>>(new Set());
@@ -330,22 +336,44 @@ export default function GameLobby() {
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-primary text-white rounded-full">
-                  <Plus className="w-4 h-4 mr-2" /> Create Room
+                  <Plus className="w-4 h-4 mr-2" /> {gameMode === "solo" ? "Play Solo" : "Create Room"}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create a Game Room</DialogTitle>
+                  <DialogTitle>{gameMode === "solo" ? "Play Solo" : "Create a Game Room"}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-2">
+                  {/* Solo/Multiplayer Toggle */}
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Room Name</label>
-                    <Input
-                      placeholder="e.g. Waukesha Friday Night Games"
-                      value={newRoomName}
-                      onChange={e => setNewRoomName(e.target.value)}
-                    />
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Game Mode</label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={gameMode === "solo" ? "default" : "outline"}
+                        className="flex-1 rounded-lg"
+                        onClick={() => setGameMode("solo")}
+                      >
+                        Solo
+                      </Button>
+                      <Button
+                        variant={gameMode === "multiplayer" ? "default" : "outline"}
+                        className="flex-1 rounded-lg"
+                        onClick={() => setGameMode("multiplayer")}
+                      >
+                        Multiplayer
+                      </Button>
+                    </div>
                   </div>
+                  {gameMode === "multiplayer" && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-1 block">Room Name</label>
+                      <Input
+                        placeholder="e.g. Waukesha Friday Night Games"
+                        value={newRoomName}
+                        onChange={e => setNewRoomName(e.target.value)}
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Game Type</label>
                     <Select value={newGameType} onValueChange={v => setNewGameType(v as any)}>
@@ -362,26 +390,44 @@ export default function GameLobby() {
                     </Select>
                     <p className="text-xs text-gray-500 mt-1">{GAME_TYPE_LABELS[newGameType]?.description}</p>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Max Players</label>
-                    <Select value={String(newMaxPlayers)} onValueChange={v => setNewMaxPlayers(Number(v))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {[2, 3, 4, 5, 6, 8, 10, 12].map(n => (
-                          <SelectItem key={n} value={String(n)}>{n} players</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    Your city ({userCity ?? "unknown"}) will be attached so nearby players can find your room.
-                  </p>
+                  {gameMode === "multiplayer" && (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">Max Players</label>
+                        <Select value={String(newMaxPlayers)} onValueChange={v => setNewMaxPlayers(Number(v))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {[2, 3, 4, 5, 6, 8, 10, 12].map(n => (
+                              <SelectItem key={n} value={String(n)}>{n} players</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        Your city ({userCity ?? "unknown"}) will be attached so nearby players can find your room.
+                      </p>
+                    </>
+                  )}
+                  {gameMode === "solo" && (
+                    <p className="text-xs text-gray-500">
+                      Play solo to practice and improve your skills!
+                    </p>
+                  )}
                   <Button
                     className="w-full bg-primary text-white rounded-full"
-                    disabled={!newRoomName.trim() || createRoomMutation.isPending}
-                    onClick={() => createRoomMutation.mutate({ name: newRoomName.trim(), gameType: newGameType, maxPlayers: newMaxPlayers })}
+                    disabled={gameMode === "multiplayer" ? (!newRoomName.trim() || createRoomMutation.isPending) : createRoomMutation.isPending}
+                    onClick={() => {
+                      if (gameMode === "solo") {
+                        // For solo mode, navigate directly to the game
+                        toast.success(`Starting ${GAME_TYPE_LABELS[newGameType]?.label} solo game...`);
+                        setCreateOpen(false);
+                        // TODO: Navigate to solo game page
+                      } else {
+                        createRoomMutation.mutate({ name: newRoomName.trim(), gameType: newGameType as any, maxPlayers: newMaxPlayers });
+                      }
+                    }}
                   >
-                    {createRoomMutation.isPending ? "Creating room & generating questions..." : "Create Room"}
+                    {createRoomMutation.isPending ? "Creating room & generating questions..." : (gameMode === "solo" ? "Start Solo Game" : "Create Room")}
                   </Button>
                 </div>
               </DialogContent>
