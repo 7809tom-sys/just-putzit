@@ -275,6 +275,8 @@ export default function Profile() {
                   onClick={openIdentityDialog}
                 >
                   <Edit2 className="w-3 h-3 mr-1" />
+                  {(!profileAny?.gender || !profileAny?.sexualOrientation) ? "Add identity info" : "Edit identity"}
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -283,8 +285,6 @@ export default function Profile() {
                 >
                   <Edit2 className="w-3 h-3 mr-1" />
                   {!profileAny?.birthdate ? "Add birthday" : "Edit birthday"}
-                </Button>
-                  {(!profileAny?.gender || !profileAny?.sexualOrientation || !profileAny?.birthdate) ? "Add identity info" : "Edit"}
                 </Button>
               </div>
             </div>
