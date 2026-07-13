@@ -435,6 +435,29 @@ export default function GameLobby() {
           </div>
         </div>
 
+        {/* Browse Games Section */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Browse Games</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {Object.entries(GAME_TYPE_LABELS).map(([gameId, gameInfo]) => (
+              <Card
+                key={gameId}
+                className="group hover:shadow-lg transition-all cursor-pointer border-0 overflow-hidden"
+                onClick={() => {
+                  setNewGameType(gameId);
+                  setCreateOpen(true);
+                }}
+              >
+                <CardContent className="p-4 text-center bg-gradient-to-br from-primary/5 to-primary/10 group-hover:from-primary/10 group-hover:to-primary/20 transition-colors">
+                  <div className="text-4xl mb-2">{gameInfo.emoji}</div>
+                  <h3 className="font-bold text-gray-900 text-sm line-clamp-2">{gameInfo.label}</h3>
+                  <p className="text-xs text-gray-500 mt-2 line-clamp-2">{gameInfo.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
         {/* Room list */}
         {roomsLoading ? (
           <div className="text-center py-16 text-gray-400">Loading rooms...</div>
