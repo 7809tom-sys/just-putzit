@@ -81,6 +81,21 @@ export default function Profile() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
 
+  const updateBirthday = trpc.profile.updateIdentity.useMutation({
+    onSuccess: () => {
+      utils.profile.get.invalidate();
+      setBirthdayOpen(false);
+      toast.success("🎉 Birthday saved!", {
+        description: "Your birthday has been updated.",
+        duration: 3000,
+      });
+    },
+    onError: (err) => {
+      console.error("Birthday save error:", err);
+      toast.error("Failed to save birthday: " + (err.message || "Unknown error"));
+    },
+  });
+
   const updateBio = trpc.profile.update.useMutation({
     onSuccess: () => {
       utils.profile.get.invalidate();
@@ -204,15 +219,11 @@ export default function Profile() {
       toast.error("Please select month, day, and year");
       return;
     }
-    const birthdateStr = `${birthYear}-${String(parseInt(birthMonth)).padStart(2, '0')}-${String(parseInt(birthDay)).padStart(2, '0')}`;
-    const birthdate = new Date(birthdateStr);
-    updateIdentity.mutate({
-      birthdate: birthdate.toISOString(),
-    });
-    setBirthdayOpen(false);
-    toast.success("✨ Birthday saved!", {
-      description: `Your birthday is now ${new Date(birthdate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`,
-      duration: 3000,
+    const monthNum = String(parseInt(birthMonth)).padStart(2, '0');
+    const dayNum = String(parseInt(birthDay)).padStart(2, '0');
+    const birthdateStr = `${birthYear}-${monthNum}-${dayNum}T12:00:00.000Z`;
+    updateBirthday.mutate({
+      birthdate: birthdateStr,
     });
   }
 
