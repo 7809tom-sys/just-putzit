@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { Users, Plus, MapPin, Play, LogIn, Gamepad2, RefreshCw, Trophy, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import { useLocation } from "wouter";
 
 const GAME_TYPE_LABELS: Record<string, { label: string; emoji: string; description: string }> = {
   jeopardy: { label: "Jeopardy!", emoji: "🎬", description: "Answer clues for points with 1-10 players. Hear clues read aloud!" },
@@ -29,6 +30,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function GameLobby() {
+  const [, navigate] = useLocation();
   const [activeRoomId, setActiveRoomId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
@@ -421,7 +423,24 @@ export default function GameLobby() {
                         // For solo mode, navigate directly to the game
                         toast.success(`Starting ${GAME_TYPE_LABELS[newGameType]?.label} solo game...`);
                         setCreateOpen(false);
-                        // TODO: Navigate to solo game page
+                        // Navigate to solo game page based on game type
+                        const gameRoutes: Record<string, string> = {
+                          jeopardy: "/jeopardy",
+                          trivia_pursuit: "/trivia-pursuit",
+                          would_you_rather: "/would-you-rather",
+                          trivia: "/trivia",
+                          icebreaker: "/icebreaker",
+                          two_truths: "/two-truths",
+                          hot_takes: "/hot-takes",
+                          finish_sentence: "/finish-sentence",
+                          compatibility: "/compatibility",
+                        };
+                        const route = gameRoutes[newGameType];
+                        if (route) {
+                          navigate(route);
+                        } else {
+                          toast.error("Game route not found");
+                        }
                       } else {
                         createRoomMutation.mutate({ name: newRoomName.trim(), gameType: newGameType as any, maxPlayers: newMaxPlayers });
                       }

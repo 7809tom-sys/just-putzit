@@ -160,7 +160,12 @@ export default function Profile() {
   }
 
   function saveIdentity() {
-    const birthdateStr = birthYear ? `${birthYear}-01-01` : undefined;
+    let birthdateStr: string | undefined = undefined;
+    if (birthYear) {
+      // Convert birth year to ISO timestamp (Jan 1 of that year at midnight UTC)
+      const date = new Date(`${birthYear}-01-01T00:00:00Z`);
+      birthdateStr = date.toISOString();
+    }
     updateIdentity.mutate({
       gender: (gender || undefined) as any,
       sexualOrientation: (orientation || undefined) as any,
