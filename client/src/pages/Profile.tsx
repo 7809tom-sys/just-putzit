@@ -204,11 +204,19 @@ export default function Profile() {
       toast.error("Please select month, day, and year");
       return;
     }
-    const birthdateStr = `${birthYear}-${String(parseInt(birthMonth)).padStart(2, "0")}-${String(parseInt(birthDay)).padStart(2, "0")}T00:00:00Z`;
+    const birthdateStr = `${birthYear}-${String(parseInt(birthMonth)).padStart(2, '0')}-${String(parseInt(birthDay)).padStart(2, '0')}`;
+    const birthdate = new Date(birthdateStr);
     updateIdentity.mutate({
-      birthdate: birthdateStr,
+      birthdate: birthdate.toISOString(),
+    });
+    setBirthdayOpen(false);
+    toast.success("✨ Birthday saved!", {
+      description: `Your birthday is now ${new Date(birthdate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`,
+      duration: 3000,
     });
   }
+
+
 
   return (
     <div className="min-h-screen gradient-warm">
