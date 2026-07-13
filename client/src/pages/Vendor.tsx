@@ -16,7 +16,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Store, Plus, TrendingUp, Ticket, DollarSign, Users, Building2, Play, Eye, ToggleLeft, ToggleRight } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -105,7 +104,6 @@ export default function Vendor() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="flex items-center justify-center py-32"><Spinner /></div>
       </div>
     );
@@ -114,7 +112,6 @@ export default function Vendor() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container max-w-md py-24 text-center">
           <div className="text-5xl mb-4">🏪</div>
           <h1 className="font-display text-2xl font-bold mb-2">Partner with Just Putzit</h1>
@@ -136,7 +133,6 @@ export default function Vendor() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="container max-w-6xl py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">

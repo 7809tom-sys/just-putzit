@@ -39,7 +39,6 @@ import {
   MapPin,
 } from "lucide-react";
 import { Link } from "wouter";
-import Navbar from "@/components/Navbar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type UserRow = {
@@ -370,7 +369,6 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="container max-w-6xl py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

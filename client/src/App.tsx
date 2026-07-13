@@ -44,6 +44,7 @@ import Jeopardy from "@/pages/Jeopardy";
 import TriviaPursuit from "@/pages/TriviaPursuit";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 
 // Routes that are allowed without account verification
@@ -130,6 +131,7 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
+          <Navbar />
           <Router />
           <MobileBottomNav />
           <FloatingInstallButton />

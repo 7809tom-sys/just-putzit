@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Users, Plus, Search, BookOpen, Mountain, ChefHat, Music, Palette, Dumbbell, Globe, Gamepad2 } from "lucide-react";
-import Navbar from "@/components/Navbar";
 
 const GROUP_CATEGORIES = [
   { id: "all", label: "All Groups", icon: <Users className="w-4 h-4" /> },
@@ -62,7 +61,6 @@ export default function Community() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       {/* Header */}
       <div className="bg-gradient-to-br from-secondary/10 via-accent/10 to-primary/10 py-12 px-4">

@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { MapPin, Ticket, Users, CalendarDays, Star, CheckCircle2 } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -80,7 +79,6 @@ export default function Marketplace() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="flex items-center justify-center py-32"><Spinner /></div>
       </div>
     );
@@ -89,7 +87,6 @@ export default function Marketplace() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container max-w-md py-24 text-center">
           <div className="text-5xl mb-4">🎟️</div>
           <h1 className="font-display text-2xl font-bold mb-2">The Activity Marketplace</h1>
@@ -106,7 +103,6 @@ export default function Marketplace() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="container max-w-6xl py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">

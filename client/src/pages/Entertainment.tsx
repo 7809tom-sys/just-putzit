@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import Navbar from "@/components/Navbar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -342,7 +341,6 @@ export default function Entertainment() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="container max-w-5xl py-8">
         {/* Header */}
         <div className="mb-8">

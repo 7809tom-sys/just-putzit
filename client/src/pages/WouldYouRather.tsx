@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Progress } from "@/components/ui/progress";
 import { Scale, Sparkles, RotateCcw, Trophy, Users2 } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -85,7 +84,6 @@ export default function WouldYouRather() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="flex items-center justify-center py-32"><Spinner /></div>
       </div>
     );
@@ -94,7 +92,6 @@ export default function WouldYouRather() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container max-w-md py-24 text-center">
           <div className="text-5xl mb-4">⚖️</div>
           <h1 className="font-display text-2xl font-bold mb-2">Would You Rather</h1>
@@ -109,7 +106,6 @@ export default function WouldYouRather() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="container max-w-2xl py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">

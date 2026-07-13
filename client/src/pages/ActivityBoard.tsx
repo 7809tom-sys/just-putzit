@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import { MapView } from "@/components/Map";
 
 const CATEGORIES = [
@@ -135,7 +134,6 @@ export default function ActivityBoard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       {/* Sally's Recommendation Banner */}
       {(sallyRecs || recsLoading) && (

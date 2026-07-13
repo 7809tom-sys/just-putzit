@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { Sparkles, MapPin, Wallet, Users, CalendarDays, CheckCircle2, Heart } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -72,7 +71,6 @@ export default function Concierge() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="flex items-center justify-center py-32">
           <Spinner />
         </div>
@@ -83,7 +81,6 @@ export default function Concierge() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container max-w-md py-24 text-center">
           <div className="text-5xl mb-4">🧺</div>
           <h1 className="font-display text-2xl font-bold mb-2">Meet your Date Concierge</h1>
@@ -102,7 +99,6 @@ export default function Concierge() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="container max-w-5xl py-8">
         {/* Header */}
         <div className="mb-8">

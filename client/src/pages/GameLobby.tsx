@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Users, Plus, MapPin, Play, LogIn, Gamepad2, RefreshCw, Trophy, ArrowLeft } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import { useLocation } from "wouter";
 
 const GAME_TYPE_LABELS: Record<string, { label: string; emoji: string; description: string }> = {
@@ -117,7 +116,6 @@ export default function GameLobby() {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50">
-        <Navbar />
         <div className="max-w-2xl mx-auto px-4 py-8">
           {/* Room Header */}
           <div className="flex items-center gap-3 mb-6">
@@ -316,7 +314,6 @@ export default function GameLobby() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50">
-      <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-start justify-between mb-8">

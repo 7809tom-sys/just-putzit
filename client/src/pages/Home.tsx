@@ -7,7 +7,6 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef } from "react";
 import { AdSenseSlot } from "@/components/AdSenseSlot";
-import Navbar from "@/components/Navbar";
 import { useSEO } from "@/hooks/useSEO";
 
 // PWA install prompt hook
@@ -539,7 +538,6 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
 
   return (
     <div className="min-h-screen gradient-warm">
-      <Navbar />
       <div className="container py-8">
         {/* Welcome header */}
         <div className="mb-8">

@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { MapPin, CalendarDays, Ticket, Users, X } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -37,7 +36,6 @@ export default function Bookings() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="flex items-center justify-center py-32"><Spinner /></div>
       </div>
     );
@@ -46,7 +44,6 @@ export default function Bookings() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container max-w-md py-24 text-center">
           <div className="text-5xl mb-4">🎟️</div>
           <h1 className="font-display text-2xl font-bold mb-2">Your bookings</h1>
@@ -59,7 +56,6 @@ export default function Bookings() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="container max-w-3xl py-8">
         <div className="flex items-center justify-between mb-6">
           <div>

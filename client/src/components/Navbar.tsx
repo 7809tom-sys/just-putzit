@@ -12,16 +12,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Routes where the navbar should be hidden (auth/onboarding flows)
+const HIDE_NAVBAR_ROUTES = ["/login", "/signup", "/verify-account", "/onboarding"];
+
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
+  const shouldHide = !user || HIDE_NAVBAR_ROUTES.some(r => location.startsWith(r));
   const { data: notifications } = trpc.notifications.getAll.useQuery(undefined, {
+    enabled: !shouldHide,
     refetchInterval: 30000,
   });
   const markAllRead = trpc.notifications.markAllRead.useMutation();
   const utils = trpc.useUtils();
 
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+
+  // Don't show navbar on auth/onboarding pages or when not logged in
+  if (shouldHide) return null;
 
   const navItems = [
     { href: "/matches", icon: Heart, label: "Matches" },

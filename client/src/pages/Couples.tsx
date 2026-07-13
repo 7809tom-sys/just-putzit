@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { Heart, Users, Sparkles, Plus, X } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -78,7 +77,6 @@ export default function Couples() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="flex items-center justify-center py-32"><Spinner /></div>
       </div>
     );
@@ -87,7 +85,6 @@ export default function Couples() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container max-w-md py-24 text-center">
           <div className="text-5xl mb-4">💞</div>
           <h1 className="font-display text-2xl font-bold mb-2">The Couples Network</h1>
@@ -102,7 +99,6 @@ export default function Couples() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="container max-w-5xl py-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-11 h-11 rounded-full gradient-sally flex items-center justify-center text-white shadow-md">
