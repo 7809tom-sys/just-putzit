@@ -23,6 +23,8 @@ import {
   Gamepad2,
   Popcorn,
   Megaphone,
+  Users2,
+  Briefcase,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +59,8 @@ export default function MobileBottomNav() {
     { href: "/concierge", icon: Sparkles, label: "Concierge", color: "text-purple-500" },
     { href: "/marketplace", icon: Ticket, label: "Marketplace", color: "text-blue-500" },
     { href: "/events", icon: Calendar, label: "Local Events", color: "text-orange-400" },
+    { href: "/family", icon: Users2, label: "Family Network", color: "text-cyan-500" },
+    { href: "/trip-planner", icon: Briefcase, label: "Trip Planner", color: "text-teal-500" },
     { href: "/profile", icon: User, label: "My Profile", color: "text-teal-500" },
     { href: "/bookings", icon: Ticket, label: "My Bookings", color: "text-sky-500" },
     { href: "/would-you-rather", icon: Scale, label: "Would You Rather", color: "text-indigo-500" },

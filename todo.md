@@ -482,6 +482,6 @@
 - [x] Frontend: Family.tsx page with profile setup, child management, family discovery, kid-friendly activity feed
 - [x] Frontend: TripPlanner.tsx page with trip creation, itinerary management, ICS calendar export
 - [x] Routes: /family and /trip-planner added to App.tsx
-- [ ] Add navigation links to MobileBottomNav for Family and Trip Planner
-- [ ] Vitest tests for family and trip planner procedures
-- [ ] Checkpoint and deliver
+- [x] Add navigation links to MobileBottomNav for Family and Trip Planner
+- [x] Vitest tests for family and trip planner procedures (29 tests passing)
+- [x] Checkpoint and deliver
