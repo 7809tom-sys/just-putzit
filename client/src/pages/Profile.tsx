@@ -275,6 +275,15 @@ export default function Profile() {
                   onClick={openIdentityDialog}
                 >
                   <Edit2 className="w-3 h-3 mr-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground rounded-full"
+                  onClick={() => setBirthdayOpen(true)}
+                >
+                  <Edit2 className="w-3 h-3 mr-1" />
+                  {!profileAny?.birthdate ? "Add birthday" : "Edit birthday"}
+                </Button>
                   {(!profileAny?.gender || !profileAny?.sexualOrientation || !profileAny?.birthdate) ? "Add identity info" : "Edit"}
                 </Button>
               </div>
@@ -620,6 +629,68 @@ export default function Profile() {
               disabled={updateIdentity.isPending}
             >
               {updateIdentity.isPending ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Birthday Dialog */}
+      <Dialog open={birthdayOpen} onOpenChange={setBirthdayOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Your Birthday</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="bd-month">Month</Label>
+                <select
+                  id="bd-month"
+                  value={birthMonth}
+                  onChange={e => setBirthMonth(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Month</option>
+                  {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                    <option key={i} value={String(i + 1)}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bd-day">Day</Label>
+                <select
+                  id="bd-day"
+                  value={birthDay}
+                  onChange={e => setBirthDay(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Day</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                    <option key={d} value={String(d)}>{d}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bd-year">Year</Label>
+                <select
+                  id="bd-year"
+                  value={birthYear}
+                  onChange={e => setBirthYear(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Year</option>
+                  {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - 18 - i).map(y => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <Button
+              className="w-full gradient-sally text-white border-0 rounded-xl btn-scale"
+              onClick={saveBirthday}
+              disabled={updateIdentity.isPending}
+            >
+              {updateIdentity.isPending ? "Saving..." : "Save Birthday"}
             </Button>
           </div>
         </DialogContent>
