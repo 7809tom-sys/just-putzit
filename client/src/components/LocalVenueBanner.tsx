@@ -249,18 +249,19 @@ export function LocalVenueBanner({ page, className = "" }: LocalVenueBannerProps
           )}
         </div>
 
-        {/* "Advertise here" nudge at bottom */}
-        <div className="px-4 pb-3 flex items-center gap-1.5">
-          <Megaphone className="w-3 h-3 text-gray-400" />
-          <span className="text-[10px] text-gray-400">
-            Your business could be here —{" "}
-            <button
-              onClick={e => { e.stopPropagation(); navigate("/advertise"); }}
-              className="underline hover:text-orange-500 transition-colors"
-            >
-              advertise with us
-            </button>
+        {/* Bottom bar: Sponsor CTA */}
+        <div className="px-4 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-black/5 mt-1">
+          <span className="text-[10px] text-gray-400 flex items-center gap-1">
+            <Megaphone className="w-3 h-3 flex-shrink-0" />
+            This spot is available for local businesses
           </span>
+          <button
+            onClick={e => { e.stopPropagation(); navigate("/advertise"); }}
+            className="flex-shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold text-orange-600 bg-orange-100 hover:bg-orange-200 border border-orange-200 hover:border-orange-300 px-3 py-1 rounded-full transition-all active:scale-95"
+          >
+            <Megaphone className="w-3 h-3" />
+            Sponsor this space
+          </button>
         </div>
       </div>
     );
