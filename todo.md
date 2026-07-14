@@ -565,3 +565,12 @@
 - [x] Fallback includes "advertise with us" nudge link at the bottom
 - [x] Fallback is dismissible independently from paid ads
 - [x] Paid ad banner unchanged — fallback only shows when visible paid ads = 0
+
+## Bullgerdash Game
+- [x] Create bullgerdash_photos, bullgerdash_games, bullgerdash_rounds DB tables
+- [x] Build tRPC bullgerdash router (startGame, getGame, submitCaption, submitVote, nextRound, endGame, getRoundHistory)
+- [x] Build Bullgerdash.tsx game UI page with all phases (storyteller writing, voter guessing, reveal, game over)
+- [x] Add Bullgerdash card to Games.tsx game selection screen
+- [x] Add Bullgerdash card to GamesHub.tsx
+- [x] Add /bullgerdash/:matchId route to App.tsx
+- [x] Seed 20 obscure photos into bullgerdash_photos table

@@ -44,6 +44,7 @@ import Family from "@/pages/Family";
 import TripPlanner from "@/pages/TripPlanner";
 import Jeopardy from "@/pages/Jeopardy";
 import TriviaPursuit from "@/pages/TriviaPursuit";
+import Bullgerdash from "@/pages/Bullgerdash";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import Navbar from "@/components/Navbar";
@@ -110,6 +111,7 @@ function Router() {
         <Route path="/trivia" component={TriviaGame} />
         <Route path="/jeopardy" component={Jeopardy} />
         <Route path="/trivia-pursuit" component={TriviaPursuit} />
+        <Route path="/bullgerdash/:matchId" component={Bullgerdash} />
         <Route path="/games-hub" component={GamesHub} />
         <Route path="/games-hub/:gameId" component={GamesHub} />
         <Route path="/family" component={Family} />

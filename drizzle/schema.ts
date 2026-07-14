@@ -1012,3 +1012,49 @@ export const adPartners = mysqlTable("ad_partners", {
 });
 export type AdPartner = typeof adPartners.$inferSelect;
 export type NewAdPartner = typeof adPartners.$inferInsert;
+
+// ─── Bullgerdash Photo Pool ───────────────────────────────────────────────────
+export const bullgerdashPhotos = mysqlTable("bullgerdash_photos", {
+  id: int("id").autoincrement().primaryKey(),
+  imageUrl: text("image_url").notNull(),
+  truthCaption: text("truth_caption").notNull(), // The real story behind the photo
+  category: varchar("category", { length: 50 }).default("obscure"),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+});
+export type BullgerdashPhoto = typeof bullgerdashPhotos.$inferSelect;
+
+// ─── Bullgerdash Games ────────────────────────────────────────────────────────
+export const bullgerdashGames = mysqlTable("bullgerdash_games", {
+  id: int("id").autoincrement().primaryKey(),
+  matchId: int("match_id").notNull(), // references matches.id
+  player1Id: int("player1_id").notNull(),
+  player2Id: int("player2_id").notNull(),
+  player1Score: int("player1_score").notNull().default(0),
+  player2Score: int("player2_score").notNull().default(0),
+  currentRound: int("current_round").notNull().default(1),
+  status: mysqlEnum("status", ["active", "finished"]).notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type BullgerdashGame = typeof bullgerdashGames.$inferSelect;
+
+// ─── Bullgerdash Rounds ───────────────────────────────────────────────────────
+export const bullgerdashRounds = mysqlTable("bullgerdash_rounds", {
+  id: int("id").autoincrement().primaryKey(),
+  gameId: int("game_id").notNull(),
+  roundNumber: int("round_number").notNull(),
+  storytellerId: int("storyteller_id").notNull(), // which player is telling the story this round
+  photoId: int("photo_id").notNull(),
+  caption: text("caption"),           // The storyteller's submitted caption
+  isLie: boolean("is_lie"),           // true = caption is a lie, false = truth
+  // Voter's guess
+  voterId: int("voter_id"),
+  voterGuess: mysqlEnum("voter_guess", ["truth", "lie"]),
+  // Scoring
+  storytellerPoints: int("storyteller_points").default(0),
+  voterPoints: int("voter_points").default(0),
+  // Phase tracking
+  phase: mysqlEnum("phase", ["storyteller_writing", "voter_guessing", "reveal"]).notNull().default("storyteller_writing"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type BullgerdashRound = typeof bullgerdashRounds.$inferSelect;

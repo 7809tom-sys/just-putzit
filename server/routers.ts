@@ -8,6 +8,7 @@ import { invokeLLM } from "./_core/llm";
 import { z } from "zod";
 import { jeopardyRouter } from "./routers/jeopardy";
 import { triviaPursuitRouter } from "./routers/trivia-pursuit";
+import { bullgerdashRouter } from "./routers/bullgerdash";
 import { autoSeedCityEvents } from "./cityEventSeeder";
 import {
   getOrCreateProfile,
@@ -2665,6 +2666,7 @@ Return JSON with questions array, each having optionA and optionB.`,
 
   jeopardy: jeopardyRouter,
   triviaPursuit: triviaPursuitRouter,
+  bullgerdash: bullgerdashRouter,
 
   advertising: router({
     // Public: submit an inquiry

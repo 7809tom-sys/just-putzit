@@ -139,6 +139,20 @@ const GAMES = [
     premium: false,
     traits: ["knowledge", "interests"],
   },
+  {
+    id: "bullgerdash",
+    title: "Bullgerdash",
+    description: "A mystery photo appears — write a caption that's truth or a convincing lie. Can your match spot the bluff?",
+    emoji: "📸",
+    color: "from-purple-500 to-pink-500",
+    badge: "2 Players",
+    badgeColor: "bg-purple-100 text-purple-700",
+    route: "/games",
+    players: "2",
+    time: "Open-ended",
+    premium: false,
+    traits: ["humor", "creativity", "bluffing"],
+  },
 ];
 
 // ─── Hot Takes Game ────────────────────────────────────────────────────────
