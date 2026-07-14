@@ -52,12 +52,11 @@ export default function Navbar() {
       <div className="container flex items-center justify-between h-16">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 no-underline">
-          <div className="w-9 h-9 rounded-full gradient-sally flex items-center justify-center text-white font-bold text-sm shadow-md">
-            JP
-          </div>
-          <span className="font-display font-bold text-xl text-foreground hidden sm:block">
-            Just Putzit
-          </span>
+          <img
+            src="/manus-storage/justputzit-logo_490fa7ec.png"
+            alt="Just Putzit"
+            className="h-10 w-auto object-contain"
+          />
         </Link>
 
         {/* Nav links */}

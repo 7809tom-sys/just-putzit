@@ -94,8 +94,7 @@ export default function EventDetail() {
           <button onClick={() => navigate("/")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <ChevronLeft className="w-4 h-4" />
             <div className="flex items-center gap-1.5">
-              <div className="w-7 h-7 rounded-full gradient-sally flex items-center justify-center text-white font-bold text-xs">JP</div>
-              <span className="font-display font-bold text-lg text-foreground">Just Putzit</span>
+              <img src="/manus-storage/justputzit-logo_490fa7ec.png" alt="Just Putzit" className="h-7 w-auto object-contain" />
             </div>
           </button>
           <a href={getLoginUrl()}>

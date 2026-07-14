@@ -106,10 +106,7 @@ function LandingPage() {
         {/* Top nav for landing */}
         <div className="container flex items-center justify-between py-5">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full gradient-sally flex items-center justify-center text-white font-bold shadow-lg">
-              JP
-            </div>
-            <span className="font-display font-bold text-2xl text-foreground">Just Putzit</span>
+            <img src="/manus-storage/justputzit-logo_490fa7ec.png" alt="Just Putzit" className="h-10 w-auto object-contain" />
           </div>
           <a href={getLoginUrl()}>
             <Button className="gradient-sally text-white border-0 shadow-md btn-scale rounded-full px-6">
@@ -364,8 +361,7 @@ function LandingPage() {
       <footer className="bg-foreground text-background py-8">
         <div className="container flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full gradient-sally flex items-center justify-center text-white font-bold text-xs">JP</div>
-            <span className="font-display font-bold">Just Putzit</span>
+            <img src="/manus-storage/justputzit-logo_490fa7ec.png" alt="Just Putzit" className="h-7 w-auto object-contain brightness-0 invert" />
           </div>
           <p className="text-sm opacity-60">© 2025 Just Putzit. Connecting you in real life.</p>
         </div>
@@ -385,7 +381,7 @@ function GetTheAppSection() {
         <div className="container max-w-xl text-center">
           <div className="text-5xl mb-4">🎉</div>
           <h2 className="font-display text-3xl font-bold text-foreground mb-2">App Installed!</h2>
-          <p className="text-muted-foreground">Just Putzit is on your home screen. Tap the orange JP icon to open it anytime.</p>
+          <p className="text-muted-foreground">Just Putzit is on your home screen. Tap the Just Putzit icon to open it anytime.</p>
         </div>
       </section>
     );
@@ -480,9 +476,7 @@ function GetTheAppSection() {
           )}
 
           <div className="mt-8 pt-6 border-t border-border flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl gradient-sally flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0">
-              JP
-            </div>
+            <img src="/manus-storage/justputzit-logo_490fa7ec.png" alt="Just Putzit" className="w-12 h-12 object-contain flex-shrink-0" />
             <div>
               <p className="font-semibold text-sm">Just Putzit</p>
               <p className="text-xs text-muted-foreground">Free · No App Store · Works offline</p>
