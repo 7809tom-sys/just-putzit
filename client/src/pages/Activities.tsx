@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Star, ExternalLink, RefreshCw, Navigation } from "lucide-react";
+import { MapPin, Star, ExternalLink, RefreshCw, Navigation, Search } from "lucide-react";
 import { toast } from "sonner";
 import { MapView } from "@/components/Map";
 
@@ -32,6 +32,7 @@ export default function Activities() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeType, setActiveType] = useState("establishment");
+  const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -152,6 +153,26 @@ export default function Activities() {
           </div>
         </div>
 
+        {/* Search bar */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search places by name..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 h-12 text-base rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
         {/* Type filters */}
         <div className="flex gap-2 flex-wrap mb-6">
           {ACTIVITY_TYPES.map(t => (
@@ -193,9 +214,14 @@ export default function Activities() {
                 <div key={i} className="bg-white rounded-2xl p-4 animate-pulse h-24" />
               ))
             ) : places.length > 0 ? (
-              places.map(place => (
-                <PlaceCard key={place.placeId} place={place} typeLabel={getTypeLabel(place.types)} />
-              ))
+              (() => {
+                const filtered = searchQuery
+                  ? places.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.vicinity.toLowerCase().includes(searchQuery.toLowerCase()))
+                  : places;
+                return filtered.length > 0
+                  ? filtered.map(place => <PlaceCard key={place.placeId} place={place} typeLabel={getTypeLabel(place.types)} />)
+                  : <div className="bg-white rounded-3xl p-8 text-center"><div className="text-4xl mb-3">🔍</div><p className="font-semibold">No matches for "{searchQuery}"</p><p className="text-sm text-muted-foreground mt-1">Try a different name or clear the search</p></div>;
+              })()
             ) : !userLocation && !locationError ? (
               <div className="bg-white rounded-3xl p-8 text-center">
                 <Navigation className="w-10 h-10 text-muted-foreground mx-auto mb-3 animate-pulse" />
