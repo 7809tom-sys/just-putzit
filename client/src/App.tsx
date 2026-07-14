@@ -34,6 +34,8 @@ import GameLobby from "@/pages/GameLobby";
 import Entertainment from "@/pages/Entertainment";
 import ShoutOut from "@/pages/ShoutOut";
 import AccountVerify from "@/pages/AccountVerify";
+import AdvertiseWithUs from "@/pages/AdvertiseWithUs";
+import AdminAdvertising from "@/pages/AdminAdvertising";
 import CityLanding from "@/pages/CityLanding";
 import EventDetail from "@/pages/EventDetail";
 import TriviaGame from "@/pages/TriviaGame";
@@ -117,6 +119,8 @@ function Router() {
         <Route path="/entertainment" component={Entertainment} />
         <Route path="/shout-out" component={ShoutOut} />
         <Route path="/safety" component={Safety} />
+        <Route path="/advertise" component={AdvertiseWithUs} />
+        <Route path="/admin/advertising" component={AdminAdvertising} />
         <Route path="/admin" component={Admin} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

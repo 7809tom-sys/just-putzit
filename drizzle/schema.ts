@@ -968,3 +968,37 @@ export const seededCities = mysqlTable("seeded_cities", {
   lastRefreshedAt: timestamp("lastRefreshedAt").defaultNow().notNull(),
 });
 export type SeededCity = typeof seededCities.$inferSelect;
+
+// ─── Advertising Partners ─────────────────────────────────────────────────────
+export const adPartners = mysqlTable("ad_partners", {
+  id: int("id").autoincrement().primaryKey(),
+  // Business info
+  businessName: varchar("businessName", { length: 200 }).notNull(),
+  contactName: varchar("contactName", { length: 200 }).notNull(),
+  contactEmail: varchar("contactEmail", { length: 320 }).notNull(),
+  contactPhone: varchar("contactPhone", { length: 30 }),
+  website: varchar("website", { length: 500 }),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 50 }),
+  // Ad tier
+  tier: mysqlEnum("tier", ["basic", "featured", "sponsored_event", "premium"]).notNull().default("basic"),
+  // Status
+  status: mysqlEnum("status", ["inquiry", "active", "paused", "cancelled"]).notNull().default("inquiry"),
+  // Billing
+  monthlyRate: int("monthlyRate"), // in cents
+  billingStartDate: date("billingStartDate"),
+  billingNotes: text("billingNotes"),
+  // Ad content
+  tagline: varchar("tagline", { length: 300 }),
+  logoUrl: varchar("logoUrl", { length: 500 }),
+  promoText: text("promoText"),
+  // Admin notes
+  adminNotes: text("adminNotes"),
+  // Timestamps
+  inquiredAt: timestamp("inquiredAt").defaultNow().notNull(),
+  activatedAt: timestamp("activatedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+export type AdPartner = typeof adPartners.$inferSelect;
+export type NewAdPartner = typeof adPartners.$inferInsert;

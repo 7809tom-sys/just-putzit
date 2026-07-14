@@ -1,0 +1,307 @@
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useLocation } from "wouter";
+import {
+  Building2, Mail, Phone, Globe, MapPin, Star, Crown, Zap, CheckCircle,
+  Clock, PauseCircle, XCircle, Pencil, Trash2, DollarSign, StickyNote, ExternalLink
+} from "lucide-react";
+
+type Partner = {
+  id: number;
+  businessName: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  website: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  tier: "basic" | "featured" | "sponsored_event" | "premium";
+  status: "inquiry" | "active" | "paused" | "cancelled";
+  monthlyRate: number | null;
+  billingNotes: string | null;
+  tagline: string | null;
+  logoUrl: string | null;
+  promoText: string | null;
+  adminNotes: string | null;
+  inquiredAt: Date;
+  activatedAt: Date | null;
+};
+
+const TIER_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  basic: { label: "Basic", color: "bg-slate-100 text-slate-700", icon: <MapPin className="w-3.5 h-3.5" /> },
+  featured: { label: "Featured", color: "bg-amber-100 text-amber-700", icon: <Star className="w-3.5 h-3.5" /> },
+  sponsored_event: { label: "Sponsored Event", color: "bg-violet-100 text-violet-700", icon: <Zap className="w-3.5 h-3.5" /> },
+  premium: { label: "Premium", color: "bg-rose-100 text-rose-700", icon: <Crown className="w-3.5 h-3.5" /> },
+};
+
+const STATUS_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  inquiry: { label: "Inquiry", color: "bg-blue-100 text-blue-700", icon: <Clock className="w-3.5 h-3.5" /> },
+  active: { label: "Active", color: "bg-green-100 text-green-700", icon: <CheckCircle className="w-3.5 h-3.5" /> },
+  paused: { label: "Paused", color: "bg-yellow-100 text-yellow-700", icon: <PauseCircle className="w-3.5 h-3.5" /> },
+  cancelled: { label: "Cancelled", color: "bg-gray-100 text-gray-500", icon: <XCircle className="w-3.5 h-3.5" /> },
+};
+
+const TIER_PRICES: Record<string, number> = {
+  basic: 4900,
+  featured: 12900,
+  sponsored_event: 9900,
+  premium: 34900,
+};
+
+export default function AdminAdvertising() {
+  const { user, loading: isLoading } = useAuth();
+  const [, navigate] = useLocation();
+  const [statusFilter, setStatusFilter] = useState<"all" | "inquiry" | "active" | "paused" | "cancelled">("all");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Partner & { monthlyRateDollars: string }>>({});
+
+  const { data: partners = [], refetch } = trpc.advertising.list.useQuery(
+    { status: statusFilter },
+    { enabled: user?.role === "admin" }
+  );
+
+  const updateMutation = trpc.advertising.update.useMutation({
+    onSuccess: () => { toast.success("Partner updated"); setEditingId(null); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteMutation = trpc.advertising.delete.useMutation({
+    onSuccess: () => { toast.success("Partner removed"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full" /></div>;
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-3">🔒</div>
+          <p className="font-semibold text-gray-700">Admin access required</p>
+          <Button className="mt-4" onClick={() => navigate("/")}>Go Home</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const startEdit = (p: Partner) => {
+    setEditingId(p.id);
+    setEditForm({
+      status: p.status,
+      tier: p.tier,
+      monthlyRateDollars: p.monthlyRate ? String(p.monthlyRate / 100) : String(TIER_PRICES[p.tier] / 100),
+      tagline: p.tagline || "",
+      adminNotes: p.adminNotes || "",
+      billingNotes: p.billingNotes || "",
+    });
+  };
+
+  const saveEdit = (id: number) => {
+    updateMutation.mutate({
+      id,
+      status: editForm.status as Partner["status"],
+      tier: editForm.tier as Partner["tier"],
+      monthlyRate: editForm.monthlyRateDollars ? Math.round(parseFloat(editForm.monthlyRateDollars) * 100) : undefined,
+      tagline: editForm.tagline ?? undefined,
+      adminNotes: editForm.adminNotes ?? undefined,
+      billingNotes: editForm.billingNotes ?? undefined,
+    });
+  };
+
+  const counts = {
+    all: partners.length,
+    inquiry: partners.filter(p => p.status === "inquiry").length,
+    active: partners.filter(p => p.status === "active").length,
+    paused: partners.filter(p => p.status === "paused").length,
+    cancelled: partners.filter(p => p.status === "cancelled").length,
+  };
+
+  const monthlyRevenue = partners
+    .filter(p => p.status === "active")
+    .reduce((sum, p) => sum + (p.monthlyRate || TIER_PRICES[p.tier] || 0), 0);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="font-display font-bold text-2xl text-gray-900">Advertising Partners</h1>
+            <p className="text-gray-500 text-sm mt-0.5">Manage bar, venue & business advertising partnerships</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/advertise")} className="gap-2 rounded-xl">
+            <ExternalLink className="w-4 h-4" /> View Public Page
+          </Button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="text-2xl font-bold text-gray-900">{counts.inquiry}</div>
+            <div className="text-sm text-blue-600 font-medium flex items-center gap-1 mt-0.5"><Clock className="w-3.5 h-3.5" /> New Inquiries</div>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="text-2xl font-bold text-gray-900">{counts.active}</div>
+            <div className="text-sm text-green-600 font-medium flex items-center gap-1 mt-0.5"><CheckCircle className="w-3.5 h-3.5" /> Active Partners</div>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="text-2xl font-bold text-gray-900">${(monthlyRevenue / 100).toFixed(0)}</div>
+            <div className="text-sm text-orange-600 font-medium flex items-center gap-1 mt-0.5"><DollarSign className="w-3.5 h-3.5" /> Monthly Revenue</div>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="text-2xl font-bold text-gray-900">{counts.all}</div>
+            <div className="text-sm text-gray-500 font-medium mt-0.5">Total Partners</div>
+          </div>
+        </div>
+
+        {/* Filter tabs */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {(["all", "inquiry", "active", "paused", "cancelled"] as const).map(s => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${statusFilter === s ? "bg-gray-900 text-white border-gray-900" : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"}`}
+            >
+              {s === "all" ? "All" : STATUS_META[s].label} {s !== "all" && <span className="ml-1 opacity-60">{counts[s]}</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Partners list */}
+        {partners.length === 0 ? (
+          <div className="bg-white rounded-3xl p-12 text-center shadow-sm">
+            <div className="text-4xl mb-3">📭</div>
+            <p className="font-semibold text-gray-700">No partners yet</p>
+            <p className="text-sm text-gray-400 mt-1">Inquiries submitted via the public page will appear here.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {partners.map(p => {
+              const tier = TIER_META[p.tier];
+              const status = STATUS_META[p.status];
+              const isEditing = editingId === p.id;
+              return (
+                <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h3 className="font-bold text-gray-900 text-lg">{p.businessName}</h3>
+                          <Badge className={`${tier.color} flex items-center gap-1 text-xs`}>{tier.icon}{tier.label}</Badge>
+                          <Badge className={`${status.color} flex items-center gap-1 text-xs`}>{status.icon}{status.label}</Badge>
+                        </div>
+                        {p.tagline && <p className="text-sm text-gray-500 italic mb-2">"{p.tagline}"</p>}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-600">
+                          <div className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-gray-400" />{p.contactName}</div>
+                          <div className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-gray-400" /><a href={`mailto:${p.contactEmail}`} className="hover:text-orange-500 transition-colors">{p.contactEmail}</a></div>
+                          {p.contactPhone && <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-gray-400" />{p.contactPhone}</div>}
+                          {p.website && <div className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-gray-400" /><a href={p.website} target="_blank" rel="noopener noreferrer" className="hover:text-orange-500 truncate">{p.website}</a></div>}
+                          {p.city && <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-gray-400" />{p.city}{p.state ? `, ${p.state}` : ""}</div>}
+                          <div className="flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5 text-gray-400" />${((p.monthlyRate || TIER_PRICES[p.tier] || 0) / 100).toFixed(0)}/mo</div>
+                        </div>
+                        {p.adminNotes && (
+                          <div className="mt-3 bg-yellow-50 rounded-xl p-3 flex items-start gap-2">
+                            <StickyNote className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-yellow-800">{p.adminNotes}</p>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-400 mt-2">Inquired {new Date(p.inquiredAt).toLocaleDateString()}{p.activatedAt ? ` · Activated ${new Date(p.activatedAt).toLocaleDateString()}` : ""}</p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={() => isEditing ? setEditingId(null) : startEdit(p as Partner)}>
+                          <Pencil className="w-3.5 h-3.5" />{isEditing ? "Cancel" : "Edit"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="rounded-xl text-red-500 hover:text-red-600 hover:border-red-300" onClick={() => { if (confirm(`Remove ${p.businessName}?`)) deleteMutation.mutate({ id: p.id }); }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Inline edit form */}
+                    {isEditing && (
+                      <div className="mt-5 pt-5 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                          <select
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                            value={editForm.status}
+                            onChange={e => setEditForm(f => ({ ...f, status: e.target.value as Partner["status"] }))}
+                          >
+                            <option value="inquiry">Inquiry</option>
+                            <option value="active">Active</option>
+                            <option value="paused">Paused</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Tier</label>
+                          <select
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                            value={editForm.tier}
+                            onChange={e => setEditForm(f => ({ ...f, tier: e.target.value as Partner["tier"] }))}
+                          >
+                            <option value="basic">Basic — $49/mo</option>
+                            <option value="featured">Featured — $129/mo</option>
+                            <option value="sponsored_event">Sponsored Event — $99/event</option>
+                            <option value="premium">Premium — $349/mo</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Monthly Rate ($)</label>
+                          <Input
+                            type="number"
+                            placeholder="e.g. 129"
+                            value={editForm.monthlyRateDollars || ""}
+                            onChange={e => setEditForm(f => ({ ...f, monthlyRateDollars: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Tagline</label>
+                          <Input
+                            placeholder="Short promo tagline"
+                            value={editForm.tagline || ""}
+                            onChange={e => setEditForm(f => ({ ...f, tagline: e.target.value }))}
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Admin Notes (internal)</label>
+                          <Textarea
+                            rows={2}
+                            placeholder="Internal notes about this partner..."
+                            value={editForm.adminNotes || ""}
+                            onChange={e => setEditForm(f => ({ ...f, adminNotes: e.target.value }))}
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Billing Notes</label>
+                          <Textarea
+                            rows={2}
+                            placeholder="Billing details, payment method, notes..."
+                            value={editForm.billingNotes || ""}
+                            onChange={e => setEditForm(f => ({ ...f, billingNotes: e.target.value }))}
+                          />
+                        </div>
+                        <div className="md:col-span-2 flex justify-end gap-3">
+                          <Button variant="outline" className="rounded-xl" onClick={() => setEditingId(null)}>Cancel</Button>
+                          <Button className="rounded-xl bg-orange-500 hover:bg-orange-600 text-white" onClick={() => saveEdit(p.id)} disabled={updateMutation.isPending}>
+                            {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

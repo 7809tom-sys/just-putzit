@@ -40,6 +40,10 @@ export default function Activities() {
 
   const { data: profile } = trpc.profile.get.useQuery();
   const updateLocation = trpc.profile.update.useMutation();
+  const { data: featuredPartners = [] } = trpc.advertising.getFeaturedPartners.useQuery(
+    { city: profile?.city || undefined },
+    { enabled: true, staleTime: 60_000 }
+  );
 
   const searchNearby = (map: google.maps.Map, location: { lat: number; lng: number }, type: string) => {
     setIsLoading(true);
@@ -219,7 +223,7 @@ export default function Activities() {
                   ? places.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.vicinity.toLowerCase().includes(searchQuery.toLowerCase()))
                   : places;
                 return filtered.length > 0
-                  ? filtered.map(place => <PlaceCard key={place.placeId} place={place} typeLabel={getTypeLabel(place.types)} />)
+                  ? filtered.map(place => <PlaceCard key={place.placeId} place={place} typeLabel={getTypeLabel(place.types)} isFeatured={featuredPartners.some(fp => place.name.toLowerCase().includes(fp.businessName.toLowerCase()) || fp.businessName.toLowerCase().includes(place.name.toLowerCase()))} />)
                   : <div className="bg-white rounded-3xl p-8 text-center"><div className="text-4xl mb-3">🔍</div><p className="font-semibold">No matches for "{searchQuery}"</p><p className="text-sm text-muted-foreground mt-1">Try a different name or clear the search</p></div>;
               })()
             ) : !userLocation && !locationError ? (
@@ -242,13 +246,14 @@ export default function Activities() {
   );
 }
 
-function PlaceCard({ place, typeLabel }: { place: Place; typeLabel: string }) {
+function PlaceCard({ place, typeLabel, isFeatured }: { place: Place; typeLabel: string; isFeatured?: boolean }) {
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-border card-hover">
+    <div className={`bg-white rounded-2xl p-4 shadow-sm border card-hover ${isFeatured ? "border-amber-300 ring-1 ring-amber-200" : "border-border"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <Badge variant="secondary" className="text-xs rounded-full">{typeLabel}</Badge>
+            {isFeatured && <Badge className="text-xs rounded-full bg-amber-100 text-amber-700 border-0 gap-1"><Star className="w-3 h-3 fill-amber-500" />Featured Partner</Badge>}
             {place.openNow !== undefined && (
               <Badge className={`text-xs rounded-full border-0 ${place.openNow ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                 {place.openNow ? "Open" : "Closed"}

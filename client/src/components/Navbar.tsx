@@ -207,12 +207,24 @@ export default function Navbar() {
                   Safety & Trust
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/advertise" className="font-medium">
+                  <Megaphone className="w-4 h-4 mr-2 text-orange-500" />
+                  Advertise With Us
+                </Link>
+              </DropdownMenuItem>
               {user?.role === "admin" && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/admin">
                       Admin Panel
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/advertising">
+                      Manage Partners
                     </Link>
                   </DropdownMenuItem>
                 </>

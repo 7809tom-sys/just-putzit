@@ -2665,6 +2665,119 @@ Return JSON with questions array, each having optionA and optionB.`,
 
   jeopardy: jeopardyRouter,
   triviaPursuit: triviaPursuitRouter,
+
+  advertising: router({
+    // Public: submit an inquiry
+    submitInquiry: publicProcedure
+      .input(z.object({
+        businessName: z.string().min(1),
+        contactName: z.string().min(1),
+        contactEmail: z.string().email(),
+        contactPhone: z.string().optional(),
+        website: z.string().optional(),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        tier: z.enum(["basic", "featured", "sponsored_event", "premium"]),
+        tagline: z.string().optional(),
+        promoText: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { adPartners } = await import("../drizzle/schema");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        await db.insert(adPartners).values({
+          businessName: input.businessName,
+          contactName: input.contactName,
+          contactEmail: input.contactEmail,
+          contactPhone: input.contactPhone,
+          website: input.website,
+          address: input.address,
+          city: input.city,
+          state: input.state,
+          tier: input.tier,
+          tagline: input.tagline,
+          promoText: input.promoText,
+          status: "inquiry",
+        });
+        return { success: true };
+      }),
+
+    // Admin: list all partners/inquiries
+    list: protectedProcedure
+      .input(z.object({ status: z.enum(["inquiry", "active", "paused", "cancelled", "all"]).optional() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const { getDb } = await import("./db");
+        const { adPartners } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return [];
+        if (input.status && input.status !== "all") {
+          return db.select().from(adPartners).where(eq(adPartners.status, input.status)).orderBy(adPartners.inquiredAt);
+        }
+        return db.select().from(adPartners).orderBy(adPartners.inquiredAt);
+      }),
+
+    // Admin: update partner status/details
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["inquiry", "active", "paused", "cancelled"]).optional(),
+        tier: z.enum(["basic", "featured", "sponsored_event", "premium"]).optional(),
+        monthlyRate: z.number().optional(),
+        billingNotes: z.string().optional(),
+        adminNotes: z.string().optional(),
+        tagline: z.string().optional(),
+        logoUrl: z.string().optional(),
+        promoText: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const { getDb } = await import("./db");
+        const { adPartners } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { id, ...updates } = input;
+        const patch: Record<string, unknown> = { ...updates, updatedAt: new Date() };
+        if (updates.status === "active") patch.activatedAt = new Date();
+        await db.update(adPartners).set(patch).where(eq(adPartners.id, id));
+        return { success: true };
+      }),
+
+    // Admin: delete a partner
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const { getDb } = await import("./db");
+        const { adPartners } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        await db.delete(adPartners).where(eq(adPartners.id, input.id));
+        return { success: true };
+      }),
+
+    // Public: get active featured partners for a city (for Activity Board badges)
+    getFeaturedPartners: publicProcedure
+      .input(z.object({ city: z.string().optional() }))
+      .query(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { adPartners } = await import("../drizzle/schema");
+        const { eq, or, and, inArray } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return [];
+        return db.select().from(adPartners).where(
+          and(
+            inArray(adPartners.status, ["active"]),
+            inArray(adPartners.tier, ["featured", "premium", "sponsored_event"])
+          )
+        );
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
