@@ -67,6 +67,7 @@ export default function ActivityBoard() {
   const [showCampusOnly, setShowCampusOnly] = useState(false);
   const [showLibrariesOnly, setShowLibrariesOnly] = useState(false);
   const [showNewspapersOnly, setShowNewspapersOnly] = useState(false);
+  const [showAllCities, setShowAllCities] = useState(false);
 
   const { data: profile } = trpc.profile.get.useQuery();
   const userCity = profile?.city ?? undefined;
@@ -77,8 +78,10 @@ export default function ActivityBoard() {
     category: selectedCategory === "all" ? undefined : selectedCategory,
   });
 
+  const effectiveCity = showAllCities ? undefined : (userCity ? userCity.split(",")[0].trim() : "Milwaukee");
+
   const { data: communityEvents, isLoading: communityLoading } = trpc.events.list.useQuery({
-    city: userCity ? userCity.split(",")[0].trim() : "Milwaukee",
+    city: effectiveCity,
     category: communityCategory === "all" ? undefined : communityCategory,
     isFree: showFreeOnly ? true : undefined,
     limit: 50,
@@ -300,6 +303,18 @@ export default function ActivityBoard() {
               >
                 📰 Newspapers Only
               </button>
+              {userCity && (
+                <button
+                  onClick={() => setShowAllCities(v => !v)}
+                  className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    showAllCities
+                      ? "bg-purple-500 text-white border-purple-500"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-purple-400"
+                  }`}
+                >
+                  🌍 {showAllCities ? `All Cities` : `${userCity.split(",")[0].trim()} Only`}
+                </button>
+              )}
             </div>
           </div>
         )}

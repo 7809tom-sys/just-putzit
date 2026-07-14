@@ -536,3 +536,11 @@
 - [ ] Create birthday events feature in Activities
 - [ ] Write vitest tests for birthday feature
 - [ ] Save checkpoint
+
+## Event Bookmarks Feature
+- [ ] Create event_bookmarks table (userId, eventId, createdAt)
+- [ ] Add DB helpers: toggleBookmark, getBookmarksForUser, isBookmarked
+- [ ] Add tRPC procedures: events.toggleBookmark, events.myBookmarks
+- [ ] Add bookmark button to community event cards on Activity Board
+- [ ] Optimistic UI for bookmark toggle
+- [ ] Add Saved Events section to Profile page

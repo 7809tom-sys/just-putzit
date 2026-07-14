@@ -8,6 +8,7 @@ import { invokeLLM } from "./_core/llm";
 import { z } from "zod";
 import { jeopardyRouter } from "./routers/jeopardy";
 import { triviaPursuitRouter } from "./routers/trivia-pursuit";
+import { autoSeedCityEvents } from "./cityEventSeeder";
 import {
   getOrCreateProfile,
   updateProfile,
@@ -258,6 +259,10 @@ export const appRouter = router({
           city: cityLabel,
           verified,
         });
+        // Fire-and-forget: auto-seed events for the verified city
+        if (cityLabel) {
+          autoSeedCityEvents(cityLabel).catch(() => {});
+        }
         return { verified, distanceKm: Math.round(distanceKm), cityLabel, recentPhoto };
       }),
 
@@ -300,6 +305,10 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         await getOrCreateProfile(ctx.user.id);
         await updateProfile(ctx.user.id, input);
+        // Fire-and-forget: auto-seed events for new city
+        if (input.city) {
+          autoSeedCityEvents(input.city).catch(() => {});
+        }
         return getProfileByUserId(ctx.user.id);
       }),
 

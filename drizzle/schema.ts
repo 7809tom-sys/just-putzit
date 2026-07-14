@@ -538,6 +538,15 @@ export const eventRsvps = mysqlTable("event_rsvps", {
 });
 export type EventRsvp = typeof eventRsvps.$inferSelect;
 
+// ─── Event Bookmarks ─────────────────────────────────────────────────────────
+export const eventBookmarks = mysqlTable("event_bookmarks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  eventId: int("eventId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EventBookmark = typeof eventBookmarks.$inferSelect;
+
 // ─── WebAuthn Passkey Credentials ────────────────────────────────────────────
 export const passkeyCredentials = mysqlTable("passkey_credentials", {
   id: int("id").autoincrement().primaryKey(),
@@ -943,3 +952,14 @@ export const gameChatMessagesUpdated = mysqlTable("game_chat_messages_v2", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type GameChatMessageV2 = typeof gameChatMessagesUpdated.$inferSelect;
+
+// ─── Seeded Cities (tracks which cities have had events auto-generated) ──────────
+export const seededCities = mysqlTable("seeded_cities", {
+  id: int("id").autoincrement().primaryKey(),
+  city: varchar("city", { length: 100 }).notNull().unique(),
+  state: varchar("state", { length: 50 }).notNull().default("WI"),
+  eventCount: int("eventCount").notNull().default(0),
+  seededAt: timestamp("seededAt").defaultNow().notNull(),
+  lastRefreshedAt: timestamp("lastRefreshedAt").defaultNow().notNull(),
+});
+export type SeededCity = typeof seededCities.$inferSelect;
