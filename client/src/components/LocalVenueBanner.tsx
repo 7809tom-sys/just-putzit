@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ExternalLink, X, ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
+import { ExternalLink, X, ChevronLeft, ChevronRight, Megaphone, Share2, Check } from "lucide-react";
 import { useLocation } from "wouter";
 
 type PageSlot = "home" | "activities" | "community" | "activity_board";
@@ -109,6 +109,7 @@ export function LocalVenueBanner({ page, className = "" }: LocalVenueBannerProps
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fallbackDismissed, setFallbackDismissed] = useState(false);
+  const [shared, setShared] = useState(false);
 
   // Use the user's saved GPS-verified location from their profile
   const profileQuery = trpc.profile.get.useQuery(undefined, {
@@ -157,6 +158,31 @@ export function LocalVenueBanner({ page, className = "" }: LocalVenueBannerProps
   // Still loading — render nothing to avoid flash
   if (bannersLoading && user) return null;
 
+  // Share handler for fallback banners
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = fallback.href
+      ? `${window.location.origin}${fallback.href}`
+      : window.location.origin;
+    const shareData = {
+      title: fallback.headline,
+      text: fallback.body,
+      url: shareUrl,
+    };
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy link to clipboard
+        await navigator.clipboard.writeText(`${fallback.headline} — ${shareUrl}`);
+      }
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch {
+      // User cancelled share — do nothing
+    }
+  };
+
   // ── Fallback community announcement ──
   if (!hasPaidAds) {
     if (fallbackDismissed) return null;
@@ -169,14 +195,31 @@ export function LocalVenueBanner({ page, className = "" }: LocalVenueBannerProps
           </span>
         </div>
 
-        {/* Dismiss */}
-        <button
-          onClick={() => setFallbackDismissed(true)}
-          className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
-          aria-label="Dismiss"
-        >
-          <X className="w-3 h-3" />
-        </button>
+        {/* Top-right actions: Share + Dismiss */}
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+          <button
+            onClick={handleShare}
+            className={`h-6 flex items-center gap-1 rounded-full px-2 text-[10px] font-semibold transition-all ${
+              shared
+                ? "bg-green-500 text-white"
+                : "bg-white/80 hover:bg-white text-gray-500 hover:text-gray-700"
+            }`}
+            aria-label="Share this announcement"
+          >
+            {shared ? (
+              <><Check className="w-3 h-3" /> Copied!</>
+            ) : (
+              <><Share2 className="w-3 h-3" /> Share</>
+            )}
+          </button>
+          <button
+            onClick={() => setFallbackDismissed(true)}
+            className="w-6 h-6 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Dismiss"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
 
         {/* Content */}
         <div
