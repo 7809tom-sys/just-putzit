@@ -9,7 +9,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import {
   Building2, Mail, Phone, Globe, MapPin, Star, Crown, Zap, CheckCircle,
-  Clock, PauseCircle, XCircle, Pencil, Trash2, DollarSign, StickyNote, ExternalLink
+  Clock, PauseCircle, XCircle, Pencil, Trash2, DollarSign, StickyNote, ExternalLink,
+  Image, Link, Megaphone, Radio
 } from "lucide-react";
 
 type Partner = {
@@ -32,7 +33,23 @@ type Partner = {
   adminNotes: string | null;
   inquiredAt: Date;
   activatedAt: Date | null;
+  // Banner fields
+  bannerImageUrl: string | null;
+  bannerLinkUrl: string | null;
+  bannerHeadline: string | null;
+  bannerCta: string | null;
+  bannerPages: string | null;
+  venueLat: number | null;
+  venueLng: number | null;
+  bannerReachMiles: number | null;
 };
+
+type EditForm = Partial<Partner & {
+  monthlyRateDollars: string;
+  venueLat: number | null;
+  venueLng: number | null;
+  bannerReachMiles: number | null;
+}>;
 
 const TIER_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   basic: { label: "Basic", color: "bg-slate-100 text-slate-700", icon: <MapPin className="w-3.5 h-3.5" /> },
@@ -55,12 +72,25 @@ const TIER_PRICES: Record<string, number> = {
   premium: 34900,
 };
 
+const PAGE_OPTIONS = [
+  { value: "home", label: "Home" },
+  { value: "activities", label: "Local Activities" },
+  { value: "community", label: "Community Groups" },
+  { value: "activity_board", label: "Activity Board" },
+];
+
+const REACH_OPTIONS = [
+  { value: 15, label: "Local (15 mi) — $49/mo" },
+  { value: 50, label: "Regional (50 mi) — $129/mo" },
+  { value: 999, label: "Statewide (no limit) — $349/mo" },
+];
+
 export default function AdminAdvertising() {
   const { user, loading: isLoading } = useAuth();
   const [, navigate] = useLocation();
   const [statusFilter, setStatusFilter] = useState<"all" | "inquiry" | "active" | "paused" | "cancelled">("all");
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Partner & { monthlyRateDollars: string }>>({});
+  const [editForm, setEditForm] = useState<EditForm>({});
 
   const { data: partners = [], refetch } = trpc.advertising.list.useQuery(
     { status: statusFilter },
@@ -95,11 +125,28 @@ export default function AdminAdvertising() {
     setEditForm({
       status: p.status,
       tier: p.tier,
-      monthlyRateDollars: p.monthlyRate ? String(p.monthlyRate / 100) : String(TIER_PRICES[p.tier] / 100),
+      monthlyRateDollars: p.monthlyRate ? String(p.monthlyRate / 100) : String(TIER_PRICES[p.tier]! / 100),
       tagline: p.tagline || "",
       adminNotes: p.adminNotes || "",
       billingNotes: p.billingNotes || "",
+      // Banner fields
+      bannerImageUrl: p.bannerImageUrl || "",
+      bannerLinkUrl: p.bannerLinkUrl || "",
+      bannerHeadline: p.bannerHeadline || "",
+      bannerCta: p.bannerCta || "",
+      bannerPages: p.bannerPages || "",
+      venueLat: p.venueLat ?? null,
+      venueLng: p.venueLng ?? null,
+      bannerReachMiles: p.bannerReachMiles ?? 15,
     });
+  };
+
+  const togglePage = (page: string) => {
+    const current = (editForm.bannerPages || "").split(",").map(s => s.trim()).filter(Boolean);
+    const next = current.includes(page)
+      ? current.filter(p => p !== page)
+      : [...current, page];
+    setEditForm(f => ({ ...f, bannerPages: next.join(",") }));
   };
 
   const saveEdit = (id: number) => {
@@ -111,6 +158,15 @@ export default function AdminAdvertising() {
       tagline: editForm.tagline ?? undefined,
       adminNotes: editForm.adminNotes ?? undefined,
       billingNotes: editForm.billingNotes ?? undefined,
+      // Banner fields
+      bannerImageUrl: editForm.bannerImageUrl ?? undefined,
+      bannerLinkUrl: editForm.bannerLinkUrl ?? undefined,
+      bannerHeadline: editForm.bannerHeadline ?? undefined,
+      bannerCta: editForm.bannerCta ?? undefined,
+      bannerPages: editForm.bannerPages ?? undefined,
+      venueLat: editForm.venueLat ?? undefined,
+      venueLng: editForm.venueLng ?? undefined,
+      bannerReachMiles: editForm.bannerReachMiles ?? undefined,
     });
   };
 
@@ -168,7 +224,7 @@ export default function AdminAdvertising() {
               onClick={() => setStatusFilter(s)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${statusFilter === s ? "bg-gray-900 text-white border-gray-900" : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"}`}
             >
-              {s === "all" ? "All" : STATUS_META[s].label} {s !== "all" && <span className="ml-1 opacity-60">{counts[s]}</span>}
+              {s === "all" ? "All" : STATUS_META[s]!.label} {s !== "all" && <span className="ml-1 opacity-60">{counts[s]}</span>}
             </button>
           ))}
         </div>
@@ -183,9 +239,10 @@ export default function AdminAdvertising() {
         ) : (
           <div className="space-y-4">
             {partners.map(p => {
-              const tier = TIER_META[p.tier];
-              const status = STATUS_META[p.status];
+              const tier = TIER_META[p.tier]!;
+              const status = STATUS_META[p.status]!;
               const isEditing = editingId === p.id;
+              const activeBannerPages = (p.bannerPages || "").split(",").map(s => s.trim()).filter(Boolean);
               return (
                 <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                   <div className="p-5">
@@ -195,6 +252,11 @@ export default function AdminAdvertising() {
                           <h3 className="font-bold text-gray-900 text-lg">{p.businessName}</h3>
                           <Badge className={`${tier.color} flex items-center gap-1 text-xs`}>{tier.icon}{tier.label}</Badge>
                           <Badge className={`${status.color} flex items-center gap-1 text-xs`}>{status.icon}{status.label}</Badge>
+                          {p.bannerHeadline && (
+                            <Badge className="bg-orange-100 text-orange-700 flex items-center gap-1 text-xs">
+                              <Megaphone className="w-3 h-3" /> Banner Active
+                            </Badge>
+                          )}
                         </div>
                         {p.tagline && <p className="text-sm text-gray-500 italic mb-2">"{p.tagline}"</p>}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-600">
@@ -205,6 +267,17 @@ export default function AdminAdvertising() {
                           {p.city && <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-gray-400" />{p.city}{p.state ? `, ${p.state}` : ""}</div>}
                           <div className="flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5 text-gray-400" />${((p.monthlyRate || TIER_PRICES[p.tier] || 0) / 100).toFixed(0)}/mo</div>
                         </div>
+                        {/* Banner reach summary */}
+                        {p.bannerHeadline && (
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+                            <span className="flex items-center gap-1"><Radio className="w-3 h-3 text-orange-400" />
+                              {p.bannerReachMiles === 999 ? "Statewide" : p.bannerReachMiles === 50 ? "Regional (50 mi)" : "Local (15 mi)"}
+                            </span>
+                            {activeBannerPages.length > 0 && (
+                              <span>Pages: {activeBannerPages.join(", ")}</span>
+                            )}
+                          </div>
+                        )}
                         {p.adminNotes && (
                           <div className="mt-3 bg-yellow-50 rounded-xl p-3 flex items-start gap-2">
                             <StickyNote className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -225,69 +298,185 @@ export default function AdminAdvertising() {
 
                     {/* Inline edit form */}
                     {isEditing && (
-                      <div className="mt-5 pt-5 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="mt-5 pt-5 border-t border-gray-100 space-y-6">
+                        {/* ── Partner Settings ── */}
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-                          <select
-                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                            value={editForm.status}
-                            onChange={e => setEditForm(f => ({ ...f, status: e.target.value as Partner["status"] }))}
-                          >
-                            <option value="inquiry">Inquiry</option>
-                            <option value="active">Active</option>
-                            <option value="paused">Paused</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Partner Settings</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                              <select
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                                value={editForm.status}
+                                onChange={e => setEditForm(f => ({ ...f, status: e.target.value as Partner["status"] }))}
+                              >
+                                <option value="inquiry">Inquiry</option>
+                                <option value="active">Active</option>
+                                <option value="paused">Paused</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Tier</label>
+                              <select
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                                value={editForm.tier}
+                                onChange={e => setEditForm(f => ({ ...f, tier: e.target.value as Partner["tier"] }))}
+                              >
+                                <option value="basic">Basic — $49/mo</option>
+                                <option value="featured">Featured — $129/mo</option>
+                                <option value="sponsored_event">Sponsored Event — $99/event</option>
+                                <option value="premium">Premium — $349/mo</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Monthly Rate ($)</label>
+                              <Input
+                                type="number"
+                                placeholder="e.g. 129"
+                                value={editForm.monthlyRateDollars || ""}
+                                onChange={e => setEditForm(f => ({ ...f, monthlyRateDollars: e.target.value }))}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Tagline</label>
+                              <Input
+                                placeholder="Short promo tagline"
+                                value={editForm.tagline || ""}
+                                onChange={e => setEditForm(f => ({ ...f, tagline: e.target.value }))}
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Admin Notes (internal)</label>
+                              <Textarea
+                                rows={2}
+                                placeholder="Internal notes about this partner..."
+                                value={editForm.adminNotes || ""}
+                                onChange={e => setEditForm(f => ({ ...f, adminNotes: e.target.value }))}
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Billing Notes</label>
+                              <Textarea
+                                rows={2}
+                                placeholder="Billing details, payment method, notes..."
+                                value={editForm.billingNotes || ""}
+                                onChange={e => setEditForm(f => ({ ...f, billingNotes: e.target.value }))}
+                              />
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Tier</label>
-                          <select
-                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                            value={editForm.tier}
-                            onChange={e => setEditForm(f => ({ ...f, tier: e.target.value as Partner["tier"] }))}
-                          >
-                            <option value="basic">Basic — $49/mo</option>
-                            <option value="featured">Featured — $129/mo</option>
-                            <option value="sponsored_event">Sponsored Event — $99/event</option>
-                            <option value="premium">Premium — $349/mo</option>
-                          </select>
+
+                        {/* ── Banner Ad ── */}
+                        <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
+                          <h4 className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                            <Megaphone className="w-3.5 h-3.5" /> Banner Ad Settings
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1"><Image className="w-3.5 h-3.5" /> Banner Image URL</label>
+                              <Input
+                                placeholder="https://example.com/banner.jpg"
+                                value={editForm.bannerImageUrl || ""}
+                                onChange={e => setEditForm(f => ({ ...f, bannerImageUrl: e.target.value }))}
+                              />
+                              <p className="text-xs text-gray-400 mt-0.5">Square or landscape image. Recommended: 200×200px minimum.</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Banner Headline</label>
+                              <Input
+                                placeholder="e.g. Happy Hour Every Friday!"
+                                maxLength={100}
+                                value={editForm.bannerHeadline || ""}
+                                onChange={e => setEditForm(f => ({ ...f, bannerHeadline: e.target.value }))}
+                              />
+                              <p className="text-xs text-gray-400 mt-0.5">{(editForm.bannerHeadline || "").length}/100 chars</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">CTA Button Text</label>
+                              <Input
+                                placeholder="e.g. Visit Us, Learn More, Order Now"
+                                maxLength={50}
+                                value={editForm.bannerCta || ""}
+                                onChange={e => setEditForm(f => ({ ...f, bannerCta: e.target.value }))}
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1"><Link className="w-3.5 h-3.5" /> Destination URL</label>
+                              <Input
+                                placeholder="https://yourvenue.com or menu page"
+                                value={editForm.bannerLinkUrl || ""}
+                                onChange={e => setEditForm(f => ({ ...f, bannerLinkUrl: e.target.value }))}
+                              />
+                            </div>
+
+                            {/* Pages checkboxes */}
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-gray-600 mb-2">Show Banner On These Pages</label>
+                              <div className="flex flex-wrap gap-2">
+                                {PAGE_OPTIONS.map(opt => {
+                                  const active = (editForm.bannerPages || "").split(",").map(s => s.trim()).includes(opt.value);
+                                  return (
+                                    <button
+                                      key={opt.value}
+                                      type="button"
+                                      onClick={() => togglePage(opt.value)}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${active ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"}`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-xs text-gray-400 mt-1">Leave all unchecked to show on all pages.</p>
+                            </div>
+
+                            {/* Reach radius */}
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1"><Radio className="w-3.5 h-3.5" /> Ad Reach Radius</label>
+                              <div className="flex flex-wrap gap-2">
+                                {REACH_OPTIONS.map(opt => (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => setEditForm(f => ({ ...f, bannerReachMiles: opt.value }))}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${editForm.bannerReachMiles === opt.value ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"}`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-400 mt-1">Banner shows to users within this distance of the venue. Statewide = no location filter.</p>
+                            </div>
+
+                            {/* Venue coordinates */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Venue Latitude</label>
+                              <Input
+                                type="number"
+                                step="0.000001"
+                                placeholder="e.g. 43.0389"
+                                value={editForm.venueLat ?? ""}
+                                onChange={e => setEditForm(f => ({ ...f, venueLat: e.target.value ? parseFloat(e.target.value) : null }))}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Venue Longitude</label>
+                              <Input
+                                type="number"
+                                step="0.000001"
+                                placeholder="e.g. -88.0136"
+                                value={editForm.venueLng ?? ""}
+                                onChange={e => setEditForm(f => ({ ...f, venueLng: e.target.value ? parseFloat(e.target.value) : null }))}
+                              />
+                            </div>
+                            <p className="md:col-span-2 text-xs text-gray-400 -mt-2">
+                              Find coordinates at <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">maps.google.com</a> — right-click the venue and copy the coordinates. Required for Local and Regional reach.
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Monthly Rate ($)</label>
-                          <Input
-                            type="number"
-                            placeholder="e.g. 129"
-                            value={editForm.monthlyRateDollars || ""}
-                            onChange={e => setEditForm(f => ({ ...f, monthlyRateDollars: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Tagline</label>
-                          <Input
-                            placeholder="Short promo tagline"
-                            value={editForm.tagline || ""}
-                            onChange={e => setEditForm(f => ({ ...f, tagline: e.target.value }))}
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Admin Notes (internal)</label>
-                          <Textarea
-                            rows={2}
-                            placeholder="Internal notes about this partner..."
-                            value={editForm.adminNotes || ""}
-                            onChange={e => setEditForm(f => ({ ...f, adminNotes: e.target.value }))}
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Billing Notes</label>
-                          <Textarea
-                            rows={2}
-                            placeholder="Billing details, payment method, notes..."
-                            value={editForm.billingNotes || ""}
-                            onChange={e => setEditForm(f => ({ ...f, billingNotes: e.target.value }))}
-                          />
-                        </div>
-                        <div className="md:col-span-2 flex justify-end gap-3">
+
+                        <div className="flex justify-end gap-3">
                           <Button variant="outline" className="rounded-xl" onClick={() => setEditingId(null)}>Cancel</Button>
                           <Button className="rounded-xl bg-orange-500 hover:bg-orange-600 text-white" onClick={() => saveEdit(p.id)} disabled={updateMutation.isPending}>
                             {updateMutation.isPending ? "Saving..." : "Save Changes"}

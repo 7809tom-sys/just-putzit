@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Users, Plus, Search, BookOpen, Mountain, ChefHat, Music, Palette, Dumbbell, Globe, Gamepad2 } from "lucide-react";
+import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 
 const GROUP_CATEGORIES = [
   { id: "all", label: "All Groups", icon: <Users className="w-4 h-4" /> },
@@ -148,6 +149,9 @@ export default function Community() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Local venue banner ad slot */}
+        <LocalVenueBanner page="community" className="mb-6" />
+
         {/* Search */}
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

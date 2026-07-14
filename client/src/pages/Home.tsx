@@ -6,7 +6,7 @@ import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, St
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef } from "react";
-import { AdSenseSlot } from "@/components/AdSenseSlot";
+import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 import { useSEO } from "@/hooks/useSEO";
 
 // PWA install prompt hook
@@ -304,10 +304,10 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Ad slot — between Safety and Games sections */}
+      {/* Local venue banner ad slot — between Safety and Games sections */}
       <div className="bg-white py-4">
         <div className="container max-w-3xl">
-          <AdSenseSlot slot="1111111111" format="auto" className="w-full" />
+          <LocalVenueBanner page="home" />
         </div>
       </div>
 
@@ -638,6 +638,9 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
           </div>
           <ChevronRight className="w-5 h-5 text-white flex-shrink-0" />
         </div>
+
+        {/* Local venue banner ad slot */}
+        <LocalVenueBanner page="home" className="mb-6" />
 
         {/* Recent matches */}
         {myMatches && myMatches.length > 0 && (

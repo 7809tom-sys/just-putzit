@@ -544,3 +544,17 @@
 - [ ] Add bookmark button to community event cards on Activity Board
 - [ ] Optimistic UI for bookmark toggle
 - [ ] Add Saved Events section to Profile page
+
+## Banner Ad System (Local Venue Geofenced Ads)
+- [x] Add banner fields to ad_partners DB table (banner_image_url, banner_link_url, banner_headline, banner_cta, banner_pages)
+- [x] Add venue_lat, venue_lng, banner_reach_miles to ad_partners DB table and schema.ts
+- [x] Add advertising.getBanners tRPC procedure with Haversine geofence filtering
+- [x] Build LocalVenueBanner component (rotating banners, dismiss, pagination dots, "Local Sponsor" label)
+- [x] Add LocalVenueBanner slot to Home.tsx (two slots: logged-in feed and between Safety/Games sections)
+- [x] Add LocalVenueBanner slot to ActivityBoard.tsx (community events tab)
+- [x] Add LocalVenueBanner slot to Community.tsx
+- [x] Add LocalVenueBanner slot to Activities.tsx
+- [x] Update AdminAdvertising.tsx with full banner ad edit form (image URL, headline, CTA, destination URL, page checkboxes, reach radius, venue coordinates)
+- [x] Update advertising.update tRPC procedure to accept all banner fields
+- [x] Remove Google AdSense script from client/index.html
+- [x] LocalVenueBanner reads user's saved GPS location from profile for geofence filtering

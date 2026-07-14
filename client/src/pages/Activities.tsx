@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Star, ExternalLink, RefreshCw, Navigation, Search } from "lucide-react";
 import { toast } from "sonner";
 import { MapView } from "@/components/Map";
+import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 
 type Place = {
   name: string;
@@ -176,6 +177,9 @@ export default function Activities() {
             </button>
           )}
         </div>
+
+        {/* Local venue banner ad slot */}
+        <LocalVenueBanner page="activities" className="mb-4" />
 
         {/* Type filters */}
         <div className="flex gap-2 flex-wrap mb-6">

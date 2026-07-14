@@ -2732,6 +2732,16 @@ Return JSON with questions array, each having optionA and optionB.`,
         tagline: z.string().optional(),
         logoUrl: z.string().optional(),
         promoText: z.string().optional(),
+        // Banner ad fields
+        bannerImageUrl: z.string().optional(),
+        bannerLinkUrl: z.string().optional(),
+        bannerHeadline: z.string().max(100).optional(),
+        bannerCta: z.string().max(50).optional(),
+        bannerPages: z.string().optional(), // comma-separated: home,activities,community,activity_board
+        // Geofenced reach
+        venueLat: z.number().optional(),
+        venueLng: z.number().optional(),
+        bannerReachMiles: z.number().optional(), // 15=Local, 50=Regional, 999=Statewide
       }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -2776,6 +2786,53 @@ Return JSON with questions array, each having optionA and optionB.`,
             inArray(adPartners.tier, ["featured", "premium", "sponsored_event"])
           )
         );
+      }),
+
+    // Get active banner ads for a specific page slot
+    getBanners: publicProcedure
+      .input(z.object({
+        page: z.enum(["home", "activities", "community", "activity_board"]),
+        userLat: z.number().optional(),
+        userLng: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { adPartners } = await import("../drizzle/schema");
+        const { and, inArray } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return [];
+        const active = await db.select().from(adPartners).where(
+          and(
+            inArray(adPartners.status, ["active"]),
+            inArray(adPartners.tier, ["featured", "premium", "sponsored_event"])
+          )
+        );
+        // Haversine distance in miles between two lat/lng points
+        function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+          const R = 3958.8; // Earth radius in miles
+          const dLat = (lat2 - lat1) * Math.PI / 180;
+          const dLng = (lng2 - lng1) * Math.PI / 180;
+          const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+        return active
+          .filter(p => {
+            // Must have some banner content
+            if (!p.bannerImageUrl && !p.bannerHeadline) return false;
+            // Filter to partners whose bannerPages includes this page (or is null/empty = all pages)
+            if (p.bannerPages) {
+              const pages = p.bannerPages.split(",").map(s => s.trim());
+              if (!pages.includes(input.page)) return false;
+            }
+            // Geofence check: if venue has lat/lng and user has lat/lng, apply reach radius
+            if (p.venueLat != null && p.venueLng != null && input.userLat != null && input.userLng != null) {
+              const dist = haversineMiles(input.userLat, input.userLng, p.venueLat, p.venueLng);
+              const reach = p.bannerReachMiles ?? 15;
+              if (reach < 999 && dist > reach) return false; // 999 = statewide, no limit
+            }
+            return true;
+          });
       }),
   }),
 });

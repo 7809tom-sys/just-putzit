@@ -993,6 +993,16 @@ export const adPartners = mysqlTable("ad_partners", {
   tagline: varchar("tagline", { length: 300 }),
   logoUrl: varchar("logoUrl", { length: 500 }),
   promoText: text("promoText"),
+  // Banner ad fields
+  bannerImageUrl: text("banner_image_url"),
+  bannerLinkUrl: text("banner_link_url"),
+  bannerHeadline: varchar("banner_headline", { length: 100 }),
+  bannerCta: varchar("banner_cta", { length: 50 }),
+  bannerPages: varchar("banner_pages", { length: 255 }), // comma-separated: home,activities,community
+  // Venue location for geofenced banner reach
+  venueLat: double("venue_lat"),
+  venueLng: double("venue_lng"),
+  bannerReachMiles: int("banner_reach_miles").default(15), // 15=Local, 50=Regional, 999=Statewide
   // Admin notes
   adminNotes: text("adminNotes"),
   // Timestamps

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 
 const CATEGORIES = [
   { id: "all", label: "All Activities", emoji: "✨" },
@@ -557,6 +558,11 @@ export default function ActivityBoard() {
             )}
 
             {/* ── Community Events Tab ── */}
+            {activeTab === "community" && (
+              <>
+                <LocalVenueBanner page="activity_board" className="mb-4" />
+              </>)
+            }
             {activeTab === "community" && (
               <>
                 {communityLoading ? (
