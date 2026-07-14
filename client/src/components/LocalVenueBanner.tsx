@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ExternalLink, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { ExternalLink, X, ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
+import { useLocation } from "wouter";
 
 type PageSlot = "home" | "activities" | "community" | "activity_board";
 
@@ -10,8 +11,104 @@ interface LocalVenueBannerProps {
   className?: string;
 }
 
+// ─── Fallback community announcements ────────────────────────────────────────
+// Shown when no paid ads are active within the user's radius.
+// Rotate deterministically by day-of-week so they feel fresh without randomness.
+type FallbackAnnouncement = {
+  emoji: string;
+  headline: string;
+  body: string;
+  cta?: string;
+  href?: string;
+  gradient: string; // Tailwind gradient classes
+  labelColor: string;
+};
+
+const FALLBACK_ANNOUNCEMENTS: FallbackAnnouncement[] = [
+  {
+    emoji: "🏙️",
+    headline: "Advertise Your Business Here",
+    body: "Reach thousands of locals in the Milwaukee/Waukesha area. Banner slots start at $49/mo.",
+    cta: "Learn More",
+    href: "/advertise",
+    gradient: "from-orange-50 to-amber-50",
+    labelColor: "text-orange-500",
+  },
+  {
+    emoji: "📅",
+    headline: "Submit a Community Event",
+    body: "Got something happening in your neighborhood? Post it on the Activity Board — it's free!",
+    cta: "Post Event",
+    href: "/activity-board",
+    gradient: "from-blue-50 to-indigo-50",
+    labelColor: "text-blue-500",
+  },
+  {
+    emoji: "🤝",
+    headline: "Start or Join a Community Group",
+    body: "Book clubs, hiking crews, cooking circles — find your people right here in Just Putzit.",
+    cta: "Browse Groups",
+    href: "/community",
+    gradient: "from-green-50 to-teal-50",
+    labelColor: "text-green-600",
+  },
+  {
+    emoji: "🎳",
+    headline: "Find Something Fun to Do",
+    body: "Bowling, mini golf, go-karts, beaches — discover local activities near you right now.",
+    cta: "Explore Activities",
+    href: "/activities",
+    gradient: "from-purple-50 to-pink-50",
+    labelColor: "text-purple-600",
+  },
+  {
+    emoji: "🎮",
+    headline: "Play Jeopardy or Trivia Pursuit",
+    body: "Challenge yourself with local trivia and community-themed questions. New rounds daily!",
+    cta: "Play Now",
+    href: "/games",
+    gradient: "from-rose-50 to-orange-50",
+    labelColor: "text-rose-500",
+  },
+  {
+    emoji: "📣",
+    headline: "Invite a Friend to Just Putzit",
+    body: "Know someone who'd love this community? Share the app — the more locals, the better!",
+    cta: "Invite Friends",
+    href: "/shout-out",
+    gradient: "from-yellow-50 to-amber-50",
+    labelColor: "text-yellow-600",
+  },
+  {
+    emoji: "🛡️",
+    headline: "Just Putzit is 100% Local & Verified",
+    body: "Every member is GPS-verified in the Milwaukee/Waukesha area. Real people, real connections.",
+    gradient: "from-slate-50 to-blue-50",
+    labelColor: "text-slate-500",
+  },
+];
+
+// Pick a fallback based on the current page + day of week so it rotates daily
+function pickFallback(page: PageSlot): FallbackAnnouncement {
+  const dayIndex = new Date().getDay(); // 0–6
+  const pageOffset: Record<PageSlot, number> = {
+    home: 0,
+    activities: 2,
+    community: 1,
+    activity_board: 3,
+  };
+  const idx = (dayIndex + pageOffset[page]) % FALLBACK_ANNOUNCEMENTS.length;
+  return FALLBACK_ANNOUNCEMENTS[idx]!;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function LocalVenueBanner({ page, className = "" }: LocalVenueBannerProps) {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [fallbackDismissed, setFallbackDismissed] = useState(false);
 
   // Use the user's saved GPS-verified location from their profile
   const profileQuery = trpc.profile.get.useQuery(undefined, {
@@ -30,7 +127,7 @@ export function LocalVenueBanner({ page, className = "" }: LocalVenueBannerProps
     ? parseFloat(profileQuery.data.longitude)
     : undefined;
 
-  const { data: banners = [] } = trpc.advertising.getBanners.useQuery(
+  const { data: banners = [], isLoading: bannersLoading } = trpc.advertising.getBanners.useQuery(
     { page, userLat, userLng },
     {
       // Don't block on profile loading — if no location, still show statewide banners
@@ -38,28 +135,96 @@ export function LocalVenueBanner({ page, className = "" }: LocalVenueBannerProps
     }
   );
 
-  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const fallback = useMemo(() => pickFallback(page), [page]);
 
   const visible = banners.filter(b => !dismissed.has(b.id));
+  const hasPaidAds = visible.length > 0;
 
-  if (visible.length === 0) return null;
-
-  const banner = visible[currentIndex % visible.length]!;
-
+  // ── Paid ad handlers ──
   const handleDismiss = () => {
+    const banner = visible[currentIndex % visible.length];
+    if (!banner) return;
     setDismissed(prev => { const next = new Set(prev); next.add(banner.id); return next; });
     setCurrentIndex(prev => Math.max(0, prev - 1));
   };
-
   const handleNext = () => setCurrentIndex(prev => (prev + 1) % visible.length);
   const handlePrev = () => setCurrentIndex(prev => (prev - 1 + visible.length) % visible.length);
-
   const handleClick = () => {
-    if (banner.bannerLinkUrl) {
-      window.open(banner.bannerLinkUrl, "_blank", "noopener,noreferrer");
-    }
+    const banner = visible[currentIndex % visible.length];
+    if (banner?.bannerLinkUrl) window.open(banner.bannerLinkUrl, "_blank", "noopener,noreferrer");
   };
+
+  // Still loading — render nothing to avoid flash
+  if (bannersLoading && user) return null;
+
+  // ── Fallback community announcement ──
+  if (!hasPaidAds) {
+    if (fallbackDismissed) return null;
+    return (
+      <div className={`relative rounded-xl overflow-hidden border border-gray-200 bg-gradient-to-r ${fallback.gradient} shadow-sm ${className}`}>
+        {/* Label */}
+        <div className="absolute top-2 left-3 z-10">
+          <span className={`text-[10px] font-semibold ${fallback.labelColor} uppercase tracking-wider bg-white/80 px-2 py-0.5 rounded-full`}>
+            Community
+          </span>
+        </div>
+
+        {/* Dismiss */}
+        <button
+          onClick={() => setFallbackDismissed(true)}
+          className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label="Dismiss"
+        >
+          <X className="w-3 h-3" />
+        </button>
+
+        {/* Content */}
+        <div
+          className={`flex items-center gap-4 p-4 pt-8 ${fallback.href ? "cursor-pointer" : ""}`}
+          onClick={fallback.href ? () => navigate(fallback.href!) : undefined}
+        >
+          {/* Emoji icon */}
+          <div className="w-14 h-14 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0 text-2xl shadow-sm">
+            {fallback.emoji}
+          </div>
+
+          {/* Text */}
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-sm leading-tight">
+              {fallback.headline}
+            </p>
+            <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{fallback.body}</p>
+          </div>
+
+          {/* CTA */}
+          {fallback.cta && (
+            <div className="flex-shrink-0">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-gray-700 hover:bg-gray-800 px-3 py-1.5 rounded-full transition-colors">
+                {fallback.cta}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* "Advertise here" nudge at bottom */}
+        <div className="px-4 pb-3 flex items-center gap-1.5">
+          <Megaphone className="w-3 h-3 text-gray-400" />
+          <span className="text-[10px] text-gray-400">
+            Your business could be here —{" "}
+            <button
+              onClick={e => { e.stopPropagation(); navigate("/advertise"); }}
+              className="underline hover:text-orange-500 transition-colors"
+            >
+              advertise with us
+            </button>
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Paid ad banner ──
+  const banner = visible[currentIndex % visible.length]!;
 
   return (
     <div className={`relative rounded-xl overflow-hidden border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 shadow-sm ${className}`}>

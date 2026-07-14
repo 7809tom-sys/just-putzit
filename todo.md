@@ -558,3 +558,10 @@
 - [x] Update advertising.update tRPC procedure to accept all banner fields
 - [x] Remove Google AdSense script from client/index.html
 - [x] LocalVenueBanner reads user's saved GPS location from profile for geofence filtering
+
+## Fallback Community Announcement Banner
+- [x] Add 7 rotating fallback community announcements to LocalVenueBanner (shown when no paid ads in user's radius)
+- [x] Fallback rotates daily by page slot (deterministic, no randomness)
+- [x] Fallback includes "advertise with us" nudge link at the bottom
+- [x] Fallback is dismissible independently from paid ads
+- [x] Paid ad banner unchanged — fallback only shows when visible paid ads = 0
