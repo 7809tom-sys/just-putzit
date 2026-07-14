@@ -19,6 +19,13 @@ const GROUP_CATEGORIES = [
   { id: "fitness", label: "Fitness", icon: <Dumbbell className="w-4 h-4" /> },
   { id: "travel", label: "Travel", icon: <Globe className="w-4 h-4" /> },
   { id: "gaming", label: "Gaming", icon: <Gamepad2 className="w-4 h-4" /> },
+  { id: "go_karts", label: "Go-Karts", icon: <span className="text-sm">🏎️</span> },
+  { id: "beach", label: "Beaches", icon: <span className="text-sm">🏖️</span> },
+  { id: "basketball", label: "Basketball", icon: <span className="text-sm">🏀</span> },
+  { id: "tennis", label: "Tennis", icon: <span className="text-sm">🎾</span> },
+  { id: "sports", label: "Sports", icon: <span className="text-sm">⚽</span> },
+  { id: "social", label: "Social", icon: <span className="text-sm">🤝</span> },
+  { id: "other", label: "Other", icon: <span className="text-sm">🌟</span> },
 ];
 
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -152,13 +159,13 @@ export default function Community() {
           />
         </div>
 
-        {/* Category Filter */}
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-8">
+        {/* Category Filter — two-row wrap on mobile, single scrollable row on desktop */}
+        <div className="flex flex-wrap gap-2 pb-1 mb-8 sm:flex-nowrap sm:overflow-x-auto sm:pb-3" style={{ scrollbarWidth: "none" }}>
           {GROUP_CATEGORIES.map(cat => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                 selectedCategory === cat.id
                   ? "bg-secondary text-white shadow-md"
                   : "bg-white text-gray-600 border border-gray-200 hover:border-secondary/40"
