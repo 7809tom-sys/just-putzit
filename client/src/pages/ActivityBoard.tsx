@@ -4,9 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink } from "lucide-react";
+import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus } from "lucide-react";
 import { MapView } from "@/components/Map";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const CATEGORIES = [
   { id: "all", label: "All Activities", emoji: "✨" },
@@ -66,7 +69,23 @@ const NEWSPAPER_SOURCES = ["jsonline", "milwaukee_journal", "waukesha_freeman", 
 const COLLEGE_SOURCES = ["uwm", "marquette", "college", "university"];
 const COMMUNITY_SOURCES = ["church", "senior_center", "youth_group", "neighborhood", "general", "community"];
 
+const BLANK_FORM = {
+  title: "",
+  description: "",
+  category: "community" as const,
+  eventDate: "",
+  endDate: "",
+  venueName: "",
+  address: "",
+  city: "",
+  state: "WI",
+  isFree: true,
+  priceCents: 0,
+  externalUrl: "",
+};
+
 export default function ActivityBoard() {
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [communityCategory, setCommunityCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,6 +98,8 @@ export default function ActivityBoard() {
   const [showCollegeOnly, setShowCollegeOnly] = useState(false);
   const [showCommunityOnly, setShowCommunityOnly] = useState(false);
   const [showAllCities, setShowAllCities] = useState(false);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [submitForm, setSubmitForm] = useState({ ...BLANK_FORM });
 
   const { data: profile } = trpc.profile.get.useQuery();
   const userCity = profile?.city ?? undefined;
@@ -118,6 +139,39 @@ export default function ActivityBoard() {
       toast.success("Checked in! Have an amazing time! ✨");
     },
   });
+
+  const utils = trpc.useUtils();
+  const submitMutation = trpc.events.create.useMutation({
+    onSuccess: () => {
+      toast.success("Event submitted! It's now live in the community feed. 🎉");
+      setShowSubmitDialog(false);
+      setSubmitForm({ ...BLANK_FORM });
+      utils.events.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to submit event. Please try again.");
+    },
+  });
+
+  function handleSubmitEvent() {
+    if (!submitForm.title.trim()) { toast.error("Event title is required."); return; }
+    if (!submitForm.eventDate) { toast.error("Event date & time is required."); return; }
+    if (!submitForm.city.trim()) { toast.error("City is required."); return; }
+    submitMutation.mutate({
+      title: submitForm.title.trim(),
+      description: submitForm.description.trim() || undefined,
+      category: submitForm.category,
+      eventDate: new Date(submitForm.eventDate).toISOString(),
+      endDate: submitForm.endDate ? new Date(submitForm.endDate).toISOString() : undefined,
+      venueName: submitForm.venueName.trim() || undefined,
+      address: submitForm.address.trim() || undefined,
+      city: submitForm.city.trim(),
+      state: submitForm.state.trim() || "WI",
+      isFree: submitForm.isFree,
+      priceCents: submitForm.isFree ? 0 : submitForm.priceCents,
+      externalUrl: submitForm.externalUrl.trim() || undefined,
+    });
+  }
 
   const handleMapReady = useCallback((map: google.maps.Map) => {
     setMapReady(true);
@@ -195,15 +249,29 @@ export default function ActivityBoard() {
       )}
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 font-display mb-2">
-            What's Happening Near {userCity ?? "You"}
-          </h1>
-          <p className="text-gray-600">
-            {userCity
-              ? `Showing activities in and around ${userCity} — stop putzing around alone!`
-              : "Stop putzing around alone — find something amazing to do this weekend."}
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 font-display mb-2">
+              What's Happening Near {userCity ?? "You"}
+            </h1>
+            <p className="text-gray-600">
+              {userCity
+                ? `Showing activities in and around ${userCity} — stop putzing around alone!`
+                : "Stop putzing around alone — find something amazing to do this weekend."}
+            </p>
+          </div>
+          {user && activeTab === "community" && (
+            <Button
+              onClick={() => {
+                setSubmitForm(f => ({ ...f, city: userCity?.split(",")[0].trim() ?? "" }));
+                setShowSubmitDialog(true);
+              }}
+              className="flex-shrink-0 bg-primary hover:bg-primary/90 text-white rounded-full gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Submit Event
+            </Button>
+          )}
         </div>
 
         {/* Tab Switcher */}
@@ -668,6 +736,189 @@ export default function ActivityBoard() {
           </div>
         </div>
       </div>
+
+      {/* ── Submit Event Dialog ── */}
+      <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Submit a Local Event</DialogTitle>
+            <p className="text-sm text-gray-500 mt-1">
+              Know about something happening in your community? Share it here and it'll appear in the Community Events feed immediately.
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Event Title <span className="text-red-500">*</span></label>
+              <Input
+                placeholder="e.g. Summer Concert in the Park"
+                value={submitForm.title}
+                onChange={e => setSubmitForm(f => ({ ...f, title: e.target.value }))}
+                maxLength={255}
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <Textarea
+                placeholder="Tell people what to expect..."
+                value={submitForm.description}
+                onChange={e => setSubmitForm(f => ({ ...f, description: e.target.value }))}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category <span className="text-red-500">*</span></label>
+              <select
+                value={submitForm.category}
+                onChange={e => setSubmitForm(f => ({ ...f, category: e.target.value as typeof BLANK_FORM["category"] }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="community">🤝 Community</option>
+                <option value="music">🎵 Music</option>
+                <option value="food">🍽️ Food & Drink</option>
+                <option value="market">🛍️ Market</option>
+                <option value="sports">⚽ Sports</option>
+                <option value="arts">🎨 Arts</option>
+                <option value="outdoors">🌿 Outdoors</option>
+                <option value="other">🌟 Other</option>
+              </select>
+            </div>
+
+            {/* Date/Time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date & Time <span className="text-red-500">*</span></label>
+                <Input
+                  type="datetime-local"
+                  value={submitForm.eventDate}
+                  onChange={e => setSubmitForm(f => ({ ...f, eventDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date & Time</label>
+                <Input
+                  type="datetime-local"
+                  value={submitForm.endDate}
+                  onChange={e => setSubmitForm(f => ({ ...f, endDate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Venue */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
+                <Input
+                  placeholder="e.g. Riverside Park"
+                  value={submitForm.venueName}
+                  onChange={e => setSubmitForm(f => ({ ...f, venueName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <Input
+                  placeholder="123 Main St"
+                  value={submitForm.address}
+                  onChange={e => setSubmitForm(f => ({ ...f, address: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* City / State */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City <span className="text-red-500">*</span></label>
+                <Input
+                  placeholder="Milwaukee"
+                  value={submitForm.city}
+                  onChange={e => setSubmitForm(f => ({ ...f, city: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <Input
+                  placeholder="WI"
+                  value={submitForm.state}
+                  onChange={e => setSubmitForm(f => ({ ...f, state: e.target.value }))}
+                  maxLength={2}
+                />
+              </div>
+            </div>
+
+            {/* Free / Paid */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Admission</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSubmitForm(f => ({ ...f, isFree: true, priceCents: 0 }))}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all ${
+                    submitForm.isFree
+                      ? "bg-green-500 text-white border-green-500"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-green-400"
+                  }`}
+                >
+                  🆓 Free
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubmitForm(f => ({ ...f, isFree: false }))}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all ${
+                    !submitForm.isFree
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-orange-400"
+                  }`}
+                >
+                  💰 Paid
+                </button>
+              </div>
+              {!submitForm.isFree && (
+                <div className="mt-2">
+                  <label className="block text-xs text-gray-500 mb-1">Price (in dollars)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    placeholder="e.g. 10.00"
+                    value={submitForm.priceCents / 100 || ""}
+                    onChange={e => setSubmitForm(f => ({ ...f, priceCents: Math.round(parseFloat(e.target.value || "0") * 100) }))}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* External URL */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Event Website / Link</label>
+              <Input
+                type="url"
+                placeholder="https://..."
+                value={submitForm.externalUrl}
+                onChange={e => setSubmitForm(f => ({ ...f, externalUrl: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowSubmitDialog(false)} className="rounded-full">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitEvent}
+              disabled={submitMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-white rounded-full"
+            >
+              {submitMutation.isPending ? "Submitting..." : "Submit Event 🎉"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -2210,13 +2210,15 @@ Return JSON with questions array, each having optionA and optionB.`,
         })
       )
       .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        // Admins post as admin; regular users post as community
+        const source = ctx.user.role === "admin" ? "admin" : "community";
         await createCommunityEvent({
           ...input,
           eventDate: new Date(input.eventDate),
           endDate: input.endDate ? new Date(input.endDate) : undefined,
-          source: "admin",
+          source,
           postedByUserId: ctx.user.id,
+          isActive: true,
         });
         return { success: true };
       }),
