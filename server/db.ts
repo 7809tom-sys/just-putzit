@@ -1304,11 +1304,38 @@ export async function getCommunityEvents(filters: {
   category?: string;
   isFree?: boolean;
   limit?: number;
+  lat?: number;
+  lng?: number;
+  radiusMiles?: number;
 } = {}) {
   const db = await getDb();
   if (!db) return [];
   const conditions = [eq(communityEvents.isActive, true)];
-  if (filters.city) conditions.push(eq(communityEvents.city, filters.city));
+
+  // Radius-based filtering: if lat/lng provided, use Haversine formula
+  // Otherwise fall back to city-name match
+  if (filters.lat !== undefined && filters.lng !== undefined) {
+    const radiusMiles = filters.radiusMiles ?? 90;
+    const radiusKm = radiusMiles * 1.60934;
+    // Haversine distance in km via SQL — only include events that have lat/lng stored
+    // OR fall back to city match (for older events without coords)
+    conditions.push(
+      sql`(
+        (${communityEvents.lat} IS NOT NULL AND ${communityEvents.lng} IS NOT NULL AND
+          6371 * 2 * ASIN(SQRT(
+            POWER(SIN((RADIANS(${communityEvents.lat}) - RADIANS(${filters.lat})) / 2), 2) +
+            COS(RADIANS(${filters.lat})) * COS(RADIANS(${communityEvents.lat})) *
+            POWER(SIN((RADIANS(${communityEvents.lng}) - RADIANS(${filters.lng})) / 2), 2)
+          )) <= ${radiusKm}
+        )
+        OR
+        (${communityEvents.lat} IS NULL AND ${filters.city ? sql`${communityEvents.city} = ${filters.city}` : sql`1=1`})
+      )`
+    );
+  } else if (filters.city) {
+    conditions.push(eq(communityEvents.city, filters.city));
+  }
+
   if (filters.category && filters.category !== "all") {
     conditions.push(eq(communityEvents.category, filters.category as CommunityEvent["category"]));
   }
@@ -1318,7 +1345,7 @@ export async function getCommunityEvents(filters: {
     .from(communityEvents)
     .where(and(...conditions))
     .orderBy(communityEvents.eventDate)
-    .limit(filters.limit ?? 50);
+    .limit(filters.limit ?? 100);
 }
 
 export async function createCommunityEvent(data: InsertCommunityEvent) {

@@ -42,11 +42,18 @@ const SOURCE_META: Record<string, { label: string; colorClass: string; icon: str
   waukesha_library: { label: "Waukesha Library", colorClass: "bg-blue-100 text-blue-700", icon: "📚" },
   uwm: { label: "UW-Milwaukee", colorClass: "bg-yellow-100 text-yellow-800", icon: "🎓" },
   marquette: { label: "Marquette", colorClass: "bg-yellow-100 text-yellow-800", icon: "🎓" },
+  college: { label: "College", colorClass: "bg-yellow-100 text-yellow-800", icon: "🎓" },
+  university: { label: "University", colorClass: "bg-yellow-100 text-yellow-800", icon: "🎓" },
   onmilwaukee: { label: "OnMilwaukee", colorClass: "bg-green-100 text-green-700", icon: "📰" },
   jsonline: { label: "Journal Sentinel", colorClass: "bg-red-100 text-red-700", icon: "📰" },
   milwaukee_journal: { label: "Milwaukee Journal", colorClass: "bg-red-100 text-red-700", icon: "📰" },
   waukesha_freeman: { label: "Waukesha Freeman", colorClass: "bg-red-100 text-red-700", icon: "📰" },
   newspaper: { label: "Local News", colorClass: "bg-red-100 text-red-700", icon: "📰" },
+  church: { label: "Church", colorClass: "bg-indigo-100 text-indigo-700", icon: "⛪" },
+  senior_center: { label: "Senior Center", colorClass: "bg-teal-100 text-teal-700", icon: "🏥" },
+  youth_group: { label: "Youth & Family", colorClass: "bg-pink-100 text-pink-700", icon: "👨‍👩‍👧" },
+  neighborhood: { label: "Neighborhood", colorClass: "bg-lime-100 text-lime-700", icon: "🏘️" },
+  general: { label: "Community", colorClass: "bg-purple-100 text-purple-700", icon: "🤝" },
   community: { label: "Community", colorClass: "bg-purple-100 text-purple-700", icon: "🤝" },
   eventbrite: { label: "Eventbrite", colorClass: "bg-orange-100 text-orange-700", icon: "🎟️" },
   scraped: { label: "Local", colorClass: "bg-gray-100 text-gray-600", icon: "📍" },
@@ -56,6 +63,8 @@ const SOURCE_META: Record<string, { label: string; colorClass: string; icon: str
 // Source groups for quick filtering
 const LIBRARY_SOURCES = ["milwaukee_library", "waukesha_library"];
 const NEWSPAPER_SOURCES = ["jsonline", "milwaukee_journal", "waukesha_freeman", "newspaper", "onmilwaukee"];
+const COLLEGE_SOURCES = ["uwm", "marquette", "college", "university"];
+const COMMUNITY_SOURCES = ["church", "senior_center", "youth_group", "neighborhood", "general", "community"];
 
 export default function ActivityBoard() {
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -67,10 +76,14 @@ export default function ActivityBoard() {
   const [showCampusOnly, setShowCampusOnly] = useState(false);
   const [showLibrariesOnly, setShowLibrariesOnly] = useState(false);
   const [showNewspapersOnly, setShowNewspapersOnly] = useState(false);
+  const [showCollegeOnly, setShowCollegeOnly] = useState(false);
+  const [showCommunityOnly, setShowCommunityOnly] = useState(false);
   const [showAllCities, setShowAllCities] = useState(false);
 
   const { data: profile } = trpc.profile.get.useQuery();
   const userCity = profile?.city ?? undefined;
+  const userLat = profile?.latitude ? parseFloat(profile.latitude) : undefined;
+  const userLng = profile?.longitude ? parseFloat(profile.longitude) : undefined;
 
   const { data: sallyRecs, isLoading: recsLoading } = trpc.activityBoard.getSallyRecommendations.useQuery({});
   const { data: activities, refetch } = trpc.activityBoard.getAll.useQuery({
@@ -80,11 +93,17 @@ export default function ActivityBoard() {
 
   const effectiveCity = showAllCities ? undefined : (userCity ? userCity.split(",")[0].trim() : "Milwaukee");
 
+  // Use lat/lng radius query when user has location, otherwise fall back to city name
+  const useRadiusQuery = !showAllCities && userLat !== undefined && userLng !== undefined;
+
   const { data: communityEvents, isLoading: communityLoading } = trpc.events.list.useQuery({
-    city: effectiveCity,
+    city: useRadiusQuery ? undefined : effectiveCity,
+    lat: useRadiusQuery ? userLat : undefined,
+    lng: useRadiusQuery ? userLng : undefined,
+    radiusMiles: useRadiusQuery ? 90 : undefined,
     category: communityCategory === "all" ? undefined : communityCategory,
     isFree: showFreeOnly ? true : undefined,
-    limit: 50,
+    limit: 150,
   });
 
   const rsvpMutation = trpc.activityBoard.rsvp.useMutation({
@@ -139,9 +158,14 @@ export default function ActivityBoard() {
       (e.description ?? "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCampus = !showCampusOnly || (e as any).isOnCampus;
     const src = (e as any).source ?? "admin";
-    const matchesLibrary = !showLibrariesOnly || LIBRARY_SOURCES.includes(src);
-    const matchesNewspaper = !showNewspapersOnly || NEWSPAPER_SOURCES.includes(src);
-    return matchesSearch && matchesCampus && matchesLibrary && matchesNewspaper;
+    // Only one source filter can be active at a time
+    const activeSourceFilter = showLibrariesOnly ? LIBRARY_SOURCES
+      : showNewspapersOnly ? NEWSPAPER_SOURCES
+      : showCollegeOnly ? COLLEGE_SOURCES
+      : showCommunityOnly ? COMMUNITY_SOURCES
+      : null;
+    const matchesSource = !activeSourceFilter || activeSourceFilter.includes(src);
+    return matchesSearch && matchesCampus && matchesSource;
   });
 
   const categoryEmoji: Record<string, string> = Object.fromEntries(
@@ -284,24 +308,44 @@ export default function ActivityBoard() {
                 🎓 Campus Events Only
               </button>
               <button
-                onClick={() => { setShowLibrariesOnly(v => !v); setShowNewspapersOnly(false); }}
+                onClick={() => { setShowLibrariesOnly(v => !v); setShowNewspapersOnly(false); setShowCollegeOnly(false); setShowCommunityOnly(false); }}
                 className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                   showLibrariesOnly
                     ? "bg-blue-500 text-white border-blue-500"
                     : "bg-white text-gray-600 border-gray-200 hover:border-blue-400"
                 }`}
               >
-                📚 Libraries Only
+                📚 Libraries
               </button>
               <button
-                onClick={() => { setShowNewspapersOnly(v => !v); setShowLibrariesOnly(false); }}
+                onClick={() => { setShowNewspapersOnly(v => !v); setShowLibrariesOnly(false); setShowCollegeOnly(false); setShowCommunityOnly(false); }}
                 className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                   showNewspapersOnly
                     ? "bg-red-500 text-white border-red-500"
                     : "bg-white text-gray-600 border-gray-200 hover:border-red-400"
                 }`}
               >
-                📰 Newspapers Only
+                📰 Newspapers
+              </button>
+              <button
+                onClick={() => { setShowCollegeOnly(v => !v); setShowLibrariesOnly(false); setShowNewspapersOnly(false); setShowCommunityOnly(false); }}
+                className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  showCollegeOnly
+                    ? "bg-yellow-500 text-white border-yellow-500"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-yellow-400"
+                }`}
+              >
+                🎓 College & University
+              </button>
+              <button
+                onClick={() => { setShowCommunityOnly(v => !v); setShowLibrariesOnly(false); setShowNewspapersOnly(false); setShowCollegeOnly(false); }}
+                className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  showCommunityOnly
+                    ? "bg-indigo-500 text-white border-indigo-500"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-indigo-400"
+                }`}
+              >
+                ⛪🏥👨‍👩‍👧 Churches, Seniors & Youth
               </button>
               {userCity && (
                 <button

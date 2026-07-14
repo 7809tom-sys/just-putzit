@@ -1,6 +1,7 @@
 import {
   boolean,
   date,
+  double,
   int,
   json,
   mysqlEnum,
@@ -517,13 +518,15 @@ export const communityEvents = mysqlTable("community_events", {
   priceCents: int("priceCents").notNull().default(0),
   externalUrl: text("externalUrl"),
   imageUrl: text("imageUrl"),
-  source: mysqlEnum("source", ["community", "eventbrite", "admin", "milwaukee_library", "waukesha_library", "uwm", "marquette", "onmilwaukee", "scraped", "jsonline", "milwaukee_journal", "waukesha_freeman", "newspaper"]).notNull().default("admin"),
+  source: mysqlEnum("source", ["community", "eventbrite", "admin", "milwaukee_library", "waukesha_library", "uwm", "marquette", "onmilwaukee", "scraped", "jsonline", "milwaukee_journal", "waukesha_freeman", "newspaper", "college", "university", "church", "senior_center", "youth_group", "neighborhood", "general"]).notNull().default("admin"),
   isOnCampus: boolean("isOnCampus").notNull().default(false),
   externalId: varchar("externalId", { length: 128 }),
   postedByUserId: int("postedByUserId"),
   rsvpCount: int("rsvpCount").notNull().default(0),
   isSponsored: boolean("isSponsored").notNull().default(false),
   isActive: boolean("isActive").notNull().default(true),
+  lat: double("lat"),
+  lng: double("lng"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type CommunityEvent = typeof communityEvents.$inferSelect;
@@ -959,6 +962,8 @@ export const seededCities = mysqlTable("seeded_cities", {
   city: varchar("city", { length: 100 }).notNull().unique(),
   state: varchar("state", { length: 50 }).notNull().default("WI"),
   eventCount: int("eventCount").notNull().default(0),
+  lat: double("lat"),
+  lng: double("lng"),
   seededAt: timestamp("seededAt").defaultNow().notNull(),
   lastRefreshedAt: timestamp("lastRefreshedAt").defaultNow().notNull(),
 });

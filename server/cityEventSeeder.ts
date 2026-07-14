@@ -1,38 +1,74 @@
 /**
  * cityEventSeeder.ts
  *
- * When a user signs up in a new city (one we haven't seeded yet), this module:
+ * When a user signs up in a new city, this module:
  *  1. Checks if the city already has events in the DB.
- *  2. If not, uses the built-in LLM to generate a realistic set of community
- *     events for that city (libraries, newspapers, community centres, parks, etc.)
- *  3. Upserts those events into community_events and records the city in seeded_cities.
+ *  2. If not, uses the built-in LLM to generate realistic community events
+ *     across ALL categories: library, newspaper, college/university, church,
+ *     senior center, youth group, neighborhood, and general community.
+ *  3. Geocodes the city to get lat/lng for radius-based queries.
+ *  4. Upserts those events into community_events and records the city in seeded_cities.
  *
- * This runs asynchronously (fire-and-forget) so it never blocks the signup flow.
+ * Runs fire-and-forget — never blocks the signup flow.
  */
 
 import { getDb } from "./db";
 import { communityEvents, seededCities } from "../drizzle/schema";
-import { eq, and, count } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { ENV } from "./_core/env";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GeneratedEvent {
   title: string;
   description: string;
   category: string;
-  eventDate: string; // ISO date string
-  endDate?: string;
+  eventDate: string;
+  endDate?: string | null;
   venueName: string;
   address: string;
   isFree: boolean;
   priceCents: number;
-  externalUrl?: string;
+  externalUrl?: string | null;
   source: string;
+  isOnCampus?: boolean;
 }
 
-/** Returns true if this city already has events in the DB */
+const VALID_CATEGORIES = [
+  "music", "food", "market", "sports", "arts", "community", "outdoors", "other",
+] as const;
+
+const VALID_SOURCES = [
+  "community", "eventbrite", "admin", "milwaukee_library", "waukesha_library",
+  "uwm", "marquette", "onmilwaukee", "scraped", "jsonline", "milwaukee_journal",
+  "waukesha_freeman", "newspaper", "college", "university", "church",
+  "senior_center", "youth_group", "neighborhood", "general",
+] as const;
+
+// ─── Geocoding ────────────────────────────────────────────────────────────────
+
+/** Geocode a city to lat/lng using the Nominatim free API */
+async function geocodeCity(city: string, state: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const query = encodeURIComponent(`${city}, ${state}, USA`);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+      { headers: { "User-Agent": "JustPutzit-EventBot/1.0 (contact@justputzit.com)" } }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as Array<{ lat: string; lon: string }>;
+    if (!data.length) return null;
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch {
+    return null;
+  }
+}
+
+// ─── DB helpers ───────────────────────────────────────────────────────────────
+
 async function cityHasEvents(city: string): Promise<boolean> {
   const db = await getDb();
-  if (!db) return true; // fail-safe: don't seed if DB unavailable
+  if (!db) return true;
   const rows = await db
     .select({ cnt: count() })
     .from(communityEvents)
@@ -40,55 +76,78 @@ async function cityHasEvents(city: string): Promise<boolean> {
   return (rows[0]?.cnt ?? 0) > 0;
 }
 
-/** Mark a city as seeded in the seeded_cities table */
-async function markCitySeeded(city: string, state: string, eventCount: number) {
+async function markCitySeeded(
+  city: string,
+  state: string,
+  eventCount: number,
+  coords: { lat: number; lng: number } | null
+) {
   const db = await getDb();
   if (!db) return;
   try {
     await db
       .insert(seededCities)
-      .values({ city, state, eventCount })
-      .onDuplicateKeyUpdate({ set: { eventCount, lastRefreshedAt: new Date() } });
+      .values({
+        city,
+        state,
+        eventCount,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          eventCount,
+          lastRefreshedAt: new Date(),
+          ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
+        },
+      });
   } catch {
     // non-critical
   }
 }
 
-/** Use the built-in LLM to generate realistic community events for a city */
+// ─── LLM generation ───────────────────────────────────────────────────────────
+
 async function generateEventsForCity(city: string, state: string): Promise<GeneratedEvent[]> {
   const apiUrl = ENV.forgeApiUrl;
   const apiKey = ENV.forgeApiKey;
   if (!apiUrl || !apiKey) return [];
 
   const today = new Date();
-  const nextMonth = new Date(today);
-  nextMonth.setMonth(nextMonth.getMonth() + 2);
-  const dateRange = `${today.toISOString().slice(0, 10)} to ${nextMonth.toISOString().slice(0, 10)}`;
+  const twoMonthsOut = new Date(today);
+  twoMonthsOut.setMonth(twoMonthsOut.getMonth() + 2);
+  const dateRange = `${today.toISOString().slice(0, 10)} to ${twoMonthsOut.toISOString().slice(0, 10)}`;
 
-  const prompt = `Generate 15 realistic community events for ${city}, ${state} happening between ${dateRange}.
-Include a mix of:
-- Public library events (story time, author talks, book clubs, computer classes)
-- Local newspaper-listed events (farmers markets, art walks, festivals, concerts)
-- Community center events (fitness classes, senior programs, youth activities)
-- Parks & recreation (outdoor movies, nature walks, sports leagues)
-- Free or low-cost cultural events
+  const prompt = `Generate 40 realistic community events for ${city}, ${state} between ${dateRange}.
 
-Return a JSON array of events. Each event must have:
+Include events from ALL of these categories (at least 4-6 per category):
+
+1. **Library events** (source: "college" or "general") — story time, book clubs, author talks, tech help, summer reading programs at the local public library
+2. **Newspaper-listed events** (source: "newspaper") — farmers markets, art walks, festivals, outdoor concerts, food truck events listed in local news
+3. **College/University events** (source: "college" or "university") — campus lectures, sports games, theater productions, alumni events, student fairs — use realistic local college names for ${city}
+4. **Church & faith events** (source: "church") — community dinners, holiday celebrations, volunteer drives, youth programs, choir concerts
+5. **Senior center events** (source: "senior_center") — fitness classes, card games, day trips, health screenings, social mixers for 55+
+6. **Youth & family events** (source: "youth_group") — after-school programs, sports leagues, summer camps, teen nights, family game nights
+7. **Neighborhood events** (source: "neighborhood") — block parties, neighborhood watch meetings, park cleanups, community garden workdays, HOA events
+8. **General community** (source: "general") — charity runs, blood drives, job fairs, cultural festivals, civic meetings
+
+Return a JSON array. Each event must have exactly these fields:
 {
-  "title": string (specific and realistic, e.g. "Summer Reading Kickoff at ${city} Public Library"),
-  "description": string (2-3 sentences),
+  "title": string (specific, e.g. "Summer Reading Kickoff at ${city} Public Library"),
+  "description": string (2-3 sentences, authentic),
   "category": one of ["music","food","market","sports","arts","community","outdoors","other"],
-  "eventDate": ISO date string (YYYY-MM-DDTHH:MM:SS),
-  "endDate": ISO date string or null,
-  "venueName": string (realistic local venue name),
+  "eventDate": "YYYY-MM-DDTHH:MM:SS",
+  "endDate": "YYYY-MM-DDTHH:MM:SS" or null,
+  "venueName": string (realistic local name for ${city}),
   "address": string (realistic street address in ${city}, ${state}),
   "isFree": boolean,
-  "priceCents": number (0 if free, otherwise cost in cents),
-  "externalUrl": string or null,
-  "source": one of ["milwaukee_library","waukesha_library","jsonline","newspaper","community","admin"]
+  "priceCents": number (0 if free),
+  "externalUrl": null,
+  "source": one of the source strings listed above,
+  "isOnCampus": boolean (true only for college/university events)
 }
 
-Make the events feel authentic to ${city}, ${state}. Use real-sounding local venue names. Return ONLY the JSON array, no other text.`;
+Make events feel authentic to ${city}, ${state}. Use real-sounding local names. Spread events across the date range. Return ONLY the JSON array, no other text.`;
 
   try {
     const res = await fetch(`${apiUrl}/v1/chat/completions`, {
@@ -100,14 +159,13 @@ Make the events feel authentic to ${city}, ${state}. Use real-sounding local ven
       body: JSON.stringify({
         model: "claude-3-5-haiku",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 4000,
+        max_tokens: 8000,
         temperature: 0.7,
       }),
     });
     if (!res.ok) return [];
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const content = json.choices?.[0]?.message?.content ?? "";
-    // Extract JSON array from response
     const match = content.match(/\[[\s\S]*\]/);
     if (!match) return [];
     return JSON.parse(match[0]) as GeneratedEvent[];
@@ -117,11 +175,14 @@ Make the events feel authentic to ${city}, ${state}. Use real-sounding local ven
   }
 }
 
-const VALID_CATEGORIES = ["music", "food", "market", "sports", "arts", "community", "outdoors", "other"] as const;
-const VALID_SOURCES = ["community", "eventbrite", "admin", "milwaukee_library", "waukesha_library", "uwm", "marquette", "onmilwaukee", "scraped", "jsonline", "milwaukee_journal", "waukesha_freeman", "newspaper"] as const;
+// ─── Insert events ────────────────────────────────────────────────────────────
 
-/** Insert generated events into the community_events table */
-async function insertGeneratedEvents(events: GeneratedEvent[], city: string, state: string): Promise<number> {
+async function insertGeneratedEvents(
+  events: GeneratedEvent[],
+  city: string,
+  state: string,
+  coords: { lat: number; lng: number } | null
+): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
   let inserted = 0;
@@ -132,7 +193,7 @@ async function insertGeneratedEvents(events: GeneratedEvent[], city: string, sta
         : "other";
       const source = VALID_SOURCES.includes(ev.source as typeof VALID_SOURCES[number])
         ? (ev.source as typeof VALID_SOURCES[number])
-        : "admin";
+        : "general";
       const eventDate = new Date(ev.eventDate);
       if (isNaN(eventDate.getTime())) continue;
       await db.insert(communityEvents).values({
@@ -149,8 +210,11 @@ async function insertGeneratedEvents(events: GeneratedEvent[], city: string, sta
         priceCents: ev.priceCents ?? 0,
         externalUrl: ev.externalUrl ?? null,
         source,
+        isOnCampus: ev.isOnCampus ?? false,
         isActive: true,
         rsvpCount: 0,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
       });
       inserted++;
     } catch {
@@ -160,9 +224,11 @@ async function insertGeneratedEvents(events: GeneratedEvent[], city: string, sta
   return inserted;
 }
 
+// ─── Main entry point ─────────────────────────────────────────────────────────
+
 /**
- * Main entry point — call this fire-and-forget when a user sets their city.
- * It will silently skip if the city already has events.
+ * Call fire-and-forget when a user sets their city.
+ * Silently skips if the city already has events.
  */
 export async function autoSeedCityEvents(city: string, state = "WI"): Promise<void> {
   if (!city || city.trim().length < 2) return;
@@ -175,15 +241,25 @@ export async function autoSeedCityEvents(city: string, state = "WI"): Promise<vo
       return;
     }
 
-    console.log(`[cityEventSeeder] New city detected: ${normalizedCity}, ${state} — generating events...`);
-    const events = await generateEventsForCity(normalizedCity, state);
+    console.log(`[cityEventSeeder] New city: ${normalizedCity}, ${state} — geocoding + generating events...`);
+
+    // Geocode and generate in parallel
+    const [coords, events] = await Promise.all([
+      geocodeCity(normalizedCity, state),
+      generateEventsForCity(normalizedCity, state),
+    ]);
+
+    if (coords) {
+      console.log(`[cityEventSeeder] Geocoded ${normalizedCity}: ${coords.lat}, ${coords.lng}`);
+    }
+
     if (events.length === 0) {
       console.warn(`[cityEventSeeder] No events generated for ${normalizedCity}`);
       return;
     }
 
-    const inserted = await insertGeneratedEvents(events, normalizedCity, state);
-    await markCitySeeded(normalizedCity, state, inserted);
+    const inserted = await insertGeneratedEvents(events, normalizedCity, state, coords);
+    await markCitySeeded(normalizedCity, state, inserted, coords);
     console.log(`[cityEventSeeder] Seeded ${inserted} events for ${normalizedCity}, ${state}`);
   } catch (err) {
     console.error(`[cityEventSeeder] Failed to seed ${normalizedCity}:`, err);

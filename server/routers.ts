@@ -2181,7 +2181,10 @@ Return JSON with questions array, each having optionA and optionB.`,
           city: z.string().optional(),
           category: z.string().optional(),
           isFree: z.boolean().optional(),
-          limit: z.number().int().min(1).max(100).optional(),
+          limit: z.number().int().min(1).max(200).optional(),
+          lat: z.number().optional(),
+          lng: z.number().optional(),
+          radiusMiles: z.number().optional(),
         })
       )
       .query(async ({ input }) => {
