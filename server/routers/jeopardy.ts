@@ -1,8 +1,8 @@
-import { protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { jeopardyRooms, jeopardyRoomPlayers, jeopardyAnswers, jeopardyQuestions } from "../../drizzle/schema";
+import { jeopardyRooms, jeopardyRoomPlayers, jeopardyAnswers, jeopardyQuestions, jeopardyCategories } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 // Generate a unique game code
@@ -11,6 +11,13 @@ function generateGameCode(): string {
 }
 
 export const jeopardyRouter = router({
+  // Get available categories
+  getCategories: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(jeopardyCategories).orderBy(jeopardyCategories.id);
+  }),
+
   // Create a new Jeopardy room
   createRoom: protectedProcedure
     .input(z.object({

@@ -41,6 +41,7 @@ export default function Jeopardy() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const { data: categories = [] } = trpc.jeopardy.getCategories.useQuery();
   const createRoomMutation = trpc.jeopardy.createRoom.useMutation();
   const joinRoomMutation = trpc.jeopardy.joinRoom.useMutation();
   const getRoomQuery = trpc.jeopardy.getRoom.useQuery(roomId ? { roomId } : { roomId: 0 }, { enabled: !!roomId });
@@ -193,16 +194,22 @@ export default function Jeopardy() {
                 <div>
                   <label className="text-sm font-medium">Select Categories</label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
-                    {[1, 2, 3, 4, 5].map((id) => (
+                    {categories.length > 0 ? categories.map((cat) => (
                       <Button
-                        key={id}
-                        variant={selectedCategories.includes(id) ? "default" : "outline"}
+                        key={cat.id}
+                        variant={selectedCategories.includes(cat.id) ? "default" : "outline"}
+                        className="h-auto py-2 px-3 text-left flex items-center gap-2 justify-start"
                         onClick={() =>
                           setSelectedCategories((prev) =>
-                            prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+                            prev.includes(cat.id) ? prev.filter((c) => c !== cat.id) : [...prev, cat.id]
                           )
                         }
                       >
+                        <span className="text-base">{cat.emoji}</span>
+                        <span className="text-xs font-medium leading-tight">{cat.name}</span>
+                      </Button>
+                    )) : [1,2,3,4,5].map((id) => (
+                      <Button key={id} variant={selectedCategories.includes(id) ? "default" : "outline"} onClick={() => setSelectedCategories((prev) => prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id])}>
                         Category {id}
                       </Button>
                     ))}
