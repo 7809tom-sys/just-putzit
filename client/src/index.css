@@ -205,3 +205,9 @@
   background: linear-gradient(90deg, oklch(0.72 0.2 45), oklch(0.72 0.14 195));
   transition: width 1s linear;
 }
+
+/* ── Voice call speaking indicator ─────────────────────────────────────────── */
+@keyframes soundbar {
+  from { transform: scaleY(0.4); opacity: 0.6; }
+  to   { transform: scaleY(1.4); opacity: 1; }
+}
