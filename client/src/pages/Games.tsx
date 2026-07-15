@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Trophy, Sparkles } from "lucide-react";
+import { VoiceCallButton } from "@/components/VoiceCallButton";
 
 type GameType = "newlywed" | "two_truths" | "this_or_that";
 
@@ -114,10 +115,11 @@ export default function Games() {
               <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style={{ background: otherProfile.avatarColor || "#f97316" }}>
                 {otherProfile.avatarEmoji || "😊"}
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="font-bold">Playing with {otherProfile.displayName}</p>
                 <p className="text-sm text-primary font-semibold">{match?.compatibilityScore}% compatible</p>
               </div>
+              <VoiceCallButton myUserId={profile?.userId} otherUserId={otherProfile?.userId} otherName={otherProfile?.displayName ?? undefined} />
             </div>
           )}
 

@@ -1058,3 +1058,16 @@ export const bullgerdashRounds = mysqlTable("bullgerdash_rounds", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type BullgerdashRound = typeof bullgerdashRounds.$inferSelect;
+
+// ─── Voice Messages ───────────────────────────────────────────────────────────
+export const voiceMessages = mysqlTable("voice_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  matchId: int("match_id").notNull(),
+  senderId: int("sender_id").notNull(),
+  s3Key: varchar("s3_key", { length: 512 }).notNull(),
+  s3Url: text("s3_url").notNull(),
+  durationSeconds: double("duration_seconds").notNull().default(0),
+  playedAt: timestamp("played_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type VoiceMessage = typeof voiceMessages.$inferSelect;

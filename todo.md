@@ -574,3 +574,14 @@
 - [x] Add Bullgerdash card to GamesHub.tsx
 - [x] Add /bullgerdash/:matchId route to App.tsx
 - [x] Seed 20 obscure photos into bullgerdash_photos table
+
+## Voice Chat (Voice Messages + Live Voice Calls)
+- [ ] Schema: voice_messages table (matchId, senderId, s3Key, s3Url, durationSeconds, playedAt)
+- [ ] Backend: voice.sendMessage (upload audio to S3, save record), voice.getMessages (list for match), voice.markPlayed
+- [ ] Backend: WebSocket signaling for WebRTC (offer, answer, ICE candidates, call-end events)
+- [ ] Frontend: VoiceMessageRecorder component (hold-to-record mic button, waveform, send)
+- [ ] Frontend: VoiceMessagePlayer component (play/pause, waveform, duration, played indicator)
+- [ ] Frontend: Wire voice messages into Chat.tsx (record button in toolbar, voice messages in message list)
+- [ ] Frontend: VoiceCall component (call button in chat header, incoming call modal, active call UI, mute/end)
+- [ ] Frontend: Wire voice call button into Chat.tsx and game pages (Bullgerdash, Games)
+- [ ] Checkpoint and deliver

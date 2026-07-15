@@ -8,6 +8,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { registerPhotoUploadRoutes } from "../photoUpload";
 import { registerSEORoutes } from "../seo";
 import { scrapeEventsHandler } from "../scheduledScrape";
+import { registerVoiceRoutes } from "../voiceUpload";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -40,6 +41,7 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerPhotoUploadRoutes(app);
+  registerVoiceRoutes(app, server);
   registerSEORoutes(app);
   // Scheduled jobs (Heartbeat cron callbacks)
   app.post("/api/scheduled/scrape-events", scrapeEventsHandler);

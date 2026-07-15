@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Trophy, Camera, CheckCircle, XCircle, RefreshCw, LogOut } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { VoiceCallButton } from "@/components/VoiceCallButton";
 
 export default function Bullgerdash() {
   const { matchId } = useParams<{ matchId: string }>();
@@ -129,6 +130,7 @@ export default function Bullgerdash() {
             </div>
             <ScoreChip myScore={myScore} opponentScore={opponentScore} opponentName={otherProfile?.displayName} />
           </div>
+          <VoiceCallButton myUserId={user?.id} otherUserId={otherProfile?.userId} otherName={otherProfile?.displayName ?? undefined} />
 
           {/* Photo */}
           {photo && (
@@ -203,6 +205,7 @@ export default function Bullgerdash() {
             </div>
             <ScoreChip myScore={myScore} opponentScore={opponentScore} opponentName={otherProfile?.displayName} />
           </div>
+          <VoiceCallButton myUserId={user?.id} otherUserId={otherProfile?.userId} otherName={otherProfile?.displayName ?? undefined} />
 
           {photo && (
             <div className="rounded-2xl overflow-hidden mb-4 shadow-lg">
