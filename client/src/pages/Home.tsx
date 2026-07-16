@@ -106,7 +106,7 @@ function LandingPage() {
         {/* Top nav for landing */}
         <div className="container flex items-center justify-between py-5">
           <div className="flex items-center gap-2">
-            <img src="/manus-storage/justputzit-logo_490fa7ec.png" alt="Just Putzit" className="h-10 w-auto object-contain" />
+            <img src="/manus-storage/justputzit-logo-transparent_2e545ffa.png" alt="Just Putzit" className="h-10 w-auto object-contain" />
           </div>
           <a href={getLoginUrl()}>
             <Button className="gradient-sally text-white border-0 shadow-md btn-scale rounded-full px-6">
@@ -361,7 +361,7 @@ function LandingPage() {
       <footer className="bg-foreground text-background py-8">
         <div className="container flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img src="/manus-storage/justputzit-logo_490fa7ec.png" alt="Just Putzit" className="h-7 w-auto object-contain brightness-0 invert" />
+            <img src="/manus-storage/justputzit-logo-transparent_2e545ffa.png" alt="Just Putzit" className="h-7 w-auto object-contain brightness-0 invert" />
           </div>
           <p className="text-sm opacity-60">© 2025 Just Putzit. Connecting you in real life.</p>
         </div>
@@ -476,7 +476,7 @@ function GetTheAppSection() {
           )}
 
           <div className="mt-8 pt-6 border-t border-border flex items-center gap-3">
-            <img src="/manus-storage/justputzit-logo_490fa7ec.png" alt="Just Putzit" className="w-12 h-12 object-contain flex-shrink-0" />
+            <img src="/manus-storage/justputzit-logo-transparent_2e545ffa.png" alt="Just Putzit" className="w-12 h-12 object-contain flex-shrink-0" />
             <div>
               <p className="font-semibold text-sm">Just Putzit</p>
               <p className="text-xs text-muted-foreground">Free · No App Store · Works offline</p>

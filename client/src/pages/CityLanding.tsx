@@ -135,7 +135,7 @@ export default function CityLanding() {
         {/* Nav */}
         <div className="container flex items-center justify-between py-5">
           <button onClick={() => navigate("/")} className="flex items-center gap-2">
-            <img src="/manus-storage/justputzit-logo_490fa7ec.png" alt="Just Putzit" className="h-10 w-auto object-contain" />
+            <img src="/manus-storage/justputzit-logo-transparent_2e545ffa.png" alt="Just Putzit" className="h-10 w-auto object-contain" />
           </button>
           <a href={getLoginUrl()}>
             <Button className="gradient-sally text-white border-0 shadow-md rounded-full px-6">

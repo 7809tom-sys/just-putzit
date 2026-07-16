@@ -49,13 +49,14 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-border shadow-sm">
-      <div className="container flex items-center justify-between h-16">
+      <div className="container flex items-center justify-between h-20">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 no-underline">
           <img
-            src="/manus-storage/justputzit-logo_490fa7ec.png"
+            src="/manus-storage/justputzit-logo-transparent_2e545ffa.png"
             alt="Just Putzit"
-            className="h-10 w-auto object-contain"
+            className="h-14 w-auto object-contain"
+            style={{ maxWidth: 170 }}
           />
         </Link>
 
