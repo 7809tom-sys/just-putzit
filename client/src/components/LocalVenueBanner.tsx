@@ -66,7 +66,7 @@ const FALLBACK_ANNOUNCEMENTS: FallbackAnnouncement[] = [
     headline: "Play Jeopardy or Trivia Pursuit",
     body: "Challenge yourself with local trivia and community-themed questions. New rounds daily!",
     cta: "Play Now",
-    href: "/games",
+    href: "/games-hub",
     gradient: "from-rose-50 to-orange-50",
     labelColor: "text-rose-500",
   },
