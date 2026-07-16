@@ -415,6 +415,18 @@ export default function GamesHub() {
       navigate("/trivia");
       return;
     }
+    if (game.id === "jeopardy") {
+      navigate("/jeopardy");
+      return;
+    }
+    if (game.id === "trivia_pursuit") {
+      navigate("/trivia-pursuit");
+      return;
+    }
+    if (game.id === "bullgerdash") {
+      toast.info("Bullgerdash is a 2-player match game! Go to Matches → open a chat → tap Games to challenge your match.");
+      return;
+    }
     if (game.premium) {
       toast.info("This game is coming soon for Premium members!");
       return;
