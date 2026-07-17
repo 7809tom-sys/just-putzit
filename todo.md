@@ -590,3 +590,9 @@
 - [ ] Add admin.listUsersWithLocation tRPC procedure returning GPS data, city, verification status for all users
 - [ ] Build AdminUsers.tsx page with user table showing GPS coordinates, city, verification badge, and Google Maps link
 - [ ] Wire AdminUsers page into admin nav (/admin/users)
+
+## Real-time Scoreboard & Player Join Notifications
+- [x] Add getPlayers procedure to jeopardy router (returns players with usernames and scores)
+- [x] Add getPlayers procedure to trivia-pursuit router (returns players with usernames and scores)
+- [x] Update Jeopardy.tsx with real-time polling (3s), animated join toast, live scoreboard sidebar
+- [x] Update TriviaPursuit.tsx with real-time polling (3s), animated join toast, live scoreboard sidebar

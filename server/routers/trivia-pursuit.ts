@@ -253,6 +253,45 @@ export const triviaPursuitRouter = router({
       };
     }),
 
+  // Get players with usernames and scores (for real-time scoreboard polling)
+  getPlayers: protectedProcedure
+    .input(z.object({ roomId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const rooms = await db.select().from(triviaPursuitRooms).where(eq(triviaPursuitRooms.id, input.roomId)).limit(1);
+      const room = rooms[0];
+      if (!room) throw new TRPCError({ code: "NOT_FOUND", message: "Room not found" });
+
+      const players = await db.select().from(triviaPursuitRoomPlayers).where(eq(triviaPursuitRoomPlayers.roomId, input.roomId));
+
+      const { userProfiles, users } = await import("../../drizzle/schema");
+      const playerDetails = await Promise.all(
+        players.map(async (p) => {
+          const profiles = await db.select({ displayName: userProfiles.displayName, avatarEmoji: userProfiles.avatarEmoji, avatarColor: userProfiles.avatarColor })
+            .from(userProfiles).where(eq(userProfiles.userId, p.userId)).limit(1);
+          const userRows = await db.select({ name: users.name }).from(users).where(eq(users.id, p.userId)).limit(1);
+          const displayName = profiles[0]?.displayName ?? userRows[0]?.name ?? `Player ${p.userId}`;
+          return {
+            userId: p.userId,
+            displayName,
+            avatarEmoji: profiles[0]?.avatarEmoji ?? "🎮",
+            avatarColor: profiles[0]?.avatarColor ?? "#6366f1",
+            score: p.score,
+            correctAnswers: p.correctAnswers,
+            isReady: p.isReady,
+            isHost: p.userId === room.hostUserId,
+          };
+        })
+      );
+
+      return {
+        roomStatus: room.status,
+        players: playerDetails.sort((a, b) => b.score - a.score),
+      };
+    }),
+
   // Start the game
   startGame: protectedProcedure
     .input(z.object({ roomId: z.number() }))
