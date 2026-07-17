@@ -4,14 +4,13 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Users, Plus, Trophy, Tv, Calendar, Zap } from "lucide-react";
+import { Users, Plus, Trophy, Tv, Calendar, Zap, MessageSquare, Radio } from "lucide-react";
 
-// ── Pro team schedule data (static for now — can be replaced with API) ──────
+// ── Pro team schedule data ────────────────────────────────────────────────────
 const NFL_GAMES = [
   { home: "Green Bay Packers", away: "Chicago Bears", time: "2025-09-07T13:00:00", week: "Week 1", homeEmoji: "🧀", awayEmoji: "🐻" },
   { home: "Green Bay Packers", away: "Minnesota Vikings", time: "2025-09-14T13:00:00", week: "Week 2", homeEmoji: "🧀", awayEmoji: "🪓" },
@@ -49,6 +48,13 @@ function getSportColor(sport: string) {
   return "from-gray-800 to-gray-900";
 }
 
+function getSportBadgeColor(sport: string) {
+  if (sport === "nfl") return "bg-green-600";
+  if (sport === "nba") return "bg-red-600";
+  if (sport === "mlb") return "bg-blue-600";
+  return "bg-gray-600";
+}
+
 export default function Sports() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -66,7 +72,7 @@ export default function Sports() {
   const joinRoomMutation = trpc.watchParty.joinRoom.useMutation();
 
   const handleCreateFromGame = async (game: typeof NFL_GAMES[0], sport: "nfl" | "nba" | "mlb") => {
-    if (!user) { toast.error("Sign in to create a watch party"); return; }
+    if (!user) { toast.error("Sign in to open a Game Day Chat"); return; }
     try {
       const result = await createRoomMutation.mutateAsync({
         title: `${game.away} @ ${game.home}`,
@@ -75,10 +81,10 @@ export default function Sports() {
         sport,
         gameTime: game.time,
       });
-      toast.success(`Watch party created! Code: ${result.gameCode}`);
+      toast.success(`Game Day Chat created! Code: ${result.gameCode}`);
       navigate(`/sports/watch-party/${result.roomId}`);
     } catch {
-      toast.error("Failed to create watch party");
+      toast.error("Failed to create chat room");
     }
   };
 
@@ -106,11 +112,11 @@ export default function Sports() {
         gameTime: localForm.gameTime || undefined,
         isLocal: true,
       });
-      toast.success(`Watch party created! Code: ${result.gameCode}`);
+      toast.success(`Game Day Chat created! Code: ${result.gameCode}`);
       setShowCreateLocal(false);
       navigate(`/sports/watch-party/${result.roomId}`);
     } catch {
-      toast.error("Failed to create watch party");
+      toast.error("Failed to create chat room");
     }
   };
 
@@ -121,21 +127,33 @@ export default function Sports() {
   ];
 
   const filteredGames = activeSport === "all" ? allGames : allGames.filter((g) => g.sport === activeSport);
+  const liveRooms = roomsData?.rooms ?? [];
+  const totalFans = liveRooms.reduce((sum, r) => sum + r.playerCount, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-700 to-green-900 px-4 py-8">
+      {/* Hero Header */}
+      <div className="bg-gradient-to-r from-green-700 via-green-800 to-slate-900 px-4 py-10">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-bold text-white flex items-center gap-3">
-                🏟️ Sports Watch Parties
-              </h1>
-              <p className="text-green-200 mt-1">Watch together. Trash talk. Win trivia. 🏆</p>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-yellow-400 flex items-center justify-center text-xl">🏟️</div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Game Day Chat</h1>
+              </div>
+              <p className="text-green-200 text-sm md:text-base">Watch together. Trash talk. Win trivia during commercial breaks. 🏆</p>
+              {liveRooms.length > 0 && (
+                <div className="flex items-center gap-3 mt-3">
+                  <span className="flex items-center gap-1.5 text-xs bg-red-500/20 border border-red-500/40 text-red-300 px-2.5 py-1 rounded-full">
+                    <Radio className="w-3 h-3 animate-pulse" /> {liveRooms.length} live room{liveRooms.length !== 1 ? "s" : ""}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs bg-white/10 text-white/70 px-2.5 py-1 rounded-full">
+                    <Users className="w-3 h-3" /> {totalFans} fan{totalFans !== 1 ? "s" : ""} watching
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 flex-wrap">
-              {/* Join by code */}
               <div className="flex gap-2">
                 <Input
                   placeholder="Room code"
@@ -148,7 +166,6 @@ export default function Sports() {
                   Join
                 </Button>
               </div>
-              {/* Create local event */}
               <Dialog open={showCreateLocal} onOpenChange={setShowCreateLocal}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 gap-2">
@@ -163,7 +180,7 @@ export default function Sports() {
                     <Input placeholder="Away team" value={localForm.teamAway} onChange={(e) => setLocalForm({ ...localForm, teamAway: e.target.value })} />
                     <Input type="datetime-local" value={localForm.gameTime} onChange={(e) => setLocalForm({ ...localForm, gameTime: e.target.value })} />
                     <Button onClick={handleCreateLocal} disabled={createRoomMutation.isPending} className="w-full bg-green-600 hover:bg-green-700">
-                      Create Watch Party Room
+                      Create Game Day Chat Room
                     </Button>
                   </div>
                 </DialogContent>
@@ -188,14 +205,14 @@ export default function Sports() {
           ))}
         </div>
 
-        {/* Active Watch Party Rooms */}
-        {roomsData && roomsData.rooms.length > 0 && (
+        {/* Active Game Day Chat Rooms */}
+        {liveRooms.length > 0 && (
           <section>
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-yellow-400" /> Live Watch Party Rooms
+              <Zap className="w-5 h-5 text-yellow-400 animate-pulse" /> Live Game Day Chats
             </h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {roomsData.rooms.map((room) => (
+              {liveRooms.map((room) => (
                 <Card
                   key={room.id}
                   className={`bg-gradient-to-br ${getSportColor(room.sport)} border-white/10 cursor-pointer hover:scale-[1.02] transition-transform`}
@@ -203,16 +220,22 @@ export default function Sports() {
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <Badge className="bg-green-500 text-white text-xs">
-                        {room.status === "live" ? "🔴 LIVE" : "⏳ Waiting"}
+                      <Badge className={`${room.status === "live" ? "bg-red-500" : "bg-yellow-600"} text-white text-xs gap-1`}>
+                        {room.status === "live" ? <><Radio className="w-2.5 h-2.5" /> LIVE</> : "⏳ Waiting"}
                       </Badge>
                       <span className="text-white/60 text-xs font-mono">{room.gameCode}</span>
                     </div>
-                    <h3 className="text-white font-bold text-sm mb-1">{room.title}</h3>
-                    <div className="flex items-center gap-2 text-white/60 text-xs">
-                      <Users className="w-3 h-3" /> {room.playerCount} fans
-                      <span>· by {room.hostName}</span>
+                    <h3 className="text-white font-bold text-sm mb-2">{room.title}</h3>
+                    <div className="flex items-center justify-between text-white/60 text-xs">
+                      <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {room.playerCount} fans</span>
+                      <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {room.hostName}</span>
                     </div>
+                    <Button
+                      className="w-full mt-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs h-8"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/sports/watch-party/${room.id}`); }}
+                    >
+                      Join Chat →
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -220,41 +243,87 @@ export default function Sports() {
           </section>
         )}
 
+        {/* How it works callout */}
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-green-500/20 flex items-center justify-center text-lg flex-shrink-0">💬</div>
+            <div>
+              <p className="text-white font-semibold text-sm">Live Chat</p>
+              <p className="text-white/50 text-xs mt-0.5">React to every play in real time with fans watching the same game.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-yellow-500/20 flex items-center justify-center text-lg flex-shrink-0">⚡</div>
+            <div>
+              <p className="text-white font-semibold text-sm">Commercial Break Trivia</p>
+              <p className="text-white/50 text-xs mt-0.5">Host launches trivia questions during breaks — answer fast to score points.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/20 flex items-center justify-center text-lg flex-shrink-0">🏆</div>
+            <div>
+              <p className="text-white font-semibold text-sm">MVP Leaderboard</p>
+              <p className="text-white/50 text-xs mt-0.5">Top trivia scorer earns the MVP crown at the end of the game.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Upcoming Games */}
         <section>
           <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-400" /> Upcoming Games — Create a Watch Party
+            <Calendar className="w-5 h-5 text-blue-400" /> Upcoming Games — Start a Chat Room
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredGames.map((game, idx) => (
-              <Card key={idx} className={`bg-gradient-to-br ${getSportColor(game.sport)} border-white/10`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <Badge variant="outline" className="border-white/30 text-white/70 text-xs">
-                      {game.sport.toUpperCase()} {(game as typeof NFL_GAMES[0] & { week?: string }).week || ""}
-                    </Badge>
-                    <Tv className="w-4 h-4 text-white/40" />
-                  </div>
-                  <div className="text-center mb-3">
-                    <div className="flex items-center justify-center gap-3 text-2xl mb-1">
-                      <span>{(game as typeof NFL_GAMES[0]).awayEmoji}</span>
-                      <span className="text-white/40 text-sm font-bold">@</span>
-                      <span>{(game as typeof NFL_GAMES[0]).homeEmoji}</span>
+            {filteredGames.map((game, idx) => {
+              // Check if there's already a room for this game
+              const existingRoom = liveRooms.find(
+                (r) => r.teamHome === game.home && r.teamAway === game.away
+              );
+              return (
+                <Card key={idx} className={`bg-gradient-to-br ${getSportColor(game.sport)} border-white/10`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <Badge className={`${getSportBadgeColor(game.sport)} text-white text-xs`}>
+                        {game.sport.toUpperCase()} {(game as typeof NFL_GAMES[0] & { week?: string }).week || ""}
+                      </Badge>
+                      {existingRoom ? (
+                        <Badge className="bg-red-500 text-white text-xs gap-1">
+                          <Radio className="w-2.5 h-2.5" /> {existingRoom.playerCount} live
+                        </Badge>
+                      ) : (
+                        <Tv className="w-4 h-4 text-white/40" />
+                      )}
                     </div>
-                    <p className="text-white font-bold text-sm">{game.away}</p>
-                    <p className="text-white/60 text-xs">@ {game.home}</p>
-                  </div>
-                  <p className="text-white/50 text-xs text-center mb-3">{formatGameTime(game.time)}</p>
-                  <Button
-                    onClick={() => handleCreateFromGame(game as typeof NFL_GAMES[0], game.sport)}
-                    disabled={createRoomMutation.isPending}
-                    className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm"
-                  >
-                    <Trophy className="w-3 h-3 mr-1" /> Start Watch Party
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="text-center mb-3">
+                      <div className="flex items-center justify-center gap-3 text-2xl mb-1">
+                        <span>{(game as typeof NFL_GAMES[0]).awayEmoji}</span>
+                        <span className="text-white/40 text-sm font-bold">@</span>
+                        <span>{(game as typeof NFL_GAMES[0]).homeEmoji}</span>
+                      </div>
+                      <p className="text-white font-bold text-sm">{game.away}</p>
+                      <p className="text-white/60 text-xs">@ {game.home}</p>
+                    </div>
+                    <p className="text-white/50 text-xs text-center mb-3">{formatGameTime(game.time)}</p>
+                    {existingRoom ? (
+                      <Button
+                        onClick={() => navigate(`/sports/watch-party/${existingRoom.id}`)}
+                        className="w-full bg-red-500 hover:bg-red-400 text-white font-bold text-sm gap-1"
+                      >
+                        <MessageSquare className="w-3 h-3" /> Join Live Chat
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handleCreateFromGame(game as typeof NFL_GAMES[0], game.sport)}
+                        disabled={createRoomMutation.isPending}
+                        className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm"
+                      >
+                        <Trophy className="w-3 h-3 mr-1" /> Start Game Day Chat
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </section>
       </div>

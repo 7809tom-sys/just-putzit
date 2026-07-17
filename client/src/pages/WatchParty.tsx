@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Trophy, Send, Zap, Crown, Users, Copy, Check, ArrowLeft, Star } from "lucide-react";
+import { Trophy, Send, Zap, Crown, Users, Copy, Check, ArrowLeft, Radio, Timer } from "lucide-react";
 
 type ChatMsg = {
   id: number;
@@ -20,18 +20,6 @@ type ChatMsg = {
   createdAt: Date | string;
 };
 
-type Player = {
-  rank: number;
-  userId: number;
-  displayName: string;
-  avatarEmoji: string;
-  avatarColor: string;
-  score: number;
-  correctAnswers: number;
-  isMvp: boolean;
-  isHost?: boolean;
-};
-
 type TriviaQuestion = {
   id: number;
   questionText: string;
@@ -41,6 +29,9 @@ type TriviaQuestion = {
   optionD: string;
   launchedAt: Date | string;
 };
+
+const REACTIONS = ["🔥", "🎯", "😱", "👏", "💀", "🏆"];
+const TRIVIA_SECONDS = 30;
 
 export default function WatchParty() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -55,12 +46,17 @@ export default function WatchParty() {
   const [copied, setCopied] = useState(false);
   const [myAnswer, setMyAnswer] = useState<"A" | "B" | "C" | "D" | null>(null);
   const [answerResult, setAnswerResult] = useState<{ isCorrect: boolean; correctAnswer: string } | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   // Custom trivia form (host)
   const [showTriviaForm, setShowTriviaForm] = useState(false);
-  const [triviaForm, setTriviaForm] = useState({ questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A" as "A" | "B" | "C" | "D" });
+  const [triviaForm, setTriviaForm] = useState({
+    questionText: "", optionA: "", optionB: "", optionC: "", optionD: "",
+    correctAnswer: "A" as "A" | "B" | "C" | "D",
+  });
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Room data (polls every 5s)
   const { data: roomData } = trpc.watchParty.getRoom.useQuery(
@@ -88,7 +84,7 @@ export default function WatchParty() {
 
   // Pool question for host
   const { data: poolQuestion, refetch: refetchPool } = trpc.watchParty.getPoolQuestion.useQuery(
-    { team: roomData?.room?.teamHome || "packers" },
+    { team: roomData?.room?.teamHome?.toLowerCase().split(" ").pop() || "packers" },
     { enabled: !!roomData?.isHost }
   );
 
@@ -115,7 +111,7 @@ export default function WatchParty() {
     if (!roomData?.players) return;
     roomData.players.forEach((p) => {
       if (!prevPlayerIds.has(p.userId) && p.userId !== user?.id) {
-        toast.success(`${p.avatarEmoji} ${p.displayName} joined the watch party!`, {
+        toast.success(`${p.avatarEmoji} ${p.displayName} joined the chat!`, {
           duration: 3000,
           style: { background: "#16a34a", color: "#fff" },
         });
@@ -124,12 +120,35 @@ export default function WatchParty() {
     setPrevPlayerIds(new Set(roomData.players.map((p) => p.userId)));
   }, [roomData?.players]);
 
-  // Reset answer state when new trivia launches
+  // Reset answer state + start countdown when new trivia launches
   useEffect(() => {
     if (triviaData?.question) {
       setMyAnswer(triviaData.myAnswer as "A" | "B" | "C" | "D" | null);
       setAnswerResult(null);
+      // Start 30-second countdown from launch time
+      const launchedAt = new Date(triviaData.question.launchedAt).getTime();
+      const elapsed = Math.floor((Date.now() - launchedAt) / 1000);
+      const remaining = Math.max(0, TRIVIA_SECONDS - elapsed);
+      setCountdown(remaining);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      if (remaining > 0) {
+        countdownRef.current = setInterval(() => {
+          setCountdown((c) => {
+            if (c === null || c <= 1) {
+              clearInterval(countdownRef.current!);
+              return 0;
+            }
+            return c - 1;
+          });
+        }, 1000);
+      }
+    } else {
+      setCountdown(null);
+      if (countdownRef.current) clearInterval(countdownRef.current);
     }
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
   }, [triviaData?.question?.id]);
 
   // Auto-scroll chat
@@ -155,6 +174,22 @@ export default function WatchParty() {
     } catch {
       toast.error("Failed to send message");
     }
+  };
+
+  const handleReaction = async (emoji: string) => {
+    const optimistic: ChatMsg = {
+      id: Date.now(),
+      userId: user?.id || 0,
+      displayName: "You",
+      avatarEmoji: "🏈",
+      avatarColor: "#ea580c",
+      message: emoji,
+      createdAt: new Date(),
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    try {
+      await sendChatMutation.mutateAsync({ roomId: numRoomId, message: emoji });
+    } catch { /* silent */ }
   };
 
   const handleSubmitAnswer = async (answer: "A" | "B" | "C" | "D") => {
@@ -191,7 +226,7 @@ export default function WatchParty() {
         optionD: q.optionD,
         correctAnswer: q.correctAnswer as "A" | "B" | "C" | "D",
       });
-      toast.success("Trivia question launched!");
+      toast.success("Commercial break trivia launched! ⚡");
       refetchPool();
       refetchTrivia();
     } catch {
@@ -205,7 +240,7 @@ export default function WatchParty() {
     }
     try {
       await launchTriviaMutation.mutateAsync({ roomId: numRoomId, ...triviaForm });
-      toast.success("Custom trivia launched!");
+      toast.success("Custom trivia launched! ⚡");
       setShowTriviaForm(false);
       setTriviaForm({ questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A" });
       refetchTrivia();
@@ -217,7 +252,7 @@ export default function WatchParty() {
   const handleEndRoom = async () => {
     try {
       await endRoomMutation.mutateAsync({ roomId: numRoomId });
-      toast.success("Watch party ended! MVP crowned 🏆");
+      toast.success("Game Day Chat ended! MVP crowned 🏆");
       navigate("/sports");
     } catch {
       toast.error("Failed to end room");
@@ -242,11 +277,14 @@ export default function WatchParty() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-white text-center">
           <div className="text-4xl mb-4">🏟️</div>
-          <p className="text-lg">Loading watch party...</p>
+          <p className="text-lg">Loading Game Day Chat...</p>
         </div>
       </div>
     );
   }
+
+  const countdownPct = countdown !== null ? (countdown / TRIVIA_SECONDS) * 100 : 0;
+  const countdownColor = countdown !== null && countdown <= 10 ? "text-red-400" : "text-yellow-300";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -258,11 +296,16 @@ export default function WatchParty() {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <h1 className="text-white font-bold text-lg">{room.title}</h1>
-              <div className="flex items-center gap-2 text-green-200 text-sm">
+              <div className="flex items-center gap-2">
+                <h1 className="text-white font-bold text-lg">{room.title}</h1>
+                <Badge className="bg-red-500 text-white text-xs gap-1 animate-pulse">
+                  <Radio className="w-2.5 h-2.5" /> LIVE
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 text-green-200 text-xs">
                 <Users className="w-3 h-3" />
-                <span>{players.length} fans watching</span>
-                <Badge className="bg-red-500 text-white text-xs animate-pulse">🔴 LIVE</Badge>
+                <span>{players.length} fan{players.length !== 1 ? "s" : ""} in chat</span>
+                {isHost && <span className="text-yellow-300 font-semibold">· You are the host</span>}
               </div>
             </div>
           </div>
@@ -276,7 +319,7 @@ export default function WatchParty() {
             </div>
             {isHost && (
               <Button size="sm" onClick={handleEndRoom} disabled={endRoomMutation.isPending} variant="outline" className="border-red-400 text-red-300 hover:bg-red-900/30 text-xs">
-                End Party
+                End Chat
               </Button>
             )}
           </div>
@@ -290,9 +333,26 @@ export default function WatchParty() {
           {activeTrivia && (
             <Card className="bg-gradient-to-br from-yellow-900 to-orange-900 border-yellow-500/30">
               <CardHeader className="pb-3">
-                <CardTitle className="text-yellow-300 flex items-center gap-2 text-sm">
-                  <Zap className="w-4 h-4" /> TRIVIA BATTLE — Answer Fast!
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-yellow-300 flex items-center gap-2 text-sm">
+                    <Zap className="w-4 h-4" /> COMMERCIAL BREAK TRIVIA — Answer Fast!
+                  </CardTitle>
+                  {countdown !== null && !myAnswer && (
+                    <div className="flex items-center gap-1.5">
+                      <Timer className="w-3.5 h-3.5 text-white/60" />
+                      <span className={`font-mono font-bold text-lg ${countdownColor}`}>{countdown}s</span>
+                    </div>
+                  )}
+                </div>
+                {/* Countdown progress bar */}
+                {countdown !== null && !myAnswer && (
+                  <div className="w-full bg-white/10 rounded-full h-1.5 mt-2">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-1000 ${countdown <= 10 ? "bg-red-400" : "bg-yellow-400"}`}
+                      style={{ width: `${countdownPct}%` }}
+                    />
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-white font-medium text-base">{activeTrivia.questionText}</p>
@@ -302,7 +362,7 @@ export default function WatchParty() {
                       <Button
                         key={letter}
                         onClick={() => handleSubmitAnswer(letter)}
-                        disabled={submitAnswerMutation.isPending}
+                        disabled={submitAnswerMutation.isPending || countdown === 0}
                         className="h-auto py-3 flex flex-col items-start text-left bg-white/10 hover:bg-white/20 border border-white/20 text-white"
                       >
                         <span className="font-bold text-yellow-300">{letter}.</span>
@@ -320,12 +380,12 @@ export default function WatchParty() {
             </Card>
           )}
 
-          {/* Host Trivia Controls */}
+          {/* Host Controls */}
           {isHost && (
             <Card className="bg-white/5 border-white/10">
               <CardHeader className="pb-2">
                 <CardTitle className="text-white text-sm flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-yellow-400" /> Host Controls — Launch Trivia
+                  <Crown className="w-4 h-4 text-yellow-400" /> Host Controls — Commercial Break Trivia
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -333,7 +393,7 @@ export default function WatchParty() {
                   <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                     <p className="text-white/80 text-sm mb-2">📋 Suggested: {poolQuestion.question.questionText}</p>
                     <Button onClick={handleLaunchPoolQuestion} disabled={launchTriviaMutation.isPending} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm">
-                      <Zap className="w-3 h-3 mr-1" /> Launch This Question
+                      <Zap className="w-3 h-3 mr-1" /> Launch During Commercial Break
                     </Button>
                   </div>
                 )}
@@ -347,13 +407,13 @@ export default function WatchParty() {
                     {(["A", "B", "C", "D"] as const).map((l) => (
                       <Input key={l} placeholder={`Option ${l}`} value={triviaForm[`option${l}` as keyof typeof triviaForm] as string} onChange={(e) => setTriviaForm({ ...triviaForm, [`option${l}`]: e.target.value })} className="bg-white/10 border-white/20 text-white placeholder:text-white/40 text-sm" />
                     ))}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                      <span className="text-white/50 text-xs">Correct answer:</span>
                       {(["A", "B", "C", "D"] as const).map((l) => (
-                        <Button key={l} size="sm" onClick={() => setTriviaForm({ ...triviaForm, correctAnswer: l })} className={triviaForm.correctAnswer === l ? "bg-green-600" : "bg-white/10 text-white"}>
+                        <Button key={l} size="sm" onClick={() => setTriviaForm({ ...triviaForm, correctAnswer: l })} className={triviaForm.correctAnswer === l ? "bg-green-600 text-white" : "bg-white/10 text-white hover:bg-white/20"}>
                           {l}
                         </Button>
                       ))}
-                      <span className="text-white/50 text-xs self-center ml-1">= correct</span>
                     </div>
                     <div className="flex gap-2">
                       <Button onClick={handleLaunchCustom} disabled={launchTriviaMutation.isPending} className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm">
@@ -372,7 +432,9 @@ export default function WatchParty() {
           {/* Live Chat */}
           <Card className="bg-white/5 border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-white text-sm">💬 Watch Party Chat</CardTitle>
+              <CardTitle className="text-white text-sm flex items-center gap-2">
+                💬 Game Day Chat
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <ScrollArea className="h-72 pr-2">
@@ -397,6 +459,21 @@ export default function WatchParty() {
                   <div ref={chatBottomRef} />
                 </div>
               </ScrollArea>
+
+              {/* Quick reactions */}
+              <div className="flex gap-1.5 flex-wrap">
+                {REACTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => handleReaction(emoji)}
+                    className="text-lg hover:scale-125 transition-transform active:scale-95 cursor-pointer"
+                    title={`React with ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex gap-2">
                 <Input
                   placeholder="Say something..."
@@ -413,7 +490,7 @@ export default function WatchParty() {
           </Card>
         </div>
 
-        {/* Sidebar: Leaderboard */}
+        {/* Sidebar: Leaderboard + Fans */}
         <div className="space-y-4">
           <Card className="bg-white/5 border-white/10">
             <CardHeader className="pb-3">
@@ -423,7 +500,10 @@ export default function WatchParty() {
             </CardHeader>
             <CardContent className="space-y-2">
               {leaderboard.length === 0 ? (
-                <p className="text-white/30 text-xs text-center py-4">No scores yet — launch a trivia question!</p>
+                <div className="text-center py-6">
+                  <p className="text-white/30 text-xs">No scores yet</p>
+                  <p className="text-white/20 text-xs mt-1">Launch trivia during a commercial break!</p>
+                </div>
               ) : (
                 leaderboard.map((p) => (
                   <div
@@ -440,7 +520,6 @@ export default function WatchParty() {
                       <div className="flex items-center gap-1">
                         <span className="text-white text-xs font-medium truncate">{p.userId === user?.id ? "You" : p.displayName}</span>
                         {p.rank === 1 && p.score > 0 && <Crown className="w-3 h-3 text-yellow-400 flex-shrink-0" />}
-                        {p.isMvp && <Star className="w-3 h-3 text-yellow-400 flex-shrink-0" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-yellow-300 text-xs font-bold">{p.score} pts</span>

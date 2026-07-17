@@ -620,3 +620,14 @@
 - [ ] Add Sports link to Entertainment nav section
 - [ ] Seed 50+ team trivia questions (Packers, Bears, Bucks, Brewers, etc.)
 - [ ] Wire Sports and WatchParty routes in App.tsx
+
+## Game Day Chat & Trivia
+- [x] Seed sports_trivia_pool with 27 questions for Packers, Bears, Bucks, Brewers
+- [x] Rename "Watch Party" to "Game Day Chat" throughout Sports.tsx and WatchParty.tsx UI
+- [x] Add "Game Day Chat" hero section to Sports.tsx with live room count and prominent CTA
+- [x] Show live participant count badge on each game card in Sports.tsx
+- [x] Add "Commercial Break Trivia" button prominently in WatchParty.tsx for hosts
+- [x] Add trivia countdown timer (30 seconds) when a question is active
+- [x] Show trivia answer results with correct answer reveal and points breakdown
+- [x] Add reaction buttons (🔥 🎯 😱 👏) to chat messages for quick reactions
+- [x] Polish WatchParty.tsx header with live indicator, fan count, and host label
