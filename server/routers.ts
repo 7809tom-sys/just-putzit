@@ -9,6 +9,7 @@ import { z } from "zod";
 import { jeopardyRouter } from "./routers/jeopardy";
 import { triviaPursuitRouter } from "./routers/trivia-pursuit";
 import { bullgerdashRouter } from "./routers/bullgerdash";
+import { watchPartyRouter } from "./routers/watchParty";
 import { autoSeedCityEvents } from "./cityEventSeeder";
 import {
   getOrCreateProfile,
@@ -2667,6 +2668,7 @@ Return JSON with questions array, each having optionA and optionB.`,
   jeopardy: jeopardyRouter,
   triviaPursuit: triviaPursuitRouter,
   bullgerdash: bullgerdashRouter,
+  watchParty: watchPartyRouter,
 
   advertising: router({
     // Public: submit an inquiry

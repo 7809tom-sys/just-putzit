@@ -596,3 +596,13 @@
 - [x] Add getPlayers procedure to trivia-pursuit router (returns players with usernames and scores)
 - [x] Update Jeopardy.tsx with real-time polling (3s), animated join toast, live scoreboard sidebar
 - [x] Update TriviaPursuit.tsx with real-time polling (3s), animated join toast, live scoreboard sidebar
+
+## Sports Watch Party Feature
+- [ ] Add watch_party_rooms, watch_party_chat, watch_party_trivia_questions, watch_party_trivia_answers tables to schema.ts
+- [ ] Apply DB migrations for watch party tables
+- [ ] Build tRPC procedures: createRoom, joinRoom, getRoom, sendChat, getChat, launchTrivia, submitTriviaAnswer, getLeaderboard
+- [ ] Build Sports.tsx page with NFL/NBA/MLB schedule cards and local sports event posting
+- [ ] Build WatchParty.tsx room page with live chat, trivia battle UI, and leaderboard
+- [ ] Add Sports link to Entertainment nav section
+- [ ] Seed 50+ team trivia questions (Packers, Bears, Bucks, Brewers, etc.)
+- [ ] Wire Sports and WatchParty routes in App.tsx

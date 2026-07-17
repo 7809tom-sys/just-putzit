@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap, MapPin, Calendar, Popcorn, Megaphone } from "lucide-react";
+import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap, MapPin, Calendar, Popcorn, Megaphone, Trophy } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ export default function Navbar() {
     { href: "/activity-board", icon: LayoutGrid, label: "Activities" },
     { href: "/community", icon: Users, label: "Community" },
     { href: "/entertainment", icon: Popcorn, label: "Entertainment" },
+    { href: "/sports", icon: Trophy, label: "Sports" },
     { href: "/shout-out", icon: Megaphone, label: "Shout Out" },
     { href: "/campus", icon: GraduationCap, label: "Campus" },
   ];
@@ -187,6 +188,12 @@ export default function Navbar() {
                 <Link href="/entertainment">
                   <Popcorn className="w-4 h-4 mr-2 text-orange-500" />
                   Movies & Entertainment
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/sports">
+                  <Trophy className="w-4 h-4 mr-2 text-green-600" />
+                  Sports Watch Parties
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

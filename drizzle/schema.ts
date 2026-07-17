@@ -1071,3 +1071,80 @@ export const voiceMessages = mysqlTable("voice_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type VoiceMessage = typeof voiceMessages.$inferSelect;
+
+// ─── Sports Watch Party ───────────────────────────────────────────────────────
+export const watchPartyRooms = mysqlTable("watch_party_rooms", {
+  id: int("id").autoincrement().primaryKey(),
+  hostId: int("host_id").notNull(),
+  gameCode: varchar("game_code", { length: 10 }).notNull().unique(),
+  title: varchar("title", { length: 200 }).notNull(),
+  teamHome: varchar("team_home", { length: 100 }).notNull(),
+  teamAway: varchar("team_away", { length: 100 }).notNull(),
+  sport: varchar("sport", { length: 50 }).notNull().default("nfl"), // nfl, nba, mlb, local
+  gameTime: timestamp("game_time"),
+  status: mysqlEnum("status", ["waiting", "live", "ended"]).notNull().default("waiting"),
+  maxPlayers: int("max_players").notNull().default(50),
+  isLocal: boolean("is_local").notNull().default(false), // user-submitted local game
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type WatchPartyRoom = typeof watchPartyRooms.$inferSelect;
+
+export const watchPartyPlayers = mysqlTable("watch_party_players", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("room_id").notNull(),
+  userId: int("user_id").notNull(),
+  score: int("score").notNull().default(0),
+  correctAnswers: int("correct_answers").notNull().default(0),
+  isMvp: boolean("is_mvp").notNull().default(false),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+export type WatchPartyPlayer = typeof watchPartyPlayers.$inferSelect;
+
+export const watchPartyChat = mysqlTable("watch_party_chat", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("room_id").notNull(),
+  userId: int("user_id").notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type WatchPartyChat = typeof watchPartyChat.$inferSelect;
+
+export const watchPartyTrivia = mysqlTable("watch_party_trivia", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("room_id").notNull(),
+  questionText: text("question_text").notNull(),
+  optionA: varchar("option_a", { length: 300 }).notNull(),
+  optionB: varchar("option_b", { length: 300 }).notNull(),
+  optionC: varchar("option_c", { length: 300 }).notNull(),
+  optionD: varchar("option_d", { length: 300 }).notNull(),
+  correctAnswer: mysqlEnum("correct_answer", ["A", "B", "C", "D"]).notNull(),
+  launchedAt: timestamp("launched_at").defaultNow().notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+export type WatchPartyTrivia = typeof watchPartyTrivia.$inferSelect;
+
+export const watchPartyTriviaAnswers = mysqlTable("watch_party_trivia_answers", {
+  id: int("id").autoincrement().primaryKey(),
+  triviaId: int("trivia_id").notNull(),
+  roomId: int("room_id").notNull(),
+  userId: int("user_id").notNull(),
+  answer: mysqlEnum("answer", ["A", "B", "C", "D"]).notNull(),
+  isCorrect: boolean("is_correct").notNull().default(false),
+  answeredAt: timestamp("answered_at").defaultNow().notNull(),
+});
+export type WatchPartyTriviaAnswer = typeof watchPartyTriviaAnswers.$inferSelect;
+
+// ─── Sports Team Trivia Pool ──────────────────────────────────────────────────
+export const sportsTriviaPool = mysqlTable("sports_trivia_pool", {
+  id: int("id").autoincrement().primaryKey(),
+  team: varchar("team", { length: 100 }).notNull(), // "packers", "bears", "bucks", etc.
+  sport: varchar("sport", { length: 50 }).notNull(),
+  questionText: text("question_text").notNull(),
+  optionA: varchar("option_a", { length: 300 }).notNull(),
+  optionB: varchar("option_b", { length: 300 }).notNull(),
+  optionC: varchar("option_c", { length: 300 }).notNull(),
+  optionD: varchar("option_d", { length: 300 }).notNull(),
+  correctAnswer: mysqlEnum("correct_answer", ["A", "B", "C", "D"]).notNull(),
+  difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull().default("medium"),
+});
+export type SportsTriviaPool = typeof sportsTriviaPool.$inferSelect;
