@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Pin, PinOff, Settings2, X, Check, Radio } from "lucide-react";
+import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Pin, PinOff, Settings2, X, Check, Radio, RotateCcw } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -320,6 +320,15 @@ function CustomizeDrawer({
     onClose();
   };
 
+  const handleReset = () => {
+    const defaults = ALL_MODULES.map(m => ({
+      moduleId: m.id,
+      position: m.defaultPosition,
+      pinned: m.defaultPinned,
+    }));
+    setDraft(defaults);
+  };
+
   const pinnedCount = draft.filter(m => m.pinned).length;
 
   return (
@@ -376,10 +385,20 @@ function CustomizeDrawer({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-border flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1 gap-2" onClick={handleSave}>
-            <Check className="w-4 h-4" /> Save Layout
+        <div className="px-5 py-4 border-t border-border space-y-2">
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1 gap-2" onClick={handleSave}>
+              <Check className="w-4 h-4" /> Save Layout
+            </Button>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-muted-foreground hover:text-foreground gap-1.5 text-xs"
+            onClick={handleReset}
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Reset to Default
           </Button>
         </div>
       </div>
