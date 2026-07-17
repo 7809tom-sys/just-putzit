@@ -591,6 +591,20 @@
 - [ ] Build AdminUsers.tsx page with user table showing GPS coordinates, city, verification badge, and Google Maps link
 - [ ] Wire AdminUsers page into admin nav (/admin/users)
 
+## Jeopardy Board Fix
+- [x] Replace flat 5-button dollar-value grid with proper category x value grid using real question IDs from getRoom
+- [x] Add BoardClue and BoardCategory types
+- [x] Add answeredClueIds state (Set<number>) to track answered clues
+- [x] Add boardCategories state built from getRoom query
+- [x] Add trpc.jeopardy.getRoom.useQuery with 5-second polling during playing phase
+- [x] Fix Set spread TypeScript error using new Set(prev) + .add() pattern
+
+## Bulger Dash Rename
+- [ ] Update display name from "Bullgerdash" to "Bulger Dash" in GamesHub.tsx
+- [ ] Update display name in Games.tsx
+- [ ] Update display name in Bullgerdash.tsx page title
+- [ ] Update display name in Navbar/any other references
+
 ## Real-time Scoreboard & Player Join Notifications
 - [x] Add getPlayers procedure to jeopardy router (returns players with usernames and scores)
 - [x] Add getPlayers procedure to trivia-pursuit router (returns players with usernames and scores)

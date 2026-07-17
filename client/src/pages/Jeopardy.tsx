@@ -16,6 +16,9 @@ type GamePhase = "lobby" | "waiting" | "playing" | "results";
 
 const JEOPARDY_VALUES = [200, 400, 600, 800, 1000];
 
+type BoardClue = { id: number; categoryId: number; clue: string; value: number; answered: boolean };
+type BoardCategory = { id: number; name: string; clues: BoardClue[] };
+
 type Player = {
   userId: number;
   displayName: string;
@@ -49,8 +52,14 @@ export default function Jeopardy() {
   const [isHost, setIsHost] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [answeredClueIds, setAnsweredClueIds] = useState<Set<number>>(new Set());
+  const [boardCategories, setBoardCategories] = useState<BoardCategory[]>([]);
 
   const { data: categories = [] } = trpc.jeopardy.getCategories.useQuery();
+  const { data: roomData } = trpc.jeopardy.getRoom.useQuery(
+    { roomId: roomId! },
+    { enabled: !!roomId && phase === "playing", refetchInterval: 5000 }
+  );
   const createRoomMutation = trpc.jeopardy.createRoom.useMutation();
   const joinRoomMutation = trpc.jeopardy.joinRoom.useMutation();
   const selectClueMutation = trpc.jeopardy.selectClue.useMutation();
@@ -87,6 +96,23 @@ export default function Jeopardy() {
       setPhase("playing");
     }
   }, [playersData]);
+
+  // Build board from room data
+  useEffect(() => {
+    if (!roomData || !categories.length) return;
+    const clues = roomData.clues as BoardClue[];
+    const catMap = new Map<number, BoardCategory>();
+    categories.forEach((cat) => {
+      catMap.set(cat.id, { id: cat.id, name: cat.name, clues: [] });
+    });
+    clues.forEach((clue) => {
+      const cat = catMap.get(clue.categoryId);
+      if (cat) cat.clues.push(clue);
+    });
+    // Sort clues by value within each category
+    catMap.forEach((cat) => cat.clues.sort((a, b) => a.value - b.value));
+    setBoardCategories(Array.from(catMap.values()).filter((c) => c.clues.length > 0));
+  }, [roomData, categories]);
 
   // Handle TTS for clue
   const handleSpeakClue = (text: string) => {
@@ -159,6 +185,8 @@ export default function Jeopardy() {
     try {
       const result = await submitAnswerMutation.mutateAsync({ roomId: roomId!, clueId: currentClue.clueId, answer: userAnswer });
       setAnswerRevealed(true);
+      // Mark clue as answered
+      if (currentClue) setAnsweredClueIds((prev) => { const next = new Set(prev); next.add(currentClue.clueId); return next; });
       if (result.isCorrect) {
         toast.success(`Correct! +${result.pointsAwarded} points`);
       } else {
@@ -395,13 +423,47 @@ export default function Jeopardy() {
                 <Card className="bg-white/95">
                   <CardHeader><CardTitle>Select a Clue</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-5 gap-2">
-                      {JEOPARDY_VALUES.map((value) => (
-                        <Button key={value} onClick={() => handleSelectClue(value, value)} className="h-20 text-lg font-bold bg-purple-600 hover:bg-purple-700">
-                          ${value}
-                        </Button>
-                      ))}
-                    </div>
+                    {boardCategories.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${boardCategories.length}, minmax(100px, 1fr))` }}>
+                          {/* Category headers */}
+                          {boardCategories.map((cat) => (
+                            <div key={cat.id} className="bg-purple-800 text-white text-center text-xs font-bold p-2 rounded uppercase tracking-wide">
+                              {cat.name}
+                            </div>
+                          ))}
+                          {/* Clue buttons — rows by value */}
+                          {JEOPARDY_VALUES.map((val) =>
+                            boardCategories.map((cat) => {
+                              const clue = cat.clues.find((c) => c.value === val);
+                              if (!clue) return <div key={`${cat.id}-${val}`} className="h-16" />;
+                              const isAnswered = answeredClueIds.has(clue.id);
+                              return (
+                                <Button
+                                  key={clue.id}
+                                  onClick={() => !isAnswered && handleSelectClue(clue.id, clue.value)}
+                                  disabled={isAnswered}
+                                  className={`h-16 text-base font-bold ${
+                                    isAnswered
+                                      ? "bg-gray-400 cursor-not-allowed opacity-50"
+                                      : "bg-purple-600 hover:bg-purple-700"
+                                  }`}
+                                >
+                                  {isAnswered ? "—" : `$${val}`}
+                                </Button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      // Fallback flat board while room data loads
+                      <div className="grid grid-cols-5 gap-2">
+                        {JEOPARDY_VALUES.map((value) => (
+                          <div key={value} className="h-16 bg-purple-200 rounded animate-pulse" />
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
