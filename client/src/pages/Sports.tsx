@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Users, Plus, Trophy, Tv, Calendar, Zap, MessageSquare, Radio } from "lucide-react";
+import { Users, Plus, Trophy, Tv, Calendar, Zap, MessageSquare, Radio, BarChart2 } from "lucide-react";
 
 // ── Pro team schedule data ────────────────────────────────────────────────────
 const NFL_GAMES = [
@@ -153,7 +153,13 @@ export default function Sports() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-start">
+              <Button
+                onClick={() => navigate("/sports/live-scores")}
+                className="bg-red-600 hover:bg-red-500 text-white font-bold gap-2"
+              >
+                <Radio className="w-4 h-4 animate-pulse" /> Live Scores
+              </Button>
               <div className="flex gap-2">
                 <Input
                   placeholder="Room code"

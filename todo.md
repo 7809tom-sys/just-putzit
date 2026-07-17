@@ -631,3 +631,16 @@
 - [x] Show trivia answer results with correct answer reveal and points breakdown
 - [x] Add reaction buttons (🔥 🎯 😱 👏) to chat messages for quick reactions
 - [x] Polish WatchParty.tsx header with live indicator, fan count, and host label
+
+## Live Sports Scores
+- [x] Add sportsScores.getScores tRPC procedure fetching NFL/NBA/MLB from ESPN public API with 60s server-side cache
+- [x] Add sportsScores.getAllScores and getLiveGames procedures
+- [x] Add sportsScores.setTeamAlert and getMyAlerts procedures with sport_team_alerts table
+- [x] Build LiveScores.tsx page with score cards for NFL, NBA, MLB tabs
+- [x] Add score cards showing team logos, current score, game status/clock, venue, broadcast
+- [x] Add bell icon alert toggle per team (optimistic update) for logged-in users
+- [x] Wire Live Scores into Sports page with red "Live Scores" button in hero
+- [x] Route /sports/live-scores added to App.tsx
+- [x] Show LIVE badge with pulsing animation on in-progress games
+- [x] Show Live/Upcoming/Final sections with counts
+- [x] Auto-refresh every 60 seconds with manual refresh button

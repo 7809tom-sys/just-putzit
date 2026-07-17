@@ -1148,3 +1148,15 @@ export const sportsTriviaPool = mysqlTable("sports_trivia_pool", {
   difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull().default("medium"),
 });
 export type SportsTriviaPool = typeof sportsTriviaPool.$inferSelect;
+
+// ─── Sport Team Alerts ────────────────────────────────────────────────────────
+export const sportTeamAlerts = mysqlTable("sport_team_alerts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  teamAbbreviation: varchar("team_abbreviation", { length: 10 }).notNull(),
+  teamName: varchar("team_name", { length: 100 }).notNull(),
+  sport: mysqlEnum("sport", ["nfl", "nba", "mlb"]).notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type SportTeamAlert = typeof sportTeamAlerts.$inferSelect;
