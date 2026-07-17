@@ -585,3 +585,8 @@
 - [ ] Frontend: VoiceCall component (call button in chat header, incoming call modal, active call UI, mute/end)
 - [ ] Frontend: Wire voice call button into Chat.tsx and game pages (Bullgerdash, Games)
 - [ ] Checkpoint and deliver
+
+## Admin GPS Location Review
+- [ ] Add admin.listUsersWithLocation tRPC procedure returning GPS data, city, verification status for all users
+- [ ] Build AdminUsers.tsx page with user table showing GPS coordinates, city, verification badge, and Google Maps link
+- [ ] Wire AdminUsers page into admin nav (/admin/users)

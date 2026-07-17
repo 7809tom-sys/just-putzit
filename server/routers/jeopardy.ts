@@ -29,15 +29,11 @@ export const jeopardyRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
       const gameCode = generateGameCode();
-      await db.insert(jeopardyRooms).values({
-        gameCode,
-        hostUserId: ctx.user.id,
-        status: "waiting",
-        maxPlayers: input.maxPlayers,
-        categoryIds: input.categoryIds,
-        currentClueIndex: 0,
-        clueOrder: [],
-      });
+      // Use raw SQL to avoid Drizzle json() type mishandling arrays
+      await db.execute(
+        sql`INSERT INTO jeopardy_rooms (gameCode, hostUserId, status, maxPlayers, categoryIds, currentClueIndex, clueOrder)
+            VALUES (${gameCode}, ${ctx.user.id}, 'waiting', ${input.maxPlayers}, ${JSON.stringify(input.categoryIds)}, 0, '[]')`
+      );
 
       // Get the created room
       const rooms = await db.select().from(jeopardyRooms).where(eq(jeopardyRooms.gameCode, gameCode)).limit(1);

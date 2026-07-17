@@ -22,15 +22,11 @@ export const triviaPursuitRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
       const gameCode = generateGameCode();
-      await db.insert(triviaPursuitRooms).values({
-        gameCode,
-        hostUserId: ctx.user.id,
-        status: "waiting",
-        maxPlayers: input.maxPlayers,
-        categoryIds: input.categoryIds,
-        currentQuestionIndex: 0,
-        questionIds: [],
-      });
+      // Use sql`` to pass JSON as a raw string — Drizzle's json() type can mishandle arrays
+      await db.execute(
+        sql`INSERT INTO trivia_pursuit_rooms (gameCode, hostUserId, status, maxPlayers, categoryIds, currentQuestionIndex, questionIds)
+            VALUES (${gameCode}, ${ctx.user.id}, 'waiting', ${input.maxPlayers}, ${JSON.stringify(input.categoryIds)}, 0, '[]')`
+      );
 
       // Get the created room
       const rooms = await db.select().from(triviaPursuitRooms).where(eq(triviaPursuitRooms.gameCode, gameCode)).limit(1);
