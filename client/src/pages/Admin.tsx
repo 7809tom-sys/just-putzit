@@ -255,6 +255,149 @@ function PostEventButton({
   );
 }
 
+// ── GPS Locations Tab ───────────────────────────────────────────────────────
+function LocationsTab() {
+  const { data: locationUsers, isLoading, refetch } = trpc.safety.listUsersWithLocation.useQuery();
+  const [filter, setFilter] = useState<"all" | "verified" | "unverified">("all");
+
+  const filtered = (locationUsers ?? []).filter((u) => {
+    if (filter === "verified") return u.locationVerified;
+    if (filter === "unverified") return !u.locationVerified;
+    return true;
+  });
+
+  const verifiedCount = (locationUsers ?? []).filter((u) => u.locationVerified).length;
+  const withGpsCount = (locationUsers ?? []).filter((u) => u.latitude || u.gpsVerifiedLat).length;
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-green-500" /> User GPS Locations
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{verifiedCount} verified</Badge>
+              <Badge variant="outline">{withGpsCount} with GPS</Badge>
+              <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={() => refetch()}>
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Filter buttons */}
+          <div className="flex gap-2 mb-4">
+            {(["all", "verified", "unverified"] as const).map((f) => (
+              <Button
+                key={f}
+                size="sm"
+                variant={filter === f ? "default" : "outline"}
+                className="rounded-full capitalize"
+                onClick={() => setFilter(f)}
+              >
+                {f}
+              </Button>
+            ))}
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center py-16"><Spinner /></div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16">
+              <MapPin className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-muted-foreground">No users found.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-2 pr-4 font-medium">User</th>
+                    <th className="pb-2 pr-4 font-medium">Claimed City</th>
+                    <th className="pb-2 pr-4 font-medium">GPS Coords</th>
+                    <th className="pb-2 pr-4 font-medium">Verified City</th>
+                    <th className="pb-2 pr-4 font-medium">Status</th>
+                    <th className="pb-2 font-medium">Map</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filtered.map((u) => {
+                    const lat = u.gpsVerifiedLat ?? u.latitude;
+                    const lng = u.gpsVerifiedLng ?? (u as any).longitude;
+                    const mapsUrl = lat && lng
+                      ? `https://www.google.com/maps?q=${lat},${lng}`
+                      : null;
+                    return (
+                      <tr key={u.userId} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-3 pr-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{u.avatarEmoji ?? "👤"}</span>
+                            <div>
+                              <p className="font-medium">{u.displayName ?? u.name ?? "Unnamed"}</p>
+                              <p className="text-xs text-muted-foreground">{u.email ?? `User #${u.userId}`}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className="text-muted-foreground">{u.city ?? u.claimedCity ?? "—"}</span>
+                        </td>
+                        <td className="py-3 pr-4 font-mono text-xs">
+                          {lat && lng ? (
+                            <span className="text-blue-600">{parseFloat(lat).toFixed(4)}, {parseFloat(lng).toFixed(4)}</span>
+                          ) : (
+                            <span className="text-muted-foreground/50">No GPS</span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className="text-muted-foreground">{u.gpsVerifiedCity ?? "—"}</span>
+                          {u.gpsVerifiedAt && (
+                            <p className="text-xs text-muted-foreground">{fmtDate(u.gpsVerifiedAt)}</p>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4">
+                          {u.locationVerified ? (
+                            <Badge className="bg-green-100 text-green-700 border-green-200 gap-1">
+                              <CheckCircle className="w-3 h-3" /> Verified
+                            </Badge>
+                          ) : lat ? (
+                            <Badge variant="outline" className="text-yellow-600 border-yellow-300 gap-1">
+                              <MapPin className="w-3 h-3" /> Has GPS
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground gap-1">
+                              <XCircle className="w-3 h-3" /> No Location
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          {mapsUrl ? (
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                            >
+                              <MapPin className="w-3 h-3" /> View
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground/40 text-xs">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function Admin() {
   const { user } = useAuth();
@@ -479,6 +622,9 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="photos" className="rounded-full gap-1.5">
               <Image className="w-3.5 h-3.5" /> Photos
+            </TabsTrigger>
+            <TabsTrigger value="locations" className="rounded-full gap-1.5">
+              <MapPin className="w-3.5 h-3.5" /> Locations
             </TabsTrigger>
           </TabsList>
 
@@ -1091,6 +1237,11 @@ export default function Admin() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ── GPS Locations ── */}
+          <TabsContent value="locations">
+            <LocationsTab />
           </TabsContent>
         </Tabs>
       </div>

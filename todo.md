@@ -587,9 +587,9 @@
 - [ ] Checkpoint and deliver
 
 ## Admin GPS Location Review
-- [ ] Add admin.listUsersWithLocation tRPC procedure returning GPS data, city, verification status for all users
-- [ ] Build AdminUsers.tsx page with user table showing GPS coordinates, city, verification badge, and Google Maps link
-- [ ] Wire AdminUsers page into admin nav (/admin/users)
+- [x] Add admin.listUsersWithLocation tRPC procedure returning GPS data, city, verification status for all users
+- [x] Build Locations tab in Admin.tsx with user table showing GPS coordinates, city, verification badge, and Google Maps link
+- [x] Wire Locations tab into admin panel (safety.listUsersWithLocation procedure)
 
 ## Jeopardy Board Fix
 - [x] Replace flat 5-button dollar-value grid with proper category x value grid using real question IDs from getRoom
@@ -600,10 +600,10 @@
 - [x] Fix Set spread TypeScript error using new Set(prev) + .add() pattern
 
 ## Bulger Dash Rename
-- [ ] Update display name from "Bullgerdash" to "Bulger Dash" in GamesHub.tsx
-- [ ] Update display name in Games.tsx
-- [ ] Update display name in Bullgerdash.tsx page title
-- [ ] Update display name in Navbar/any other references
+- [x] Update display name from "Bullgerdash" to "Bulger Dash" in GamesHub.tsx
+- [x] Update display name in Games.tsx
+- [x] Update display name in Bullgerdash.tsx page title (all 3 headers + loading states)
+- [x] No Navbar references found (game not in Navbar)
 
 ## Real-time Scoreboard & Player Join Notifications
 - [x] Add getPlayers procedure to jeopardy router (returns players with usernames and scores)

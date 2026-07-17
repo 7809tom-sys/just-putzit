@@ -141,7 +141,7 @@ const GAMES = [
   },
   {
     id: "bullgerdash",
-    title: "Bullgerdash",
+    title: "Bulger Dash",
     description: "A mystery photo appears — write a caption that's truth or a convincing lie. Can your match spot the bluff?",
     emoji: "📸",
     color: "from-purple-500 to-pink-500",
@@ -424,7 +424,7 @@ export default function GamesHub() {
       return;
     }
     if (game.id === "bullgerdash") {
-      toast.info("Bullgerdash is a 2-player match game! Go to Matches → open a chat → tap Games to challenge your match.");
+      toast.info("Bulger Dash is a 2-player match game! Go to Matches → open a chat → tap Games to challenge your match.");
       return;
     }
     if (game.premium) {

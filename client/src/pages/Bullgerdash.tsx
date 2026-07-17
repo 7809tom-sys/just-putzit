@@ -69,7 +69,7 @@ export default function Bullgerdash() {
       <div className="min-h-screen gradient-warm flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mx-auto mb-4 flex items-center justify-center text-3xl animate-pulse">📸</div>
-          <p className="font-semibold">Loading Bullgerdash...</p>
+          <p className="font-semibold">Loading Bulger Dash...</p>
         </div>
       </div>
     );
@@ -125,7 +125,7 @@ export default function Bullgerdash() {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div className="flex-1">
-              <h1 className="font-display font-bold text-xl">Bullgerdash 📸</h1>
+              <h1 className="font-display font-bold text-xl">Bulger Dash 📸</h1>
               <p className="text-xs text-muted-foreground">Round {game?.currentRound}</p>
             </div>
             <ScoreChip myScore={myScore} opponentScore={opponentScore} opponentName={otherProfile?.displayName} />
@@ -200,7 +200,7 @@ export default function Bullgerdash() {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div className="flex-1">
-              <h1 className="font-display font-bold text-xl">Bullgerdash 📸</h1>
+              <h1 className="font-display font-bold text-xl">Bulger Dash 📸</h1>
               <p className="text-xs text-muted-foreground">Round {game?.currentRound} — Your turn to tell a story</p>
             </div>
             <ScoreChip myScore={myScore} opponentScore={opponentScore} opponentName={otherProfile?.displayName} />
@@ -289,7 +289,7 @@ export default function Bullgerdash() {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div className="flex-1">
-              <h1 className="font-display font-bold text-xl">Bullgerdash 📸</h1>
+              <h1 className="font-display font-bold text-xl">Bulger Dash 📸</h1>
               <p className="text-xs text-muted-foreground">Round {game?.currentRound} — Can you spot the lie?</p>
             </div>
             <ScoreChip myScore={myScore} opponentScore={opponentScore} opponentName={otherProfile?.displayName} />
@@ -361,7 +361,7 @@ export default function Bullgerdash() {
     <div className="min-h-screen gradient-warm flex items-center justify-center">
       <div className="text-center">
         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mx-auto mb-4 flex items-center justify-center text-3xl animate-pulse">📸</div>
-        <p className="font-semibold">Setting up Bullgerdash...</p>
+        <p className="font-semibold">Setting up Bulger Dash...</p>
       </div>
     </div>
   );

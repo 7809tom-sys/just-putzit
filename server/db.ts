@@ -2457,3 +2457,33 @@ export async function mergeGameTraitsIntoProfile(userId: number, newTraits: Reco
   const merged = { ...existing, ...newTraits };
   await db.update(userProfiles).set({ traits: merged }).where(eq(userProfiles.userId, userId));
 }
+
+// ─── Admin GPS Location Review ────────────────────────────────────────────────
+export async function getUsersWithGpsLocations() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      userId: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      displayName: userProfiles.displayName,
+      avatarEmoji: userProfiles.avatarEmoji,
+      latitude: userProfiles.latitude,
+      longitude: userProfiles.longitude,
+      city: userProfiles.city,
+      claimedCity: userProfiles.claimedCity,
+      gpsVerifiedLat: userProfiles.gpsVerifiedLat,
+      gpsVerifiedLng: userProfiles.gpsVerifiedLng,
+      gpsVerifiedCity: userProfiles.gpsVerifiedCity,
+      gpsVerifiedAt: userProfiles.gpsVerifiedAt,
+      locationVerified: userProfiles.locationVerified,
+      isVerified: userProfiles.isVerified,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
+    .orderBy(desc(users.createdAt));
+  return rows;
+}

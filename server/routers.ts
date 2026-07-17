@@ -176,6 +176,7 @@ import {
   deleteTripPlan,
   addTripItem,
   removeTripItem,
+  getUsersWithGpsLocations,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, MatchGameQuestion as GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import { familyProfiles, communityEvents } from "../drizzle/schema";
@@ -1239,6 +1240,11 @@ Return JSON with questions array, each having optionA and optionB.`,
         await adminDeletePhoto(input.photoId);
         return { success: true };
       }),
+
+    listUsersWithLocation: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Forbidden");
+      return getUsersWithGpsLocations();
+    }),
   }),
 
   // ─── Venues & Activities ──────────────────────────────────────────────────
