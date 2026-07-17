@@ -2,45 +2,509 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone } from "lucide-react";
+import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Pin, PinOff, Settings2, X, Check, Radio } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 import { useSEO } from "@/hooks/useSEO";
+import { toast } from "sonner";
 
-// PWA install prompt hook
-function usePWAInstall() {
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+// ─── Module definitions ───────────────────────────────────────────────────────
 
-  useEffect(() => {
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    setIsIOS(ios);
-    const standalone = (window.navigator as any).standalone === true ||
-      window.matchMedia('(display-mode: standalone)').matches;
-    setIsInstalled(standalone);
+interface ModuleDef {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+  defaultPinned: boolean;
+  defaultPosition: number;
+}
 
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+const ALL_MODULES: ModuleDef[] = [
+  { id: "sally",      label: "Chat with Sally",    emoji: "🤖", description: "Your AI connection guide",         defaultPinned: true,  defaultPosition: 0 },
+  { id: "matches",    label: "My Matches",          emoji: "💕", description: "See your connections",            defaultPinned: true,  defaultPosition: 1 },
+  { id: "activities", label: "Local Activities",    emoji: "🗺️", description: "Discover nearby events",         defaultPinned: true,  defaultPosition: 2 },
+  { id: "sports",     label: "Sports & Live Scores",emoji: "🏟️", description: "Game Day Chat & live scores",    defaultPinned: true,  defaultPosition: 3 },
+  { id: "games",      label: "Games Hub",           emoji: "🎮", description: "Trivia, Jeopardy & more",        defaultPinned: true,  defaultPosition: 4 },
+  { id: "community",  label: "Community",           emoji: "👥", description: "Groups & local events",          defaultPinned: false, defaultPosition: 5 },
+  { id: "concierge",  label: "Concierge",           emoji: "🎩", description: "AI-planned date nights",         defaultPinned: false, defaultPosition: 6 },
+  { id: "marketplace",label: "Marketplace",         emoji: "🛍️", description: "Local deals & services",        defaultPinned: false, defaultPosition: 7 },
+  { id: "family",     label: "Family Connect",      emoji: "👨‍👩‍👧", description: "Meet families nearby",         defaultPinned: false, defaultPosition: 8 },
+  { id: "trip",       label: "Trip Planner",        emoji: "✈️", description: "Plan adventures together",       defaultPinned: false, defaultPosition: 9 },
+  { id: "shoutout",   label: "Shout Out",           emoji: "📣", description: "Refer friends & earn rewards",   defaultPinned: false, defaultPosition: 10 },
+];
 
-  const triggerInstall = async () => {
-    if (!installPrompt) return false;
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') setIsInstalled(true);
-    setInstallPrompt(null);
-    return outcome === 'accepted';
+interface ActiveModule {
+  moduleId: string;
+  position: number;
+  pinned: boolean;
+}
+
+function buildLayout(savedModules: ActiveModule[]): ActiveModule[] {
+  if (savedModules.length === 0) {
+    return ALL_MODULES.map(m => ({ moduleId: m.id, position: m.defaultPosition, pinned: m.defaultPinned }));
+  }
+  // Merge saved with defaults for any new modules not yet in DB
+  const savedIds = new Set(savedModules.map(m => m.moduleId));
+  const missing = ALL_MODULES.filter(m => !savedIds.has(m.id)).map(m => ({
+    moduleId: m.id,
+    position: m.defaultPosition + 100, // put new modules at the end
+    pinned: false,
+  }));
+  return [...savedModules, ...missing].sort((a, b) => a.position - b.position);
+}
+
+// ─── Module card renderers ────────────────────────────────────────────────────
+
+function SallyModule({ profile, navigate }: { profile: any; navigate: (p: string) => void }) {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-6 flex items-start gap-4">
+      <div className="w-12 h-12 rounded-full gradient-sally flex items-center justify-center text-2xl flex-shrink-0 animate-pulse-ring">🤖</div>
+      <div className="flex-1">
+        <p className="font-bold text-foreground mb-1">Sally says hi! 👋</p>
+        <p className="text-muted-foreground text-sm mb-3">
+          {profile?.interviewCount === 0
+            ? "I can't wait to get to know you! Let's start with a quick 90-second chat."
+            : "Great to see you again! I have new questions to refine your profile."}
+        </p>
+        <Button size="sm" className="gradient-sally text-white border-0 rounded-full gap-2 btn-scale" onClick={() => navigate("/interview")}>
+          <MessageCircle className="w-4 h-4" /> Chat with Sally
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function MatchesModule({ matches, navigate }: { matches: any[]; navigate: (p: string) => void }) {
+  if (!matches || matches.length === 0) {
+    return (
+      <div className="bg-white rounded-3xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display font-bold text-xl">My Matches</h2>
+        </div>
+        <p className="text-muted-foreground text-sm">No matches yet — keep chatting with Sally to improve your profile!</p>
+        <Button size="sm" variant="outline" className="mt-3 rounded-full" onClick={() => navigate("/matches")}>Browse Matches</Button>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display font-bold text-xl">My Matches</h2>
+        <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => navigate("/matches")}>
+          See all <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {matches.slice(0, 3).map((match: any) => (
+          <MatchCard key={match.id} match={match} onChat={() => navigate(`/chat/${match.id}`)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActivitiesModule({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <div
+      className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-3xl p-6 cursor-pointer card-hover"
+      onClick={() => navigate("/activities")}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-white/80 text-sm font-medium mb-1">Discover</p>
+          <h2 className="font-display font-bold text-2xl text-white">Local Activities</h2>
+          <p className="text-white/70 text-sm mt-1">Events, outings & meetups near you</p>
+        </div>
+        <div className="text-5xl">🗺️</div>
+      </div>
+      <Button size="sm" className="mt-4 bg-white/20 hover:bg-white/30 text-white border-0 rounded-full gap-2">
+        Explore <ChevronRight className="w-3.5 h-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+function SportsModule({ navigate }: { navigate: (p: string) => void }) {
+  const { data: liveData } = trpc.sportsScores.getLiveGames.useQuery(undefined, { refetchInterval: 60000 });
+  const liveCount = liveData?.games?.length ?? 0;
+  return (
+    <div
+      className="bg-gradient-to-br from-slate-800 to-green-900 rounded-3xl p-6 cursor-pointer card-hover"
+      onClick={() => navigate("/sports")}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-white/80 text-sm font-medium">Sports</p>
+            {liveCount > 0 && (
+              <span className="flex items-center gap-1 text-xs bg-red-500/30 border border-red-500/40 text-red-300 px-2 py-0.5 rounded-full">
+                <Radio className="w-2.5 h-2.5 animate-pulse" /> {liveCount} live
+              </span>
+            )}
+          </div>
+          <h2 className="font-display font-bold text-2xl text-white">Game Day Chat</h2>
+          <p className="text-white/70 text-sm mt-1">Live scores, chat rooms & trivia</p>
+        </div>
+        <div className="text-5xl">🏟️</div>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <Button size="sm" className="bg-white/20 hover:bg-white/30 text-white border-0 rounded-full gap-2" onClick={(e) => { e.stopPropagation(); navigate("/sports/live-scores"); }}>
+          <Radio className="w-3 h-3" /> Live Scores
+        </Button>
+        <Button size="sm" className="bg-white/10 hover:bg-white/20 text-white border-0 rounded-full" onClick={(e) => { e.stopPropagation(); navigate("/sports"); }}>
+          Chat Rooms
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function GamesModule({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <div
+      className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl p-6 cursor-pointer card-hover"
+      onClick={() => navigate("/games-hub")}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-white/80 text-sm font-medium mb-1">Play</p>
+          <h2 className="font-display font-bold text-2xl text-white">Games Hub</h2>
+          <p className="text-white/70 text-sm mt-1">Trivia, Jeopardy, Bulger Dash & more</p>
+        </div>
+        <div className="text-5xl">🎮</div>
+      </div>
+      <Button size="sm" className="mt-4 bg-white/20 hover:bg-white/30 text-white border-0 rounded-full gap-2">
+        Play Now <ChevronRight className="w-3.5 h-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+function CommunityModule({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-6 flex items-center gap-4 cursor-pointer card-hover" onClick={() => navigate("/community")}>
+      <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center text-3xl flex-shrink-0">👥</div>
+      <div className="flex-1">
+        <h2 className="font-bold text-lg">Community</h2>
+        <p className="text-muted-foreground text-sm">Join groups & local events</p>
+      </div>
+      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+    </div>
+  );
+}
+
+function ConciergeModule({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-6 flex items-center gap-4 cursor-pointer card-hover" onClick={() => navigate("/concierge")}>
+      <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center text-3xl flex-shrink-0">🎩</div>
+      <div className="flex-1">
+        <h2 className="font-bold text-lg">Concierge</h2>
+        <p className="text-muted-foreground text-sm">AI-planned date nights & outings</p>
+      </div>
+      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+    </div>
+  );
+}
+
+function MarketplaceModule({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-6 flex items-center gap-4 cursor-pointer card-hover" onClick={() => navigate("/marketplace")}>
+      <div className="w-14 h-14 rounded-2xl bg-pink-100 flex items-center justify-center text-3xl flex-shrink-0">🛍️</div>
+      <div className="flex-1">
+        <h2 className="font-bold text-lg">Marketplace</h2>
+        <p className="text-muted-foreground text-sm">Local deals & services</p>
+      </div>
+      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+    </div>
+  );
+}
+
+function FamilyModule({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-6 flex items-center gap-4 cursor-pointer card-hover" onClick={() => navigate("/family")}>
+      <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center text-3xl flex-shrink-0">👨‍👩‍👧</div>
+      <div className="flex-1">
+        <h2 className="font-bold text-lg">Family Connect</h2>
+        <p className="text-muted-foreground text-sm">Meet families nearby</p>
+      </div>
+      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+    </div>
+  );
+}
+
+function TripModule({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-6 flex items-center gap-4 cursor-pointer card-hover" onClick={() => navigate("/trip-planner")}>
+      <div className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-3xl flex-shrink-0">✈️</div>
+      <div className="flex-1">
+        <h2 className="font-bold text-lg">Trip Planner</h2>
+        <p className="text-muted-foreground text-sm">Plan adventures together</p>
+      </div>
+      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+    </div>
+  );
+}
+
+function ShoutoutModule({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <div
+      className="bg-gradient-to-r from-orange-500 to-pink-500 rounded-3xl p-5 flex items-center gap-4 cursor-pointer card-hover"
+      onClick={() => navigate("/shout-out")}
+    >
+      <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+        <Megaphone className="w-6 h-6 text-white" />
+      </div>
+      <div className="flex-1">
+        <p className="font-bold text-white text-base">Refer a Friend 🎉</p>
+        <p className="text-white/80 text-sm">Invite friends from your contacts</p>
+      </div>
+      <ChevronRight className="w-5 h-5 text-white flex-shrink-0" />
+    </div>
+  );
+}
+
+function renderModule(moduleId: string, navigate: (p: string) => void, profile: any, matches: any[]) {
+  switch (moduleId) {
+    case "sally":       return <SallyModule profile={profile} navigate={navigate} />;
+    case "matches":     return <MatchesModule matches={matches} navigate={navigate} />;
+    case "activities":  return <ActivitiesModule navigate={navigate} />;
+    case "sports":      return <SportsModule navigate={navigate} />;
+    case "games":       return <GamesModule navigate={navigate} />;
+    case "community":   return <CommunityModule navigate={navigate} />;
+    case "concierge":   return <ConciergeModule navigate={navigate} />;
+    case "marketplace": return <MarketplaceModule navigate={navigate} />;
+    case "family":      return <FamilyModule navigate={navigate} />;
+    case "trip":        return <TripModule navigate={navigate} />;
+    case "shoutout":    return <ShoutoutModule navigate={navigate} />;
+    default:            return null;
+  }
+}
+
+// ─── Customize drawer ─────────────────────────────────────────────────────────
+
+function CustomizeDrawer({
+  layout,
+  onSave,
+  onClose,
+}: {
+  layout: ActiveModule[];
+  onSave: (layout: ActiveModule[]) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState<ActiveModule[]>([...layout]);
+  const dragIdx = useRef<number | null>(null);
+
+  const togglePin = (moduleId: string) => {
+    setDraft(prev => prev.map(m => m.moduleId === moduleId ? { ...m, pinned: !m.pinned } : m));
   };
 
-  return { installPrompt, isInstalled, isIOS, triggerInstall };
+  const handleDragStart = (idx: number) => { dragIdx.current = idx; };
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragIdx.current === null || dragIdx.current === idx) return;
+    setDraft(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(dragIdx.current!, 1);
+      next.splice(idx, 0, moved);
+      dragIdx.current = idx;
+      return next.map((m, i) => ({ ...m, position: i }));
+    });
+  };
+  const handleDragEnd = () => { dragIdx.current = null; };
+
+  const handleSave = () => {
+    const normalized = draft.map((m, i) => ({ ...m, position: i }));
+    onSave(normalized);
+    onClose();
+  };
+
+  const pinnedCount = draft.filter(m => m.pinned).length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-background rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <h2 className="font-bold text-lg">Customize Your Home</h2>
+            <p className="text-xs text-muted-foreground">{pinnedCount} module{pinnedCount !== 1 ? "s" : ""} pinned · drag to reorder</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Module list */}
+        <div className="overflow-y-auto flex-1 p-4 space-y-2">
+          {draft.map((m, idx) => {
+            const def = ALL_MODULES.find(d => d.id === m.moduleId);
+            if (!def) return null;
+            return (
+              <div
+                key={m.moduleId}
+                draggable
+                onDragStart={() => handleDragStart(idx)}
+                onDragOver={e => handleDragOver(e, idx)}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-grab active:cursor-grabbing ${
+                  m.pinned ? "bg-card border-border" : "bg-muted/40 border-dashed border-border/60 opacity-60"
+                }`}
+              >
+                <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-xl">{def.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-medium text-sm ${!m.pinned ? "text-muted-foreground" : ""}`}>{def.label}</p>
+                  <p className="text-xs text-muted-foreground truncate">{def.description}</p>
+                </div>
+                <button
+                  onClick={() => togglePin(m.moduleId)}
+                  className={`p-1.5 rounded-full transition-colors flex-shrink-0 ${
+                    m.pinned ? "bg-primary/10 text-primary hover:bg-primary/20" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                  title={m.pinned ? "Unpin" : "Pin to home"}
+                >
+                  {m.pinned ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-border flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1 gap-2" onClick={handleSave}>
+            <Check className="w-4 h-4" /> Save Layout
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
+
+// ─── Authenticated home ───────────────────────────────────────────────────────
+
+function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
+  const [, navigate] = useLocation();
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [layout, setLayout] = useState<ActiveModule[]>([]);
+
+  const { data: myMatches } = trpc.matchmaking.getMyMatches.useQuery();
+  const { data: savedLayout, isLoading: layoutLoading } = trpc.homepage.getLayout.useQuery();
+  const saveLayoutMutation = trpc.homepage.saveLayout.useMutation();
+
+  // Build layout from saved DB rows (or defaults)
+  useEffect(() => {
+    if (!layoutLoading) {
+      const saved = savedLayout?.modules ?? [];
+      setLayout(buildLayout(saved as ActiveModule[]));
+    }
+  }, [savedLayout, layoutLoading]);
+
+  const handleSaveLayout = useCallback(async (newLayout: ActiveModule[]) => {
+    setLayout(newLayout);
+    try {
+      await saveLayoutMutation.mutateAsync({ modules: newLayout });
+      toast.success("Home layout saved!");
+    } catch {
+      toast.error("Failed to save layout");
+    }
+  }, [saveLayoutMutation]);
+
+  const pinnedModules = layout.filter(m => m.pinned).sort((a, b) => a.position - b.position);
+
+  return (
+    <div className="min-h-screen gradient-warm">
+      <div className="container py-8">
+        {/* Welcome header */}
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-foreground mb-1">
+              Welcome back, {profile?.displayName || user?.name?.split(" ")[0]}! 👋
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              {profile?.interviewCount === 0
+                ? "Sally is ready to get to know you better!"
+                : `You've had ${profile?.interviewCount} chat${profile?.interviewCount !== 1 ? "s" : ""} with Sally`}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCustomize(true)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-full px-3 py-1.5 transition-colors hover:bg-muted/50 flex-shrink-0 mt-1"
+            title="Customize your home"
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Customize</span>
+          </button>
+        </div>
+
+        {/* Identity completion prompt */}
+        {(!((profile as any)?.gender) || !((profile as any)?.sexualOrientation) || !((profile as any)?.birthDate)) && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center gap-3">
+            <span className="text-2xl">👤</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-800">Complete your identity info</p>
+              <p className="text-xs text-amber-600">Add your gender, orientation, and age to get better matches</p>
+            </div>
+            <Button size="sm" variant="outline" className="rounded-full border-amber-300 text-amber-700 text-xs" onClick={() => navigate("/profile")}>
+              Add info
+            </Button>
+          </div>
+        )}
+
+        {/* Local venue banner */}
+        <LocalVenueBanner page="home" className="mb-6" />
+
+        {/* Pinned modules */}
+        {layoutLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => <div key={i} className="h-32 bg-muted/40 rounded-3xl animate-pulse" />)}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {pinnedModules.map(m => {
+              const content = renderModule(m.moduleId, navigate, profile, myMatches ?? []);
+              if (!content) return null;
+              return (
+                <div key={m.moduleId} className="relative group">
+                  {content}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!layoutLoading && pinnedModules.length === 0 && (
+          <div className="text-center py-16">
+            <p className="text-4xl mb-3">📌</p>
+            <p className="font-semibold text-lg">No modules pinned</p>
+            <p className="text-muted-foreground text-sm mb-4">Customize your home to pin the sections you use most</p>
+            <Button onClick={() => setShowCustomize(true)} className="gap-2">
+              <Settings2 className="w-4 h-4" /> Customize Home
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Customize drawer */}
+      {showCustomize && (
+        <CustomizeDrawer
+          layout={layout}
+          onSave={handleSaveLayout}
+          onClose={() => setShowCustomize(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
 
 export default function Home() {
   useSEO({
@@ -61,9 +525,6 @@ export default function Home() {
   const { user, isAuthenticated, loading } = useAuth();
   const [, navigate] = useLocation();
   const { data: profile } = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated });
-
-  // Redirect to onboarding if authenticated but not onboarded,
-  // then to Sally's interview if onboarded but never interviewed.
   const { data: verifyStatus } = trpc.verification.getStatus.useQuery(undefined, { enabled: isAuthenticated });
 
   useEffect(() => {
@@ -94,11 +555,13 @@ export default function Home() {
   if (isAuthenticated && profile?.onboardingComplete) {
     return <AuthenticatedHome user={user} profile={profile} />;
   }
-
   return <LandingPage />;
 }
 
+// ─── Landing page (public) ────────────────────────────────────────────────────
+
 function LandingPage() {
+  const [, navigate] = useLocation();
   return (
     <div className="min-h-screen overflow-x-hidden">
       {/* Hero Section */}
@@ -108,567 +571,96 @@ function LandingPage() {
           <div className="flex items-center gap-2">
             <img src="/manus-storage/justputzit-logo-transparent_2e545ffa.png" alt="Just Putzit" className="h-10 w-auto object-contain" />
           </div>
-          <a href={getLoginUrl()}>
-            <Button className="gradient-sally text-white border-0 shadow-md btn-scale rounded-full px-6">
-              Get Started
-            </Button>
-          </a>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/login")}>Sign in</Button>
+            <Button size="sm" className="gradient-primary text-white border-0 rounded-full" onClick={() => navigate("/signup")}>Get Started</Button>
+          </div>
         </div>
 
         {/* Hero content */}
-        <div className="container flex-1 flex flex-col lg:flex-row items-center gap-12 py-16">
-          <div className="flex-1 text-center lg:text-left">
-            <Badge className="mb-4 bg-primary/10 text-primary border-0 rounded-full px-4 py-1.5 text-sm font-semibold">
+        <div className="container flex-1 flex flex-col lg:flex-row items-center justify-center gap-12 py-16">
+          <div className="flex-1 max-w-xl">
+            <Badge className="mb-4 rounded-full px-4 py-1.5 bg-primary/10 text-primary border-primary/20">
               ✨ AI-Powered Real Connections
             </Badge>
-            <h1 className="font-display text-5xl lg:text-7xl font-bold text-foreground mb-6 leading-tight">
-              Don't Swipe.
-              <br />
+            <h1 className="font-display text-5xl md:text-6xl font-bold text-foreground leading-tight mb-6">
+              Don't Swipe.<br />
               <span className="text-primary">Show Up.</span>
             </h1>
-            <p className="text-xl text-muted-foreground mb-8 max-w-lg mx-auto lg:mx-0 leading-relaxed">
+            <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
               Just Putzit connects you with real people for real experiences — powered by Sally, your AI guide who gets to know the real you.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <a href={getLoginUrl()}>
-                <Button size="lg" className="gradient-sally text-white border-0 shadow-lg btn-scale rounded-full px-8 text-lg gap-2">
-                  <Sparkles className="w-5 h-5" />
-                  Start Your Journey
-                </Button>
-              </a>
-              <Button size="lg" variant="outline" className="rounded-full px-8 text-lg border-2">
+            <div className="flex flex-wrap gap-3 mb-8">
+              <Button size="lg" className="gradient-primary text-white border-0 rounded-full gap-2 btn-scale" onClick={() => navigate("/signup")}>
+                <Sparkles className="w-5 h-5" /> Start Your Journey
+              </Button>
+              <Button size="lg" variant="outline" className="rounded-full" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}>
                 Learn More
               </Button>
             </div>
-            <div className="flex items-center gap-6 mt-8 justify-center lg:justify-start text-sm text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-primary" />
-                <span>Verified Profiles</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Star className="w-4 h-4 text-primary" />
-                <span>AI-Matched</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span>Local Events</span>
-              </div>
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-green-500" /> Verified Profiles</span>
+              <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-yellow-500" /> AI-Matched</span>
+              <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-blue-500" /> Local Events</span>
             </div>
           </div>
 
-          {/* Sally illustration */}
-          <div className="flex-1 flex justify-center">
-            <div className="relative">
-              <div className="w-72 h-72 lg:w-96 lg:h-96 rounded-3xl bg-white shadow-2xl flex flex-col items-center justify-center p-8 animate-float">
-                <div className="w-24 h-24 rounded-full gradient-sally flex items-center justify-center text-5xl mb-4 sally-glow animate-pulse-ring">
-                  🤖
-                </div>
-                <div className="text-center">
-                  <p className="font-display font-bold text-xl text-foreground mb-1">Hi! I'm Sally</p>
-                  <p className="text-sm text-muted-foreground mb-4">Your AI Connection Guide</p>
-                  <div className="bg-primary/10 rounded-2xl p-3 text-sm text-foreground max-w-48">
-                    <span className="font-semibold text-primary">Sally:</span> "Tell me — what's your idea of a perfect Sunday? ☀️"
-                  </div>
-                </div>
+          {/* Sally card */}
+          <div className="flex-shrink-0 w-full max-w-xs">
+            <div className="bg-white rounded-3xl shadow-xl p-6 relative">
+              <div className="absolute -top-3 -right-3 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                ❤️ 98% Match!
               </div>
-              {/* Floating badges */}
-              <div className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-lg px-3 py-2 text-sm font-semibold text-primary flex items-center gap-1.5">
-                <Heart className="w-4 h-4 fill-primary" /> 98% Match!
+              <div className="w-20 h-20 rounded-full gradient-sally mx-auto mb-4 flex items-center justify-center text-4xl">🤖</div>
+              <h3 className="font-bold text-center text-lg mb-1">Hi! I'm Sally</h3>
+              <p className="text-muted-foreground text-center text-sm mb-4">Your AI Connection Guide</p>
+              <div className="bg-muted/50 rounded-2xl p-3 text-sm">
+                <span className="font-semibold text-primary">Sally:</span> "Tell me — what's your idea of a perfect Sunday? ☀️"
               </div>
-              <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-lg px-3 py-2 text-sm font-semibold text-green-600 flex items-center gap-1.5">
-                <Shield className="w-4 h-4" /> Verified
+              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground justify-center">
+                <Shield className="w-3 h-3 text-green-500" /> Verified
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Three Networks Section */}
-      <section className="py-20 bg-white">
-        <div className="container">
-          <div className="text-center mb-14">
-            <h2 className="font-display text-4xl font-bold text-foreground mb-4">
-              Connecting You In Real Life
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Whether you're single, in a couple, or just looking for community — Just Putzit has a network for you.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <NetworkCard
-              gradient="gradient-singles"
-              emoji="💙"
-              title="Singles Network"
-              items={["Find connections in person", "Local meetups & activities", "Build genuine relationships"]}
-            />
-            <NetworkCard
-              gradient="gradient-couples"
-              emoji="💚"
-              title="Couples Network"
-              items={["New friends for couples", "Shared hobbies & experiences", "Strengthen relationships together"]}
-            />
-            <NetworkCard
-              gradient="gradient-community"
-              emoji="🧡"
-              title="Community Events"
-              items={["Discover local happenings", "Join group outings & workshops", "Engage with your neighborhood"]}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Sally Features Section */}
-      <section className="py-20 gradient-warm">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <Badge className="mb-4 bg-primary/10 text-primary border-0 rounded-full px-4 py-1.5">
-                🤖 Meet Sally AI
-              </Badge>
-              <h2 className="font-display text-4xl font-bold text-foreground mb-6">
-                Your Personal AI Connection Guide
-              </h2>
-              <div className="space-y-4">
-                {[
-                  { icon: "🎤", title: "Intelligent AI Interviews", desc: "Sally gets to know you with a fun 90-second chat every time you log in" },
-                  { icon: "🎯", title: "Personalized Matching", desc: "Your profile grows smarter with every session, leading to better matches" },
-                  { icon: "🛡️", title: "Ensures Authenticity", desc: "Sally helps verify real users and keeps the community genuine" },
-                  { icon: "🌍", title: "Real-World Connections", desc: "Every match is designed to lead to real in-person experiences" },
-                ].map(f => (
-                  <div key={f.title} className="flex gap-4 items-start">
-                    <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl flex-shrink-0">
-                      {f.icon}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">{f.title}</p>
-                      <p className="text-sm text-muted-foreground">{f.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-white rounded-3xl shadow-xl p-6">
-              <div className="flex items-center gap-3 mb-4 pb-4 border-b">
-                <div className="w-10 h-10 rounded-full gradient-sally flex items-center justify-center text-xl">🤖</div>
-                <div>
-                  <p className="font-bold text-sm">Sally AI Helper</p>
-                  <p className="text-xs text-green-500 font-medium">● Online</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="chat-bubble-received px-4 py-3 text-sm max-w-xs">
-                  Hi! I'm Sally. Let's explore your authentic personality with a few friendly questions! 🌟
-                </div>
-                <div className="chat-bubble-received px-4 py-3 text-sm max-w-xs">
-                  <strong>1.</strong> What is your idea of a perfect Sunday?
-                </div>
-                <div className="chat-bubble-sent px-4 py-3 text-sm max-w-xs ml-auto">
-                  I love hiking in the morning and then cooking a big dinner with friends! 🥾
-                </div>
-                <div className="chat-bubble-received px-4 py-3 text-sm max-w-xs">
-                  That's wonderful! You sound like someone who loves adventure AND connection. Tell me more — if you could explore anywhere new, where would it be? ✈️
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Safety Section */}
-      <section className="py-20 bg-white">
-        <div className="container">
-          <div className="text-center mb-14">
-            <h2 className="font-display text-4xl font-bold text-foreground mb-4">
-              Continuous Vetting for Total Peace of Mind
-            </h2>
-          </div>
+      {/* How it works */}
+      <section id="how-it-works" className="py-20 bg-white">
+        <div className="container text-center">
+          <h2 className="font-display text-3xl font-bold mb-3">Connecting You In Real Life</h2>
+          <p className="text-muted-foreground mb-12 max-w-xl mx-auto">Whether you're single, in a couple, or just looking for community — Just Putzit has a network for you.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { num: "1", title: "Dynamic Re-Interview", desc: "Sally checks in with you every login to keep your profile fresh and authentic", emoji: "🎤" },
-              { num: "2", title: "Live Background Audit", desc: "Liveness and location checks ensure every user is who they say they are", emoji: "🔒" },
-              { num: "3", title: "100% Live Encounters", desc: "AI verification ensures every connection leads to real, safe in-person meetings", emoji: "✅" },
-            ].map(s => (
-              <div key={s.num} className="text-center p-8 rounded-3xl border-2 border-border card-hover">
-                <div className="w-16 h-16 rounded-full gradient-sally mx-auto mb-4 flex items-center justify-center text-2xl shadow-lg">
-                  {s.emoji}
-                </div>
-                <Badge className="mb-3 bg-primary/10 text-primary border-0">{s.num}</Badge>
-                <h3 className="font-display font-bold text-xl mb-2">{s.title}</h3>
-                <p className="text-muted-foreground text-sm">{s.desc}</p>
+              { emoji: "🤖", title: "Meet Sally", desc: "Our AI guide learns what makes you tick through quick daily chats — no boring questionnaires." },
+              { emoji: "💕", title: "Get Matched", desc: "Sally finds people who share your vibe, values, and interests — not just your zip code." },
+              { emoji: "🗺️", title: "Show Up", desc: "Plan real activities together. Coffee, mini golf, trivia nights — whatever feels right." },
+            ].map(({ emoji, title, desc }) => (
+              <div key={title} className="p-6">
+                <div className="text-5xl mb-4">{emoji}</div>
+                <h3 className="font-bold text-xl mb-2">{title}</h3>
+                <p className="text-muted-foreground">{desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Local venue banner ad slot — between Safety and Games sections */}
-      <div className="bg-white py-4">
-        <div className="container max-w-3xl">
-          <LocalVenueBanner page="home" />
-        </div>
-      </div>
-
-      {/* Games Section */}
-      <section className="py-20 gradient-warm">
+      {/* CTA */}
+      <section className="py-20 gradient-warm text-center">
         <div className="container">
-          <div className="text-center mb-14">
-            <h2 className="font-display text-4xl font-bold text-foreground mb-4">
-              Fun Games to Break the Ice
-            </h2>
-            <p className="text-lg text-muted-foreground">Sally hosts interactive games that make getting to know each other genuinely fun</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { emoji: "💍", title: "Newlywed Game", desc: "Quiz each other on what you think your match answered — Sally scores your chemistry!" },
-              { emoji: "🎭", title: "Two Truths & a Lie", desc: "Sally crafts statements from your profile — can your match spot the fib?" },
-              { emoji: "⚡", title: "This or That", desc: "Rapid-fire either/or questions reveal how often your preferences align" },
-            ].map(g => (
-              <div key={g.title} className="game-card p-6 text-center">
-                <div className="text-5xl mb-4">{g.emoji}</div>
-                <h3 className="font-display font-bold text-xl mb-2">{g.title}</h3>
-                <p className="text-muted-foreground text-sm">{g.desc}</p>
-              </div>
-            ))}
-          </div>
+          <h2 className="font-display text-3xl font-bold mb-4">Ready to show up?</h2>
+          <p className="text-muted-foreground mb-8">Join thousands of locals already connecting through Just Putzit.</p>
+          <Button size="lg" className="gradient-primary text-white border-0 rounded-full gap-2 btn-scale" onClick={() => navigate("/signup")}>
+            <Heart className="w-5 h-5" /> Join Free Today
+          </Button>
         </div>
       </section>
-
-      {/* Get the App Section */}
-      <GetTheAppSection />
-
-      {/* CTA Section */}
-      <section className="py-20 bg-white text-center">
-        <div className="container max-w-2xl">
-          <div className="w-20 h-20 rounded-full gradient-sally mx-auto mb-6 flex items-center justify-center text-4xl shadow-xl animate-float">
-            🤖
-          </div>
-          <h2 className="font-display text-4xl font-bold text-foreground mb-4">
-            Ready to Show Up?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join Just Putzit and let Sally help you find real connections, real activities, and real joy — right in your neighborhood.
-          </p>
-          <a href={getLoginUrl()}>
-            <Button size="lg" className="gradient-sally text-white border-0 shadow-lg btn-scale rounded-full px-10 text-lg gap-2">
-              <Sparkles className="w-5 h-5" />
-              Meet Sally & Get Started
-            </Button>
-          </a>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-foreground text-background py-8">
-        <div className="container flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img src="/manus-storage/justputzit-logo-transparent_2e545ffa.png" alt="Just Putzit" className="h-7 w-auto object-contain brightness-0 invert" />
-          </div>
-          <p className="text-sm opacity-60">© 2025 Just Putzit. Connecting you in real life.</p>
-        </div>
-      </footer>
     </div>
   );
 }
 
-function GetTheAppSection() {
-  const { installPrompt, isInstalled, isIOS, triggerInstall } = usePWAInstall();
-  const [tab, setTab] = useState<'android' | 'ios'>('android');
-  const [installed, setInstalled] = useState(false);
-
-  if (isInstalled || installed) {
-    return (
-      <section className="py-16 bg-primary/5">
-        <div className="container max-w-xl text-center">
-          <div className="text-5xl mb-4">🎉</div>
-          <h2 className="font-display text-3xl font-bold text-foreground mb-2">App Installed!</h2>
-          <p className="text-muted-foreground">Just Putzit is on your home screen. Tap the Just Putzit icon to open it anytime.</p>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="py-20 bg-primary/5">
-      <div className="container max-w-2xl">
-        <div className="text-center mb-10">
-          <Badge className="mb-4 bg-primary/10 text-primary border-0 rounded-full px-4 py-1.5">
-            <Smartphone className="w-3.5 h-3.5 mr-1.5" />
-            Free App
-          </Badge>
-          <h2 className="font-display text-4xl font-bold text-foreground mb-4">
-            Add Just Putzit to Your Phone
-          </h2>
-          <p className="text-muted-foreground text-lg">
-            Install the app for free — no App Store required. Works just like a native app.
-          </p>
-        </div>
-
-        {/* Smart install button for Android Chrome */}
-        {installPrompt && (
-          <div className="text-center mb-8">
-            <Button
-              size="lg"
-              className="gradient-sally text-white border-0 shadow-lg btn-scale rounded-full px-10 text-lg gap-2"
-              onClick={async () => {
-                const ok = await triggerInstall();
-                if (ok) setInstalled(true);
-              }}
-            >
-              <Smartphone className="w-5 h-5" />
-              Install App Now
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">One tap — no app store needed</p>
-          </div>
-        )}
-
-        {/* Tab selector */}
-        <div className="flex rounded-2xl bg-white shadow-sm border border-border p-1 mb-8 max-w-xs mx-auto">
-          <button
-            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
-              tab === 'android' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => setTab('android')}
-          >
-            Android
-          </button>
-          <button
-            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
-              tab === 'ios' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => setTab('ios')}
-          >
-            iPhone
-          </button>
-        </div>
-
-        {/* Instructions */}
-        <div className="bg-white rounded-3xl shadow-lg border border-border p-8">
-          {tab === 'android' ? (
-            <div className="space-y-6">
-              <InstallStep num={1} icon={<Smartphone className="w-5 h-5 text-primary" />}
-                title="Open Chrome on your Android"
-                desc="Visit justputzit.com in Chrome (not another browser)"
-              />
-              <InstallStep num={2} icon={<MoreVertical className="w-5 h-5 text-primary" />}
-                title='Tap the menu (⋮) in the top-right'
-                desc="The three-dot menu in the top-right corner of Chrome"
-              />
-              <InstallStep num={3} icon={<Plus className="w-5 h-5 text-primary" />}
-                title='Tap "Add to Home screen"'
-                desc="Then tap Add — the Just Putzit icon appears on your home screen"
-              />
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <InstallStep num={1} icon={<Smartphone className="w-5 h-5 text-primary" />}
-                title="Open Safari on your iPhone"
-                desc="Must be Safari — Chrome on iPhone doesn't support install"
-              />
-              <InstallStep num={2} icon={<Share2 className="w-5 h-5 text-primary" />}
-                title="Tap the Share button at the bottom"
-                desc="The box with an arrow pointing up at the bottom of Safari"
-              />
-              <InstallStep num={3} icon={<Plus className="w-5 h-5 text-primary" />}
-                title='Tap "Add to Home Screen" then Add'
-                desc="The Just Putzit icon appears on your home screen — tap it anytime to open"
-              />
-            </div>
-          )}
-
-          <div className="mt-8 pt-6 border-t border-border flex items-center gap-3">
-            <img src="/manus-storage/justputzit-logo-transparent_2e545ffa.png" alt="Just Putzit" className="w-12 h-12 object-contain flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-sm">Just Putzit</p>
-              <p className="text-xs text-muted-foreground">Free · No App Store · Works offline</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function InstallStep({ num, icon, title, desc }: { num: number; icon: React.ReactNode; title: string; desc: string }) {
-  return (
-    <div className="flex gap-4 items-start">
-      <div className="w-8 h-8 rounded-full gradient-sally flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
-        {num}
-      </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-0.5">
-          {icon}
-          <p className="font-semibold text-foreground text-sm">{title}</p>
-        </div>
-        <p className="text-xs text-muted-foreground">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
-function NetworkCard({ gradient, emoji, title, items }: { gradient: string; emoji: string; title: string; items: string[] }) {
-  return (
-    <div className={`${gradient} rounded-3xl p-8 card-hover`}>
-      <div className="text-4xl mb-4">{emoji}</div>
-      <h3 className="font-display font-bold text-xl text-foreground mb-4">{title}</h3>
-      <ul className="space-y-2">
-        {items.map(item => (
-          <li key={item} className="flex items-center gap-2 text-sm text-foreground/80">
-            <div className="w-1.5 h-1.5 rounded-full bg-foreground/60" />
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
-  const [, navigate] = useLocation();
-  const { data: myMatches } = trpc.matchmaking.getMyMatches.useQuery();
-  const { data: notifications } = trpc.notifications.getAll.useQuery();
-  const unread = notifications?.filter(n => !n.isRead).length ?? 0;
-
-  const traits = profile?.traits as any;
-
-  return (
-    <div className="min-h-screen gradient-warm">
-      <div className="container py-8">
-        {/* Welcome header */}
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold text-foreground mb-1">
-            Welcome back, {profile?.displayName || user?.name?.split(" ")[0]}! 👋
-          </h1>
-          <p className="text-muted-foreground">
-            {profile?.interviewCount === 0
-              ? "Sally is ready to get to know you better!"
-              : `You've had ${profile?.interviewCount} chat${profile?.interviewCount !== 1 ? "s" : ""} with Sally`}
-          </p>
-        </div>
-
-        {/* Quick actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <QuickAction
-            emoji="🤖"
-            title="Talk to Sally"
-            desc="90-sec daily interview"
-            gradient="gradient-sally"
-            textColor="text-white"
-            onClick={() => navigate("/interview")}
-          />
-          <QuickAction
-            emoji="💕"
-            title="My Matches"
-            desc={`${myMatches?.length ?? 0} connection${(myMatches?.length ?? 0) !== 1 ? "s" : ""}`}
-            gradient="gradient-singles"
-            textColor="text-foreground"
-            onClick={() => navigate("/matches")}
-          />
-          <QuickAction
-            emoji="🗺️"
-            title="Local Activities"
-            desc="Discover nearby events"
-            gradient="gradient-community"
-            textColor="text-foreground"
-            onClick={() => navigate("/activities")}
-          />
-          <QuickAction
-            emoji="👤"
-            title="My Profile"
-            desc="View & edit profile"
-            gradient="gradient-couples"
-            textColor="text-foreground"
-            onClick={() => navigate("/profile")}
-          />
-        </div>
-
-        {/* Identity completion prompt */}
-        {(!((profile as any)?.gender) || !((profile as any)?.sexualOrientation) || !((profile as any)?.birthDate)) && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center gap-3">
-            <span className="text-2xl">👤</span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-800">Complete your identity info</p>
-              <p className="text-xs text-amber-600">Add your gender, orientation, and age to get better matches</p>
-            </div>
-            <Button size="sm" variant="outline" className="rounded-full border-amber-300 text-amber-700 text-xs" onClick={() => navigate("/profile")}>
-              Add info
-            </Button>
-          </div>
-        )}
-
-        {/* Sally suggestion */}
-        <div className="bg-white rounded-3xl shadow-sm p-6 mb-8 flex items-start gap-4">
-          <div className="w-12 h-12 rounded-full gradient-sally flex items-center justify-center text-2xl flex-shrink-0 animate-pulse-ring">
-            🤖
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-foreground mb-1">Sally says hi! 👋</p>
-            <p className="text-muted-foreground text-sm mb-3">
-              {profile?.interviewCount === 0
-                ? "I can't wait to get to know you! Let's start with a quick 90-second chat to kick off your profile."
-                : `Great to see you again! I have some new questions to help refine your profile and find you even better matches.`}
-            </p>
-            <Button
-              size="sm"
-              className="gradient-sally text-white border-0 rounded-full gap-2 btn-scale"
-              onClick={() => navigate("/interview")}
-            >
-              <MessageCircle className="w-4 h-4" />
-              Chat with Sally
-            </Button>
-          </div>
-        </div>
-
-        {/* Refer a Friend banner */}
-        <div
-          className="bg-gradient-to-r from-orange-500 to-pink-500 rounded-3xl p-5 mb-6 flex items-center gap-4 cursor-pointer card-hover"
-          onClick={() => navigate("/shout-out")}
-        >
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-            <Megaphone className="w-6 h-6 text-white" />
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-white text-base">Refer a Friend 🎉</p>
-            <p className="text-white/80 text-sm">Invite friends from your contacts — the more the merrier!</p>
-          </div>
-          <ChevronRight className="w-5 h-5 text-white flex-shrink-0" />
-        </div>
-
-        {/* Local venue banner ad slot */}
-        <LocalVenueBanner page="home" className="mb-6" />
-
-        {/* Recent matches */}
-        {myMatches && myMatches.length > 0 && (
-          <div className="bg-white rounded-3xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display font-bold text-xl">Your Matches</h2>
-              <Button variant="ghost" size="sm" className="gap-1 text-primary" onClick={() => navigate("/matches")}>
-                See all <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {myMatches.slice(0, 3).map(match => (
-                <MatchCard key={match.id} match={match} onChat={() => navigate(`/chat/${match.id}`)} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function QuickAction({ emoji, title, desc, gradient, textColor, onClick }: any) {
-  return (
-    <button
-      onClick={onClick}
-      className={`${gradient} rounded-2xl p-5 text-left card-hover w-full border-0 cursor-pointer`}
-    >
-      <div className="text-3xl mb-2">{emoji}</div>
-      <p className={`font-bold ${textColor}`}>{title}</p>
-      <p className={`text-xs ${textColor} opacity-70`}>{desc}</p>
-    </button>
-  );
-}
+// ─── Shared sub-components ────────────────────────────────────────────────────
 
 function MatchCard({ match, onChat }: any) {
   const profile = match.otherProfile;

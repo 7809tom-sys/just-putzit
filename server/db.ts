@@ -43,6 +43,7 @@ import {
   familyChildren,
   familyMatches,
   tripPlans,
+  userHomepageLayout,
   triviaQuestions,
   triviaRooms,
   triviaRoomPlayers,
@@ -2486,4 +2487,31 @@ export async function getUsersWithGpsLocations() {
     .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
     .orderBy(desc(users.createdAt));
   return rows;
+}
+
+// ─── User Homepage Layout ─────────────────────────────────────────────────────
+
+export async function getHomepageLayout(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(userHomepageLayout)
+    .where(eq(userHomepageLayout.userId, userId))
+    .orderBy(userHomepageLayout.position);
+}
+
+export async function saveHomepageLayout(
+  userId: number,
+  modules: Array<{ moduleId: string; position: number; pinned: boolean }>
+) {
+  const db = await getDb();
+  if (!db) return;
+  // Upsert each module row
+  for (const m of modules) {
+    await db
+      .insert(userHomepageLayout)
+      .values({ userId, moduleId: m.moduleId, position: m.position, pinned: m.pinned })
+      .onDuplicateKeyUpdate({ set: { position: m.position, pinned: m.pinned } });
+  }
 }

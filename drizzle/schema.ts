@@ -1160,3 +1160,16 @@ export const sportTeamAlerts = mysqlTable("sport_team_alerts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type SportTeamAlert = typeof sportTeamAlerts.$inferSelect;
+
+// ─── User Homepage Layout ─────────────────────────────────────────────────────
+// Stores each user's pinned modules and their display order.
+// moduleId is one of the well-known module keys (see shared/const.ts).
+export const userHomepageLayout = mysqlTable("user_homepage_layout", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  moduleId: varchar("module_id", { length: 64 }).notNull(),
+  position: int("position").notNull().default(0),
+  pinned: boolean("pinned").notNull().default(true),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type UserHomepageLayout = typeof userHomepageLayout.$inferSelect;

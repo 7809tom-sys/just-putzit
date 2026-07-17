@@ -178,6 +178,8 @@ import {
   addTripItem,
   removeTripItem,
   getUsersWithGpsLocations,
+  getHomepageLayout,
+  saveHomepageLayout,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, MatchGameQuestion as GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import { familyProfiles, communityEvents } from "../drizzle/schema";
@@ -2677,6 +2679,28 @@ Return JSON with questions array, each having optionA and optionB.`,
   bullgerdash: bullgerdashRouter,
   watchParty: watchPartyRouter,
   sportsScores: sportsScoresRouter,
+
+  homepage: router({
+    /** Get the current user's saved homepage layout */
+    getLayout: protectedProcedure.query(async ({ ctx }) => {
+      const rows = await getHomepageLayout(ctx.user.id);
+      return { modules: rows };
+    }),
+
+    /** Save (upsert) the current user's homepage layout */
+    saveLayout: protectedProcedure
+      .input(z.object({
+        modules: z.array(z.object({
+          moduleId: z.string().min(1).max(64),
+          position: z.number().int().min(0),
+          pinned: z.boolean(),
+        })),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await saveHomepageLayout(ctx.user.id, input.modules);
+        return { success: true };
+      }),
+  }),
 
   advertising: router({
     // Public: submit an inquiry

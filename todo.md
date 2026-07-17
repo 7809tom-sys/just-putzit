@@ -644,3 +644,16 @@
 - [x] Show LIVE badge with pulsing animation on in-progress games
 - [x] Show Live/Upcoming/Final sections with counts
 - [x] Auto-refresh every 60 seconds with manual refresh button
+
+## User Homepage Customization
+- [x] Add user_homepage_layout DB table (userId, moduleId, position, pinned)
+- [x] Add getHomepageLayout and saveHomepageLayout helpers to db.ts
+- [x] Add homepage.getLayout and homepage.saveLayout tRPC procedures
+- [x] Define 11 pinnable modules: Sally, Matches, Activities, Sports, Games, Community, Concierge, Marketplace, Family, Trip, Shoutout
+- [x] Build AuthenticatedHome with pinned module list rendered in saved order
+- [x] Build CustomizeDrawer with drag-to-reorder (HTML5 drag API) and pin/unpin toggle
+- [x] Customize button in home header (Settings2 icon)
+- [x] Optimistic layout update + save to DB on confirm
+- [x] Default layout (5 pinned modules) for new users with no saved preferences
+- [x] Empty state when no modules are pinned
+- [x] Sports module shows live game count badge from ESPN API
