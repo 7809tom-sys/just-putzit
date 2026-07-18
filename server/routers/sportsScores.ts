@@ -224,6 +224,82 @@ export const sportsScoresRouter = router({
       return { success: true };
     }),
 
+  /** Get upcoming games for a sport over the next N days (for Sports page schedule) */
+  getUpcomingSchedule: publicProcedure
+    .input(z.object({ sport: z.enum(["nfl", "nba", "mlb"]), days: z.number().min(1).max(30).default(7) }))
+    .query(async ({ input }) => {
+      const now = new Date();
+      const end = new Date(now);
+      end.setUTCDate(end.getUTCDate() + input.days);
+
+      const fmt = (d: Date) => {
+        const y = d.getUTCFullYear();
+        const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(d.getUTCDate()).padStart(2, "0");
+        return `${y}${m}${day}`;
+      };
+
+      const sportSlug = input.sport === "nfl" ? "football/nfl" : input.sport === "nba" ? "basketball/nba" : "baseball/mlb";
+      const url = `https://site.api.espn.com/apis/site/v2/sports/${sportSlug}/scoreboard?dates=${fmt(now)}-${fmt(end)}&limit=50`;
+
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "JustPutzit/1.0" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) throw new Error(`ESPN ${res.status}`);
+        const raw = (await res.json()) as Record<string, unknown>;
+        const events = (raw.events as unknown[]) ?? [];
+
+        return {
+          games: events.map((ev) => {
+            const e = ev as Record<string, unknown>;
+            const comp = ((e.competitions as unknown[])?.[0] ?? {}) as Record<string, unknown>;
+            const competitors = (comp.competitors as unknown[]) ?? [];
+            const status = (e.status as Record<string, unknown>) ?? {};
+            const statusType = (status.type as Record<string, unknown>) ?? {};
+
+            const home = competitors.find((c) => (c as Record<string, unknown>).homeAway === "home") as Record<string, unknown> | undefined;
+            const away = competitors.find((c) => (c as Record<string, unknown>).homeAway === "away") as Record<string, unknown> | undefined;
+
+            const getTeam = (c: Record<string, unknown> | undefined) => {
+              if (!c) return { name: "TBD", abbreviation: "TBD", logo: "" };
+              const t = (c.team as Record<string, unknown>) ?? {};
+              return {
+                name: String(t.displayName ?? ""),
+                shortName: String(t.shortDisplayName ?? t.displayName ?? ""),
+                abbreviation: String(t.abbreviation ?? ""),
+                logo: String(t.logo ?? ""),
+                color: String(t.color ?? "1a1a2e"),
+              };
+            };
+
+            const broadcasts = (comp.broadcasts as Record<string, unknown>[]) ?? [];
+            const broadcast = broadcasts[0]?.names ? (broadcasts[0].names as string[])[0] : String(comp.broadcast ?? "");
+
+            return {
+              id: String(e.id ?? ""),
+              name: String(e.name ?? ""),
+              shortName: String(e.shortName ?? ""),
+              date: String(e.date ?? ""),
+              statusName: String(statusType.name ?? "STATUS_SCHEDULED"),
+              statusDetail: String(statusType.shortDetail ?? ""),
+              isLive: String(statusType.name ?? "") === "STATUS_IN_PROGRESS",
+              isFinal: Boolean(statusType.completed),
+              sport: input.sport,
+              homeTeam: getTeam(home),
+              awayTeam: getTeam(away),
+              broadcast: broadcast || undefined,
+              venue: (comp.venue as Record<string, unknown>)?.fullName ? String((comp.venue as Record<string, unknown>).fullName) : undefined,
+            };
+          }),
+          fetchedAt: Date.now(),
+        };
+      } catch {
+        return { games: [], fetchedAt: Date.now() };
+      }
+    }),
+
   /** Get the logged-in user's team alert preferences */
   getMyAlerts: protectedProcedure.query(async ({ ctx }) => {
     const { getDb } = await import("../db");

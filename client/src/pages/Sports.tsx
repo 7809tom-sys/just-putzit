@@ -8,37 +8,44 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Users, Plus, Trophy, Tv, Calendar, Zap, MessageSquare, Radio, BarChart2 } from "lucide-react";
+import { Users, Plus, Trophy, Tv, Calendar, Zap, MessageSquare, Radio, RefreshCw } from "lucide-react";
 
-// ── Pro team schedule data ────────────────────────────────────────────────────
-const NFL_GAMES = [
-  { home: "Green Bay Packers", away: "Chicago Bears", time: "2025-09-07T13:00:00", week: "Week 1", homeEmoji: "🧀", awayEmoji: "🐻" },
-  { home: "Green Bay Packers", away: "Minnesota Vikings", time: "2025-09-14T13:00:00", week: "Week 2", homeEmoji: "🧀", awayEmoji: "🪓" },
-  { home: "Chicago Bears", away: "Green Bay Packers", time: "2025-11-09T13:00:00", week: "Week 9", homeEmoji: "🐻", awayEmoji: "🧀" },
-  { home: "Green Bay Packers", away: "Detroit Lions", time: "2025-10-05T13:00:00", week: "Week 5", homeEmoji: "🧀", awayEmoji: "🦁" },
-  { home: "Chicago Bears", away: "Detroit Lions", time: "2025-10-12T13:00:00", week: "Week 6", homeEmoji: "🐻", awayEmoji: "🦁" },
-  { home: "Green Bay Packers", away: "Dallas Cowboys", time: "2025-11-23T20:20:00", week: "Week 12", homeEmoji: "🧀", awayEmoji: "⭐" },
-];
-
-const NBA_GAMES = [
-  { home: "Milwaukee Bucks", away: "Chicago Bulls", time: "2025-10-22T19:30:00", homeEmoji: "🦌", awayEmoji: "🐂" },
-  { home: "Milwaukee Bucks", away: "Boston Celtics", time: "2025-11-05T19:30:00", homeEmoji: "🦌", awayEmoji: "☘️" },
-  { home: "Chicago Bulls", away: "Milwaukee Bucks", time: "2025-11-19T19:00:00", homeEmoji: "🐂", awayEmoji: "🦌" },
-  { home: "Milwaukee Bucks", away: "Miami Heat", time: "2025-12-03T19:30:00", homeEmoji: "🦌", awayEmoji: "🔥" },
-];
-
-const MLB_GAMES = [
-  { home: "Milwaukee Brewers", away: "Chicago Cubs", time: "2025-04-04T19:10:00", homeEmoji: "⚾", awayEmoji: "🐻" },
-  { home: "Milwaukee Brewers", away: "Chicago White Sox", time: "2025-04-11T19:10:00", homeEmoji: "⚾", awayEmoji: "🧦" },
-  { home: "Chicago Cubs", away: "Milwaukee Brewers", time: "2025-05-02T14:20:00", homeEmoji: "🐻", awayEmoji: "⚾" },
-  { home: "Milwaukee Brewers", away: "Minnesota Twins", time: "2025-06-06T19:10:00", homeEmoji: "⚾", awayEmoji: "🎯" },
-];
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Sport = "nfl" | "nba" | "mlb" | "all";
 
+interface ScheduleTeam {
+  name: string;
+  shortName: string;
+  abbreviation: string;
+  logo: string;
+  color: string;
+}
+
+interface ScheduleGame {
+  id: string;
+  name: string;
+  shortName: string;
+  date: string;
+  statusName: string;
+  statusDetail: string;
+  isLive: boolean;
+  isFinal: boolean;
+  sport: "nfl" | "nba" | "mlb";
+  homeTeam: ScheduleTeam;
+  awayTeam: ScheduleTeam;
+  broadcast?: string;
+  venue?: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function formatGameTime(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return d.toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit", timeZoneName: "short",
+  });
 }
 
 function getSportColor(sport: string) {
@@ -55,10 +62,136 @@ function getSportBadgeColor(sport: string) {
   return "bg-gray-600";
 }
 
+// ─── Sport Schedule Section ───────────────────────────────────────────────────
+
+function SportSchedule({
+  sport,
+  liveRooms,
+  onCreateRoom,
+  isCreating,
+}: {
+  sport: "nfl" | "nba" | "mlb";
+  liveRooms: { id: number; teamHome: string; teamAway: string; playerCount: number; gameCode: string; status: string; title: string; hostName: string; sport: string }[];
+  onCreateRoom: (game: ScheduleGame) => void;
+  isCreating: boolean;
+}) {
+  const { data, isLoading, refetch } = trpc.sportsScores.getUpcomingSchedule.useQuery(
+    { sport, days: 7 },
+    { staleTime: 5 * 60 * 1000 } // cache 5 minutes
+  );
+
+  const games = (data?.games ?? []) as ScheduleGame[];
+
+  if (isLoading) {
+    return (
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="rounded-xl bg-white/5 border border-white/10 h-44 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (games.length === 0) {
+    return (
+      <div className="text-center py-10 text-white/40">
+        <p className="text-3xl mb-2">{sport === "nfl" ? "🏈" : sport === "nba" ? "🏀" : "⚾"}</p>
+        <p className="font-medium">No {sport.toUpperCase()} games in the next 7 days</p>
+        <button onClick={() => refetch()} className="mt-3 text-xs text-white/30 hover:text-white/60 flex items-center gap-1 mx-auto">
+          <RefreshCw className="w-3 h-3" /> Refresh
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {games.map((game) => {
+        const existingRoom = liveRooms.find(
+          (r) => r.teamHome === game.homeTeam.name && r.teamAway === game.awayTeam.name
+        );
+        return (
+          <Card key={game.id} className={`bg-gradient-to-br ${getSportColor(game.sport)} border-white/10`}>
+            <CardContent className="p-4">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
+                <Badge className={`${getSportBadgeColor(game.sport)} text-white text-xs`}>
+                  {game.sport.toUpperCase()}
+                  {game.isLive && <span className="ml-1 w-1.5 h-1.5 rounded-full bg-white inline-block animate-pulse" />}
+                </Badge>
+                {existingRoom ? (
+                  <Badge className="bg-red-500 text-white text-xs gap-1">
+                    <Radio className="w-2.5 h-2.5" /> {existingRoom.playerCount} live
+                  </Badge>
+                ) : (
+                  <Tv className="w-4 h-4 text-white/40" />
+                )}
+              </div>
+
+              {/* Teams */}
+              <div className="text-center mb-3">
+                <div className="flex items-center justify-center gap-3 mb-1">
+                  {game.awayTeam.logo ? (
+                    <img src={game.awayTeam.logo} alt={game.awayTeam.abbreviation} className="w-8 h-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">{game.awayTeam.abbreviation.slice(0, 2)}</div>
+                  )}
+                  <span className="text-white/40 text-sm font-bold">@</span>
+                  {game.homeTeam.logo ? (
+                    <img src={game.homeTeam.logo} alt={game.homeTeam.abbreviation} className="w-8 h-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">{game.homeTeam.abbreviation.slice(0, 2)}</div>
+                  )}
+                </div>
+                <p className="text-white font-bold text-sm">{game.awayTeam.shortName || game.awayTeam.name}</p>
+                <p className="text-white/60 text-xs">@ {game.homeTeam.shortName || game.homeTeam.name}</p>
+              </div>
+
+              {/* Time */}
+              <p className="text-white/50 text-xs text-center mb-1">
+                {game.isLive ? (
+                  <span className="text-red-400 font-semibold">🔴 {game.statusDetail}</span>
+                ) : game.isFinal ? (
+                  <span className="text-white/40">Final · {game.statusDetail}</span>
+                ) : (
+                  formatGameTime(game.date)
+                )}
+              </p>
+              {game.broadcast && (
+                <p className="text-white/30 text-xs text-center mb-3">📺 {game.broadcast}</p>
+              )}
+
+              {/* CTA */}
+              {existingRoom ? (
+                <Button
+                  onClick={() => { window.location.href = `/sports/watch-party/${existingRoom.id}`; }}
+                  className="w-full bg-red-500 hover:bg-red-400 text-white font-bold text-sm gap-1"
+                >
+                  <MessageSquare className="w-3 h-3" /> Join Live Chat
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => onCreateRoom(game)}
+                  disabled={isCreating}
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm"
+                >
+                  <Trophy className="w-3 h-3 mr-1" /> Start Game Day Chat
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 export default function Sports() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [activeSport, setActiveSport] = useState<Sport>("all");
+  const [activeSport, setActiveSport] = useState<Sport>("mlb");
   const [joinCode, setJoinCode] = useState("");
   const [showCreateLocal, setShowCreateLocal] = useState(false);
   const [localForm, setLocalForm] = useState({ title: "", teamHome: "", teamAway: "", gameTime: "" });
@@ -71,15 +204,18 @@ export default function Sports() {
   const createRoomMutation = trpc.watchParty.createRoom.useMutation();
   const joinRoomMutation = trpc.watchParty.joinRoom.useMutation();
 
-  const handleCreateFromGame = async (game: typeof NFL_GAMES[0], sport: "nfl" | "nba" | "mlb") => {
+  const liveRooms = roomsData?.rooms ?? [];
+  const totalFans = liveRooms.reduce((sum, r) => sum + r.playerCount, 0);
+
+  const handleCreateFromGame = async (game: ScheduleGame) => {
     if (!user) { toast.error("Sign in to open a Game Day Chat"); return; }
     try {
       const result = await createRoomMutation.mutateAsync({
-        title: `${game.away} @ ${game.home}`,
-        teamHome: game.home,
-        teamAway: game.away,
-        sport,
-        gameTime: game.time,
+        title: `${game.awayTeam.shortName || game.awayTeam.name} @ ${game.homeTeam.shortName || game.homeTeam.name}`,
+        teamHome: game.homeTeam.name,
+        teamAway: game.awayTeam.name,
+        sport: game.sport,
+        gameTime: game.date,
       });
       toast.success(`Game Day Chat created! Code: ${result.gameCode}`);
       navigate(`/sports/watch-party/${result.roomId}`);
@@ -119,16 +255,6 @@ export default function Sports() {
       toast.error("Failed to create chat room");
     }
   };
-
-  const allGames = [
-    ...NFL_GAMES.map((g) => ({ ...g, sport: "nfl" as const })),
-    ...NBA_GAMES.map((g) => ({ ...g, sport: "nba" as const })),
-    ...MLB_GAMES.map((g) => ({ ...g, sport: "mlb" as const })),
-  ];
-
-  const filteredGames = activeSport === "all" ? allGames : allGames.filter((g) => g.sport === activeSport);
-  const liveRooms = roomsData?.rooms ?? [];
-  const totalFans = liveRooms.reduce((sum, r) => sum + r.playerCount, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -199,14 +325,14 @@ export default function Sports() {
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         {/* Sport filter tabs */}
         <div className="flex gap-2 flex-wrap">
-          {(["all", "nfl", "nba", "mlb"] as Sport[]).map((s) => (
+          {(["mlb", "nfl", "nba"] as Exclude<Sport, "all">[]).map((s) => (
             <Button
               key={s}
               onClick={() => setActiveSport(s)}
               variant={activeSport === s ? "default" : "outline"}
               className={activeSport === s ? "bg-green-600 hover:bg-green-700" : "border-white/30 text-white hover:bg-white/10"}
             >
-              {s === "all" ? "🏟️ All Sports" : s === "nfl" ? "🏈 NFL" : s === "nba" ? "🏀 NBA" : "⚾ MLB"}
+              {s === "nfl" ? "🏈 NFL" : s === "nba" ? "🏀 NBA" : "⚾ MLB"}
             </Button>
           ))}
         </div>
@@ -274,63 +400,24 @@ export default function Sports() {
           </div>
         </div>
 
-        {/* Upcoming Games */}
+        {/* Upcoming Games — live from ESPN */}
         <section>
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-400" /> Upcoming Games — Start a Chat Room
+          <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-400" /> Upcoming Games — Next 7 Days
           </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredGames.map((game, idx) => {
-              // Check if there's already a room for this game
-              const existingRoom = liveRooms.find(
-                (r) => r.teamHome === game.home && r.teamAway === game.away
-              );
-              return (
-                <Card key={idx} className={`bg-gradient-to-br ${getSportColor(game.sport)} border-white/10`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <Badge className={`${getSportBadgeColor(game.sport)} text-white text-xs`}>
-                        {game.sport.toUpperCase()} {(game as typeof NFL_GAMES[0] & { week?: string }).week || ""}
-                      </Badge>
-                      {existingRoom ? (
-                        <Badge className="bg-red-500 text-white text-xs gap-1">
-                          <Radio className="w-2.5 h-2.5" /> {existingRoom.playerCount} live
-                        </Badge>
-                      ) : (
-                        <Tv className="w-4 h-4 text-white/40" />
-                      )}
-                    </div>
-                    <div className="text-center mb-3">
-                      <div className="flex items-center justify-center gap-3 text-2xl mb-1">
-                        <span>{(game as typeof NFL_GAMES[0]).awayEmoji}</span>
-                        <span className="text-white/40 text-sm font-bold">@</span>
-                        <span>{(game as typeof NFL_GAMES[0]).homeEmoji}</span>
-                      </div>
-                      <p className="text-white font-bold text-sm">{game.away}</p>
-                      <p className="text-white/60 text-xs">@ {game.home}</p>
-                    </div>
-                    <p className="text-white/50 text-xs text-center mb-3">{formatGameTime(game.time)}</p>
-                    {existingRoom ? (
-                      <Button
-                        onClick={() => navigate(`/sports/watch-party/${existingRoom.id}`)}
-                        className="w-full bg-red-500 hover:bg-red-400 text-white font-bold text-sm gap-1"
-                      >
-                        <MessageSquare className="w-3 h-3" /> Join Live Chat
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => handleCreateFromGame(game as typeof NFL_GAMES[0], game.sport)}
-                        disabled={createRoomMutation.isPending}
-                        className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm"
-                      >
-                        <Trophy className="w-3 h-3 mr-1" /> Start Game Day Chat
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+          <p className="text-white/40 text-xs mb-4">Live schedule from ESPN · Tap any game to start a chat room</p>
+          {activeSport === "all" ? (
+            <div className="space-y-8">
+              {(["mlb", "nfl", "nba"] as const).map((s) => (
+                <div key={s}>
+                  <h3 className="text-white/70 text-sm font-semibold mb-3">{s === "nfl" ? "🏈 NFL" : s === "nba" ? "🏀 NBA" : "⚾ MLB"}</h3>
+                  <SportSchedule sport={s} liveRooms={liveRooms} onCreateRoom={handleCreateFromGame} isCreating={createRoomMutation.isPending} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <SportSchedule sport={activeSport} liveRooms={liveRooms} onCreateRoom={handleCreateFromGame} isCreating={createRoomMutation.isPending} />
+          )}
         </section>
       </div>
     </div>
