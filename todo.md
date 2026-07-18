@@ -657,3 +657,15 @@
 - [x] Default layout (5 pinned modules) for new users with no saved preferences
 - [x] Empty state when no modules are pinned
 - [x] Sports module shows live game count badge from ESPN API
+
+## Favorite Teams Filter (Live Scores)
+- [x] Reuse sport_team_alerts table as "favorite teams" store (already exists)
+- [x] Add "My Teams Only" filter toggle button on Live Scores page header
+- [x] Add "Pick Your Teams" drawer listing all 32 NFL / 30 NBA / 30 MLB teams with checkboxes and search
+- [x] Sport tabs (MLB/NFL/NBA) inside the picker drawer
+- [x] When filter is ON, show only games where home or away team is in user's favorites
+- [x] Show "None of your favorite teams play today" empty state when filter is on and no matches
+- [x] Persist team selections via sportsScores.setTeamAlert procedure (optimistic updates)
+- [x] Show favorite team count badge on the filter button
+- [x] Star icon on each team row in score cards; gold highlight on favorite-team game cards
+- [x] Filter toggle turns yellow when active for clear visual feedback
