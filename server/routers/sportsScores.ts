@@ -311,6 +311,32 @@ export const sportsScoresRouter = router({
       .select()
       .from(sportTeamAlerts)
       .where(eq(sportTeamAlerts.userId, ctx.user.id));
-    return { alerts: rows };
+        return { alerts: rows };
   }),
+
+  /** Look up a specific game by home/away team names — used by Watch Party live score header */
+  getGameByTeams: publicProcedure
+    .input(z.object({
+      teamHome: z.string(),
+      teamAway: z.string(),
+      sport: z.enum(["nfl", "nba", "mlb"]),
+    }))
+    .query(async ({ input }) => {
+      const games = await fetchScoreboard(input.sport);
+      const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const homeNorm = normalize(input.teamHome);
+      const awayNorm = normalize(input.teamAway);
+      const match = games.find((g) => {
+        const hName = normalize(g.homeTeam.displayName);
+        const hShort = normalize(g.homeTeam.shortDisplayName);
+        const aName = normalize(g.awayTeam.displayName);
+        const aShort = normalize(g.awayTeam.shortDisplayName);
+        return (
+          (hName.includes(homeNorm) || homeNorm.includes(hName) || hShort.includes(homeNorm) || homeNorm.includes(hShort)) &&
+          (aName.includes(awayNorm) || awayNorm.includes(aName) || aShort.includes(awayNorm) || awayNorm.includes(aShort))
+        );
+      });
+      return { game: match ?? null, fetchedAt: Date.now() };
+    }),
 });
+

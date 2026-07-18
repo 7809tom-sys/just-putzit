@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Trophy, Send, Zap, Crown, Users, Copy, Check, ArrowLeft, Radio, Timer } from "lucide-react";
+import { Trophy, Send, Zap, Crown, Users, Copy, Check, ArrowLeft, Radio, Timer, RefreshCw } from "lucide-react";
 
 type ChatMsg = {
   id: number;
@@ -81,6 +81,15 @@ export default function WatchParty() {
     { roomId: numRoomId },
     { enabled: !!numRoomId, refetchInterval: 5000 }
   );
+
+  // Live score for this game (polls every 60s)
+  const roomInfo = roomData?.room;
+  const sportForScore = (roomInfo?.sport === "nfl" || roomInfo?.sport === "nba" || roomInfo?.sport === "mlb") ? roomInfo.sport : null;
+  const { data: scoreData, dataUpdatedAt: scoreUpdatedAt, refetch: refetchScore } = trpc.sportsScores.getGameByTeams.useQuery(
+    { teamHome: roomInfo?.teamHome ?? "", teamAway: roomInfo?.teamAway ?? "", sport: sportForScore ?? "mlb" },
+    { enabled: !!roomInfo && !!sportForScore && !roomInfo.isLocal, refetchInterval: 60_000, refetchIntervalInBackground: false }
+  );
+  const liveGame = scoreData?.game ?? null;
 
   // Pool question for host
   const { data: poolQuestion, refetch: refetchPool } = trpc.watchParty.getPoolQuestion.useQuery(
@@ -286,6 +295,8 @@ export default function WatchParty() {
   const countdownPct = countdown !== null ? (countdown / TRIVIA_SECONDS) * 100 : 0;
   const countdownColor = countdown !== null && countdown <= 10 ? "text-red-400" : "text-yellow-300";
 
+  const scoreUpdatedTime = scoreUpdatedAt ? new Date(scoreUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
@@ -325,6 +336,85 @@ export default function WatchParty() {
           </div>
         </div>
       </div>
+
+      {/* ── Live Score Banner ─────────────────────────────────────────────── */}
+      {liveGame && (
+        <div className={`px-4 py-3 border-b border-white/10 ${
+          liveGame.isLive ? "bg-gradient-to-r from-red-900/60 to-slate-900" : "bg-slate-900/80"
+        }`}>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between gap-4">
+              {/* Away team */}
+              <div className="flex items-center gap-2 flex-1">
+                {liveGame.awayTeam.logo ? (
+                  <img src={liveGame.awayTeam.logo} alt={liveGame.awayTeam.abbreviation} className="w-9 h-9 object-contain" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold text-white">{liveGame.awayTeam.abbreviation.slice(0,2)}</div>
+                )}
+                <div>
+                  <p className="text-white font-bold text-sm">{liveGame.awayTeam.shortDisplayName || liveGame.awayTeam.displayName}</p>
+                  <p className="text-white/40 text-xs">{liveGame.awayTeam.record || "Away"}</p>
+                </div>
+              </div>
+
+              {/* Score / Status */}
+              <div className="text-center flex-shrink-0 px-4">
+                {liveGame.isLive ? (
+                  <>
+                    <div className="flex items-center justify-center gap-3">
+                      <span className="text-white font-black text-2xl tabular-nums">{liveGame.awayTeam.score || "0"}</span>
+                      <span className="text-white/30 text-sm">–</span>
+                      <span className="text-white font-black text-2xl tabular-nums">{liveGame.homeTeam.score || "0"}</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-red-400 text-xs font-semibold">{liveGame.statusDetail}</span>
+                    </div>
+                  </>
+                ) : liveGame.isFinal ? (
+                  <>
+                    <div className="flex items-center justify-center gap-3">
+                      <span className={`font-black text-2xl tabular-nums ${liveGame.awayTeam.winner ? "text-white" : "text-white/40"}`}>{liveGame.awayTeam.score || "0"}</span>
+                      <span className="text-white/30 text-sm">–</span>
+                      <span className={`font-black text-2xl tabular-nums ${liveGame.homeTeam.winner ? "text-white" : "text-white/40"}`}>{liveGame.homeTeam.score || "0"}</span>
+                    </div>
+                    <p className="text-white/40 text-xs mt-0.5">Final</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-white/60 text-sm font-medium">{liveGame.statusDetail}</p>
+                    <p className="text-white/30 text-xs mt-0.5">{liveGame.broadcast && `📺 ${liveGame.broadcast}`}</p>
+                  </>
+                )}
+              </div>
+
+              {/* Home team */}
+              <div className="flex items-center gap-2 flex-1 justify-end">
+                <div className="text-right">
+                  <p className="text-white font-bold text-sm">{liveGame.homeTeam.shortDisplayName || liveGame.homeTeam.displayName}</p>
+                  <p className="text-white/40 text-xs">{liveGame.homeTeam.record || "Home"}</p>
+                </div>
+                {liveGame.homeTeam.logo ? (
+                  <img src={liveGame.homeTeam.logo} alt={liveGame.homeTeam.abbreviation} className="w-9 h-9 object-contain" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold text-white">{liveGame.homeTeam.abbreviation.slice(0,2)}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer: venue + last updated */}
+            <div className="flex items-center justify-between mt-1.5 text-xs text-white/30">
+              <span>{liveGame.venue || ""}</span>
+              <div className="flex items-center gap-1.5">
+                {scoreUpdatedTime && <span>Updated {scoreUpdatedTime}</span>}
+                <button onClick={() => refetchScore()} className="hover:text-white/60 transition-colors" title="Refresh score">
+                  <RefreshCw className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-4 grid lg:grid-cols-3 gap-4">
         {/* Main column: Chat + Trivia */}

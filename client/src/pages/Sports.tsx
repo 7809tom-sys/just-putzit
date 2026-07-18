@@ -75,10 +75,17 @@ function SportSchedule({
   onCreateRoom: (game: ScheduleGame) => void;
   isCreating: boolean;
 }) {
-  const { data, isLoading, refetch } = trpc.sportsScores.getUpcomingSchedule.useQuery(
+  const { data, isLoading, refetch, dataUpdatedAt } = trpc.sportsScores.getUpcomingSchedule.useQuery(
     { sport, days: 7 },
-    { staleTime: 5 * 60 * 1000 } // cache 5 minutes
+    {
+      // Refresh every 60s so live scores update without a page reload
+      refetchInterval: 60_000,
+      refetchIntervalInBackground: false,
+    }
   );
+
+  const hasLiveGames = (data?.games ?? []).some((g) => (g as ScheduleGame).isLive);
+  const updatedTime = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null;
 
   const games = (data?.games ?? []) as ScheduleGame[];
 
@@ -105,7 +112,27 @@ function SportSchedule({
   }
 
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="space-y-3">
+      {/* Live status bar */}
+      <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center gap-2">
+          {hasLiveGames ? (
+            <span className="flex items-center gap-1.5 text-red-400 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
+              Games in progress · auto-updating
+            </span>
+          ) : (
+            <span className="text-white/30">Auto-refreshes every 60s</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-white/30">
+          {updatedTime && <span>Updated {updatedTime}</span>}
+          <button onClick={() => refetch()} className="hover:text-white/60 transition-colors" title="Refresh now">
+            <RefreshCw className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {games.map((game) => {
         const existingRoom = liveRooms.find(
           (r) => r.teamHome === game.homeTeam.name && r.teamAway === game.awayTeam.name
@@ -181,7 +208,8 @@ function SportSchedule({
             </CardContent>
           </Card>
         );
-      })}
+            })}
+      </div>
     </div>
   );
 }
