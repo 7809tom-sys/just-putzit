@@ -669,3 +669,10 @@
 - [x] Show favorite team count badge on the filter button
 - [x] Star icon on each team row in score cards; gold highlight on favorite-team game cards
 - [x] Filter toggle turns yellow when active for clear visual feedback
+
+## Live Scores In-Game Chat Tab
+- [x] Add a chat bubble button to each game card on the Live Scores page
+- [x] Clicking it auto-creates or joins a Watch Party room for that specific game (findOrCreateGameRoom procedure)
+- [x] Navigates to the full Game Day Chat room with live score banner at top
+- [x] Show live fan count on the button when fans are already in the room (polls every 30s)
+- [x] Non-logged-in users see a toast prompt to sign in

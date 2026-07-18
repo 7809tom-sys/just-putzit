@@ -407,4 +407,80 @@ export const watchPartyRouter = router({
 
       return { ok: true };
     }),
+
+  // Find an existing room for a specific game today, or create one automatically
+  findOrCreateGameRoom: protectedProcedure
+    .input(z.object({
+      teamHome: z.string().min(1).max(100),
+      teamAway: z.string().min(1).max(100),
+      sport: z.enum(["nfl", "nba", "mlb", "nhl", "local"]),
+      gameTitle: z.string().min(1).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Look for an active room for this exact matchup today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const existing = await db.execute(
+        sql`SELECT id, game_code FROM watch_party_rooms
+            WHERE team_home = ${input.teamHome}
+              AND team_away = ${input.teamAway}
+              AND sport = ${input.sport}
+              AND status != 'ended'
+              AND created_at >= ${today}
+            ORDER BY id ASC LIMIT 1`
+      ) as unknown as [Array<{ id: number; game_code: string }>];
+
+      const rows = existing[0] as Array<{ id: number; game_code: string }>;
+
+      if (rows && rows.length > 0) {
+        const room = rows[0];
+        // Auto-join if not already in
+        await db.execute(
+          sql`INSERT IGNORE INTO watch_party_players (room_id, user_id) VALUES (${room.id}, ${ctx.user.id})`
+        );
+        return { roomId: room.id, gameCode: room.game_code, created: false };
+      }
+
+      // Create a new room
+      const gameCode = generateCode();
+      const [result] = await db.execute(
+        sql`INSERT INTO watch_party_rooms (host_id, game_code, title, team_home, team_away, sport, game_time, status, max_players, is_local)
+            VALUES (${ctx.user.id}, ${gameCode}, ${input.gameTitle}, ${input.teamHome}, ${input.teamAway}, ${input.sport},
+                    NULL, 'live', 200, false)`
+      ) as unknown as [{ insertId: number }];
+      const roomId = (result as unknown as { insertId: number }).insertId;
+      await db.execute(
+        sql`INSERT INTO watch_party_players (room_id, user_id) VALUES (${roomId}, ${ctx.user.id})`
+      );
+      return { roomId, gameCode, created: true };
+    }),
+
+  // Get the fan count for a specific game (no auth required)
+  getGameFanCount: publicProcedure
+    .input(z.object({
+      teamHome: z.string(),
+      teamAway: z.string(),
+      sport: z.string(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { count: 0 };
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const rows = await db.execute(
+        sql`SELECT COUNT(DISTINCT wp.user_id) as fan_count
+            FROM watch_party_rooms r
+            JOIN watch_party_players wp ON wp.room_id = r.id
+            WHERE r.team_home = ${input.teamHome}
+              AND r.team_away = ${input.teamAway}
+              AND r.sport = ${input.sport}
+              AND r.status != 'ended'
+              AND r.created_at >= ${today}`
+      ) as unknown as [Array<{ fan_count: number }>];
+      const count = (rows[0] as Array<{ fan_count: number }>)?.[0]?.fan_count ?? 0;
+      return { count: Number(count) };
+    }),
 });

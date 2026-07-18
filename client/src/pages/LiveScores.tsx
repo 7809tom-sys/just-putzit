@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Bell, BellOff, Radio, Clock, Trophy, RefreshCw, Star, StarOff, Filter, X, Check, Users } from "lucide-react";
+import { Bell, BellOff, Radio, Clock, Trophy, RefreshCw, Star, StarOff, Filter, X, Check, Users, MessageCircle } from "lucide-react";
+import { useLocation } from "wouter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -218,6 +219,39 @@ function ScoreCard({
   const isScheduled = game.statusName === "STATUS_SCHEDULED";
   const isHomeFav = favoriteTeams.has(homeTeam.abbreviation);
   const isAwayFav = favoriteTeams.has(awayTeam.abbreviation);
+  const [, navigate] = useLocation();
+  const [joiningChat, setJoiningChat] = useState(false);
+
+  const { data: fanCountData } = trpc.watchParty.getGameFanCount.useQuery({
+    teamHome: homeTeam.displayName,
+    teamAway: awayTeam.displayName,
+    sport: game.sport,
+  }, { refetchInterval: 30000 });
+  const fanCount = fanCountData?.count ?? 0;
+
+  const findOrCreateRoom = trpc.watchParty.findOrCreateGameRoom.useMutation({
+    onSuccess: (data) => {
+      navigate(`/sports/watch-party/${data.roomId}`);
+    },
+    onError: () => {
+      toast.error("Couldn't open chat room — please try again");
+      setJoiningChat(false);
+    },
+  });
+
+  const handleOpenChat = async () => {
+    if (!isLoggedIn) {
+      toast.error("Sign in to join the Game Day Chat");
+      return;
+    }
+    setJoiningChat(true);
+    findOrCreateRoom.mutate({
+      teamHome: homeTeam.displayName,
+      teamAway: awayTeam.displayName,
+      sport: game.sport,
+      gameTitle: game.name,
+    });
+  };
 
   const TeamRow = ({ team, isWinner }: { team: ScoreTeam; isWinner: boolean }) => {
     const isFav = favoriteTeams.has(team.abbreviation);
@@ -314,6 +348,35 @@ function ScoreCard({
           📍 {game.venue}
         </div>
       )}
+
+      {/* Chat button */}
+      <div className="px-4 py-2.5 border-t border-border/50 bg-muted/20">
+        <button
+          onClick={handleOpenChat}
+          disabled={joiningChat}
+          className={`w-full flex items-center justify-center gap-2 text-sm font-medium py-2 px-4 rounded-lg transition-all ${
+            game.isLive
+              ? "bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30"
+              : "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+          } disabled:opacity-60 disabled:cursor-not-allowed`}
+        >
+          {joiningChat ? (
+            <>
+              <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Joining...
+            </>
+          ) : (
+            <>
+              <MessageCircle className="w-4 h-4" />
+              {fanCount > 0 ? (
+                <span>Game Day Chat <span className="opacity-70">· {fanCount} fan{fanCount !== 1 ? "s" : ""} live</span></span>
+              ) : (
+                <span>Open Game Day Chat</span>
+              )}
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
