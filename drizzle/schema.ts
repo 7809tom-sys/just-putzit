@@ -1096,6 +1096,7 @@ export const watchPartyPlayers = mysqlTable("watch_party_players", {
   score: int("score").notNull().default(0),
   correctAnswers: int("correct_answers").notNull().default(0),
   isMvp: boolean("is_mvp").notNull().default(false),
+  teamFlair: varchar("team_flair", { length: 20 }),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 });
 export type WatchPartyPlayer = typeof watchPartyPlayers.$inferSelect;

@@ -676,3 +676,11 @@
 - [x] Navigates to the full Game Day Chat room with live score banner at top
 - [x] Show live fan count on the button when fans are already in the room (polls every 30s)
 - [x] Non-logged-in users see a toast prompt to sign in
+
+## Team Flairs in Game Day Chat
+- [x] Add teamFlair column to watch_party_players table (nullable, stores team abbreviation)
+- [x] Add setFlair and getMyFlair procedures to watchParty router
+- [x] Return teamFlair in getChat messages query (LEFT JOIN to watch_party_players)
+- [x] Show 🏅 team abbreviation badge next to username in each chat message
+- [x] Add flair picker inline in chat toolbar (shows both teams + Neutral, toggles open/closed)
+- [x] Flair persists per user per room; loads on room entry via getMyFlair query

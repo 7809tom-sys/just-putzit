@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Trophy, Send, Zap, Crown, Users, Copy, Check, ArrowLeft, Radio, Timer, RefreshCw } from "lucide-react";
+import { Trophy, Send, Zap, Crown, Users, Copy, Check, ArrowLeft, Radio, Timer, RefreshCw, Shield } from "lucide-react";
 
 type ChatMsg = {
   id: number;
@@ -18,6 +18,7 @@ type ChatMsg = {
   avatarColor: string;
   message: string;
   createdAt: Date | string;
+  teamFlair?: string | null;
 };
 
 type TriviaQuestion = {
@@ -49,6 +50,9 @@ export default function WatchParty() {
   const [countdown, setCountdown] = useState<number | null>(null);
 
   // Custom trivia form (host)
+  const [showFlairPicker, setShowFlairPicker] = useState(false);
+  const [myFlair, setMyFlair] = useState<string | null>(null);
+
   const [showTriviaForm, setShowTriviaForm] = useState(false);
   const [triviaForm, setTriviaForm] = useState({
     questionText: "", optionA: "", optionB: "", optionC: "", optionD: "",
@@ -101,6 +105,27 @@ export default function WatchParty() {
   const launchTriviaMutation = trpc.watchParty.launchTrivia.useMutation();
   const submitAnswerMutation = trpc.watchParty.submitTriviaAnswer.useMutation();
   const endRoomMutation = trpc.watchParty.endRoom.useMutation();
+  const setFlairMutation = trpc.watchParty.setFlair.useMutation();
+
+  const { data: myFlairData } = trpc.watchParty.getMyFlair.useQuery(
+    { roomId: numRoomId },
+    { enabled: !!numRoomId && !!user }
+  );
+
+  useEffect(() => {
+    if (myFlairData?.teamFlair !== undefined) setMyFlair(myFlairData.teamFlair);
+  }, [myFlairData?.teamFlair]);
+
+  const handleSetFlair = async (flair: string | null) => {
+    setMyFlair(flair);
+    setShowFlairPicker(false);
+    try {
+      await setFlairMutation.mutateAsync({ roomId: numRoomId, teamFlair: flair });
+      toast.success(flair ? `🏅 Flair set to ${flair}!` : "Flair removed");
+    } catch {
+      toast.error("Failed to set flair");
+    }
+  };
 
   // Merge new chat messages
   useEffect(() => {
@@ -542,6 +567,11 @@ export default function WatchParty() {
                         >
                           {msg.userId === user?.id ? "You" : msg.displayName}
                         </span>
+                        {msg.teamFlair && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 rounded px-1 py-0.5 mr-1 align-middle">
+                            🏅 {msg.teamFlair}
+                          </span>
+                        )}
                         <span className="text-white/80 text-sm break-words">{msg.message}</span>
                       </div>
                     </div>
@@ -549,6 +579,50 @@ export default function WatchParty() {
                   <div ref={chatBottomRef} />
                 </div>
               </ScrollArea>
+
+              {/* Flair picker */}
+              {user && (
+                <div className="flex items-center gap-2 pb-1 border-b border-white/10">
+                  <button
+                    onClick={() => setShowFlairPicker((v) => !v)}
+                    className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white/90 transition-colors bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-full"
+                  >
+                    <Shield className="w-3 h-3" />
+                    {myFlair ? (
+                      <span>Rooting for: <span className="text-yellow-300 font-bold">{myFlair}</span></span>
+                    ) : (
+                      <span>Pick your team flair</span>
+                    )}
+                  </button>
+                  {showFlairPicker && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {/* The two teams in this room */}
+                      {[roomInfo?.teamHome, roomInfo?.teamAway].filter(Boolean).map((teamName) => {
+                        const abbr = teamName!.split(" ").pop()!;
+                        return (
+                          <button
+                            key={abbr}
+                            onClick={() => handleSetFlair(myFlair === abbr ? null : abbr)}
+                            className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-all ${
+                              myFlair === abbr
+                                ? "bg-yellow-400 text-slate-900"
+                                : "bg-white/10 text-white hover:bg-white/20"
+                            }`}
+                          >
+                            {myFlair === abbr ? "✓ " : ""}{abbr}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => handleSetFlair(null)}
+                        className="text-xs px-2.5 py-1 rounded-full bg-white/5 text-white/40 hover:bg-white/10 transition-all"
+                      >
+                        Neutral
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Quick reactions */}
               <div className="flex gap-1.5 flex-wrap">

@@ -135,9 +135,11 @@ export const watchPartyRouter = router({
 
       const rows = await db.execute(
         sql`SELECT wc.id, wc.user_id, wc.message, wc.created_at,
-                   u.name as display_name, u.avatar_emoji, u.avatar_color
+                   u.name as display_name, u.avatar_emoji, u.avatar_color,
+                   wpp.team_flair
             FROM watch_party_chat wc
             JOIN users u ON u.id = wc.user_id
+            LEFT JOIN watch_party_players wpp ON wpp.room_id = wc.room_id AND wpp.user_id = wc.user_id
             WHERE wc.room_id = ${input.roomId}
               ${input.since ? sql`AND wc.id > ${input.since}` : sql``}
             ORDER BY wc.created_at ASC
@@ -145,6 +147,7 @@ export const watchPartyRouter = router({
       ) as unknown as Array<{
         id: number; user_id: number; message: string; created_at: Date;
         display_name: string; avatar_emoji: string; avatar_color: string;
+        team_flair: string | null;
       }>;
 
       return {
@@ -156,6 +159,7 @@ export const watchPartyRouter = router({
           avatarColor: r.avatar_color || "#ea580c",
           message: r.message,
           createdAt: r.created_at,
+          teamFlair: r.team_flair ?? null,
         })),
       };
     }),
@@ -482,5 +486,34 @@ export const watchPartyRouter = router({
       ) as unknown as [Array<{ fan_count: number }>];
       const count = (rows[0] as Array<{ fan_count: number }>)?.[0]?.fan_count ?? 0;
       return { count: Number(count) };
+    }),
+
+  // Set the user's team flair for a room
+  setFlair: protectedProcedure
+    .input(z.object({ roomId: z.number(), teamFlair: z.string().max(20).nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Upsert the player row with the flair
+      await db.execute(
+        sql`INSERT INTO watch_party_players (room_id, user_id, team_flair)
+            VALUES (${input.roomId}, ${ctx.user.id}, ${input.teamFlair})
+            ON DUPLICATE KEY UPDATE team_flair = ${input.teamFlair}`
+      );
+      return { ok: true };
+    }),
+
+  // Get the current user's flair for a room
+  getMyFlair: protectedProcedure
+    .input(z.object({ roomId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { teamFlair: null };
+      const rows = await db.execute(
+        sql`SELECT team_flair FROM watch_party_players WHERE room_id = ${input.roomId} AND user_id = ${ctx.user.id} LIMIT 1`
+      ) as unknown as [Array<{ team_flair: string | null }>];
+      const row = (rows[0] as Array<{ team_flair: string | null }>)?.[0];
+      return { teamFlair: row?.team_flair ?? null };
     }),
 });
