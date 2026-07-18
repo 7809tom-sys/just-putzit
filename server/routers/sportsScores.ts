@@ -40,15 +40,25 @@ const CACHE_TTL_MS = 60_000; // 60 seconds
 
 const cache = new Map<string, { data: ScoreGame[]; fetchedAt: number }>();
 
+function getTodayESPN(): string {
+  // Returns today's date in YYYYMMDD format in UTC — ESPN uses this to scope the scoreboard
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return `${y}${m}${d}`;
+}
+
 async function fetchScoreboard(sport: "nfl" | "nba" | "mlb"): Promise<ScoreGame[]> {
-  const cacheKey = sport;
+  const today = getTodayESPN();
+  const cacheKey = `${sport}-${today}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
     return cached.data;
   }
 
   const sportSlug = sport === "nfl" ? "football/nfl" : sport === "nba" ? "basketball/nba" : "baseball/mlb";
-  const url = `https://site.api.espn.com/apis/site/v2/sports/${sportSlug}/scoreboard?limit=50`;
+  const url = `https://site.api.espn.com/apis/site/v2/sports/${sportSlug}/scoreboard?dates=${today}&limit=50`;
 
   let raw: Record<string, unknown>;
   try {
