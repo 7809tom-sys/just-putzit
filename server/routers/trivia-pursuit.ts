@@ -194,15 +194,11 @@ export const triviaPursuitRouter = router({
       const isCorrect = input.answer === (question.correctAnswer ?? "");
       const pointsAwarded = isCorrect ? 100 : 0;
 
-      // Save answer
-      await db.insert(triviaPursuitAnswers).values({
-        roomId: input.roomId,
-        userId: ctx.user.id,
-        questionId: input.questionId,
-        answer: input.answer,
-        isCorrect,
-        answeredAtMs: Date.now(),
-      });
+      // Save answer — use raw SQL to match actual DB column names (selectedAnswer, answeredAt)
+      await db.execute(
+        sql`INSERT INTO trivia_pursuit_answers (roomId, userId, questionId, selectedAnswer, isCorrect, answeredAt)
+            VALUES (${input.roomId}, ${ctx.user.id}, ${input.questionId}, ${input.answer}, ${isCorrect ? 1 : 0}, NOW())`
+      );
 
       // Update player score
       if (isCorrect) {
