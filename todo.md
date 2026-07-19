@@ -708,3 +708,9 @@
 - [x] Add "Add to Calendar" dropdown button (CalendarPlus icon) to each session card in GymPage.tsx
 - [x] Support Google Calendar (URL), Apple Calendar (.ics download), Outlook (URL)
 - [x] Pre-fill event title ("Session @ Gym"), location (gym address), start/end time (+1hr), and description
+
+## Session Participant Avatars
+- [x] Updated listSessions to batch-fetch participant avatars (up to 5 per session + extraParticipants count)
+- [x] Show stacked avatar row on each SessionCard with -space-x-2 overlap, colored circles, emoji, and name tooltip
+- [x] Show "+N more" overflow badge when more than 5 participants
+- [x] Show "X going" count next to avatars

@@ -150,6 +150,8 @@ function SessionCard({ session, onRsvp, myRsvps, gymName, gymAddress }: {
     id: number; title: string; description: string | null; workoutType: string;
     scheduledAt: string; maxParticipants: number | null; rsvpCount: number;
     hostName: string | null; hostEmoji: string | null; hostColor: string | null;
+    participantAvatars?: Array<{ userId: number; emoji: string; color: string; name: string }>;
+    extraParticipants?: number;
   };
   onRsvp: (sessionId: number) => void;
   myRsvps: number[];
@@ -197,6 +199,31 @@ function SessionCard({ session, onRsvp, myRsvps, gymName, gymAddress }: {
                   {session.hostEmoji || "💪"}
                 </div>
                 <span className="text-xs text-muted-foreground">Hosted by {session.hostName}</span>
+              </div>
+            )}
+            {/* Participant avatars */}
+            {session.participantAvatars && session.participantAvatars.length > 0 && (
+              <div className="flex items-center gap-1 mt-2.5">
+                <div className="flex -space-x-2">
+                  {session.participantAvatars.map((p) => (
+                    <div
+                      key={p.userId}
+                      title={p.name}
+                      className="w-7 h-7 rounded-full border-2 border-card flex items-center justify-center text-sm ring-1 ring-border"
+                      style={{ background: p.color }}
+                    >
+                      {p.emoji}
+                    </div>
+                  ))}
+                  {(session.extraParticipants ?? 0) > 0 && (
+                    <div className="w-7 h-7 rounded-full border-2 border-card bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground ring-1 ring-border">
+                      +{session.extraParticipants}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground ml-1">
+                  {session.rsvpCount === 1 ? "1 going" : `${session.rsvpCount} going`}
+                </span>
               </div>
             )}
           </div>

@@ -171,22 +171,47 @@ export const gymRouter = router({
         scheduled_at: number; duration_minutes: number; max_participants: number; notes: string | null;
         created_at: Date; host_name: string; host_emoji: string; host_color: string; rsvp_count: number;
       }>;
-      return sessions.map((s) => ({
-        id: s.id,
-        gymId: s.gym_id,
-        hostUserId: s.host_user_id,
-        title: s.title,
-        workoutType: s.workout_type,
-        scheduledAt: Number(s.scheduled_at),
-        durationMinutes: s.duration_minutes,
-        maxParticipants: s.max_participants,
-        notes: s.notes,
-        hostName: s.host_name || "Gym Member",
-        hostEmoji: s.host_emoji || "💪",
-        hostColor: s.host_color || "#ea580c",
-        rsvpCount: Number(s.rsvp_count),
-        spotsLeft: s.max_participants - Number(s.rsvp_count),
-      }));
+
+      // Fetch participant avatars for each session (up to 5 per session)
+      const sessionIds = sessions.map((s) => s.id);
+      let participantMap = new Map<number, Array<{ userId: number; emoji: string; color: string; name: string }>>();
+      if (sessionIds.length > 0) {
+        const placeholders = sessionIds.map(() => "?").join(",");
+        const participants = await db.execute(
+          sql`SELECT gsr.session_id, gsr.user_id, u.avatar_emoji, u.avatar_color, u.name
+              FROM gym_session_rsvps gsr
+              JOIN users u ON u.id = gsr.user_id
+              WHERE gsr.session_id IN (${sql.raw(sessionIds.join(","))})
+              ORDER BY gsr.joined_at ASC`
+        ) as unknown as Array<{ session_id: number; user_id: number; avatar_emoji: string; avatar_color: string; name: string }>;
+        for (const p of participants) {
+          const list = participantMap.get(p.session_id) ?? [];
+          list.push({ userId: p.user_id, emoji: p.avatar_emoji || "💪", color: p.avatar_color || "#ea580c", name: p.name || "Gym Member" });
+          participantMap.set(p.session_id, list);
+        }
+      }
+
+      return sessions.map((s) => {
+        const allParticipants = participantMap.get(s.id) ?? [];
+        return {
+          id: s.id,
+          gymId: s.gym_id,
+          hostUserId: s.host_user_id,
+          title: s.title,
+          workoutType: s.workout_type,
+          scheduledAt: Number(s.scheduled_at),
+          durationMinutes: s.duration_minutes,
+          maxParticipants: s.max_participants,
+          notes: s.notes,
+          hostName: s.host_name || "Gym Member",
+          hostEmoji: s.host_emoji || "💪",
+          hostColor: s.host_color || "#ea580c",
+          rsvpCount: Number(s.rsvp_count),
+          spotsLeft: s.max_participants - Number(s.rsvp_count),
+          participantAvatars: allParticipants.slice(0, 5),
+          extraParticipants: Math.max(0, allParticipants.length - 5),
+        };
+      });
     }),
 
   // Create a group session
