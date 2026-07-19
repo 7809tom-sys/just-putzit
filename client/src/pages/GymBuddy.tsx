@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dumbbell, Users, Calendar, MapPin, Phone, ExternalLink, Star, ChevronRight, Trophy, Zap, Heart, Crown, Building2, Mail } from "lucide-react";
+import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 
 // ─── Exercise Guide Data ──────────────────────────────────────────────────────
 const EXERCISES = [
@@ -294,7 +295,13 @@ export default function GymBuddy() {
                 ))}
               </div>
             ) : gyms && gyms.length > 0 ? (
-              gyms.map((gym) => <GymCard key={gym.id} gym={gym} />)
+              gyms.flatMap((gym, i) => [
+                <GymCard key={gym.id} gym={gym} />,
+                // Insert a banner ad after every 3rd gym card
+                ...(i > 0 && (i + 1) % 3 === 0
+                  ? [<LocalVenueBanner key={`banner-${i}`} page="gym_buddy" className="my-1" />]
+                  : []),
+              ])
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <Dumbbell className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -459,6 +466,9 @@ export default function GymBuddy() {
               <Mail className="w-4 h-4 mr-2" /> Contact Us to Partner
             </Button>
           </div>
+
+          {/* Banner ad slot below Partner With Us */}
+          <LocalVenueBanner page="gym_buddy" className="mt-5" />
         </div>
       </div>
     </div>

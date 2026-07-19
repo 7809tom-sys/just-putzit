@@ -2828,7 +2828,7 @@ Return JSON with questions array, each having optionA and optionB.`,
     // Get active banner ads for a specific page slot
     getBanners: publicProcedure
       .input(z.object({
-        page: z.enum(["home", "activities", "community", "activity_board"]),
+        page: z.enum(["home", "activities", "community", "activity_board", "gym_buddy", "gym_detail"]),
         userLat: z.number().optional(),
         userLng: z.number().optional(),
       }))

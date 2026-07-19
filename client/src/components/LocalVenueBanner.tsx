@@ -4,7 +4,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { ExternalLink, X, ChevronLeft, ChevronRight, Megaphone, Share2, Check } from "lucide-react";
 import { useLocation } from "wouter";
 
-type PageSlot = "home" | "activities" | "community" | "activity_board";
+type PageSlot = "home" | "activities" | "community" | "activity_board" | "gym_buddy" | "gym_detail";
 
 interface LocalVenueBannerProps {
   page: PageSlot;
@@ -96,6 +96,8 @@ function pickFallback(page: PageSlot): FallbackAnnouncement {
     activities: 2,
     community: 1,
     activity_board: 3,
+    gym_buddy: 4,
+    gym_detail: 5,
   };
   const idx = (dayIndex + pageOffset[page]) % FALLBACK_ANNOUNCEMENTS.length;
   return FALLBACK_ANNOUNCEMENTS[idx]!;

@@ -723,3 +723,11 @@
 - [x] Add "Featured Partner" gold badge and highlighted card styling for partner gyms
 - [x] Add membership referral CTA with tracking link on each gym page
 - [x] Show partnership pricing tiers on GymBuddy.tsx landing page (Basic $49/mo, Featured $99/mo, Premium $199/mo)
+
+## Banner Ad Strategy — Gym Pages
+- [x] Extend LocalVenueBanner PageSlot type to include gym_buddy and gym_detail
+- [x] Extend getBanners tRPC procedure to accept gym_buddy and gym_detail page slots
+- [x] Add banner ad slot between gym cards on GymBuddy.tsx hub (every 3rd card)
+- [x] Add banner ad slot below Partner With Us section on GymBuddy.tsx hub
+- [x] Add banner ad slot between amenities and membership CTA on GymPage.tsx detail page
+- [x] Add Gym Buddy Hub and Gym Detail Pages options to Admin advertising panel page targeting

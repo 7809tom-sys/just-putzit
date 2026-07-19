@@ -77,6 +77,8 @@ const PAGE_OPTIONS = [
   { value: "activities", label: "Local Activities" },
   { value: "community", label: "Community Groups" },
   { value: "activity_board", label: "Activity Board" },
+  { value: "gym_buddy", label: "Gym Buddy Hub" },
+  { value: "gym_detail", label: "Gym Detail Pages" },
 ];
 
 const REACH_OPTIONS = [

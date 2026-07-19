@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, MapPin, Phone, Globe, Users, Calendar, Dumbbell, CheckCircle, Plus, Clock, CalendarPlus, Crown, Star, ExternalLink, Flag } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 
 const WORKOUT_STYLES = [
   { value: "cardio", label: "🏃 Cardio", desc: "Running, cycling, HIIT" },
@@ -443,6 +444,11 @@ export default function GymPage() {
           </div>
         </div>
       )}
+
+      {/* Banner Ad Slot — between amenities and membership CTA */}
+      <div className="px-4 max-w-lg mx-auto mb-2">
+        <LocalVenueBanner page="gym_detail" />
+      </div>
 
       {/* Membership Referral CTA */}
       {gym.membershipUrl && (
