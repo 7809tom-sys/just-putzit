@@ -12,6 +12,7 @@ import { bullgerdashRouter } from "./routers/bullgerdash";
 import { watchPartyRouter } from "./routers/watchParty";
 import { sportsScoresRouter } from "./routers/sportsScores";
 import { gymRouter } from "./routers/gym";
+import { workoutRouter } from "./routers/workout";
 import { autoSeedCityEvents } from "./cityEventSeeder";
 import {
   getOrCreateProfile,
@@ -2681,6 +2682,7 @@ Return JSON with questions array, each having optionA and optionB.`,
   watchParty: watchPartyRouter,
   sportsScores: sportsScoresRouter,
   gym: gymRouter,
+  workout: workoutRouter,
   homepage: router({
     /** Get the current user's saved homepage layout */
     getLayout: protectedProcedure.query(async ({ ctx }) => {

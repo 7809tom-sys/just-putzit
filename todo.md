@@ -739,3 +739,11 @@
 - [x] Add dedicated /gym-pitch landing page (shareable URL for in-gym sales, gym-owner copy, QR-code-ready)
 - [x] Wire /gym-pitch route in App.tsx
 - [x] Save checkpoint and deliver
+
+## My Workout Program Feature
+- [x] Add workout_exercises and workout_logs tables to schema and apply SQL migration
+- [x] Add workout tRPC router (listExercises, addExercise, deleteExercise, logSet, getRecentLogs)
+- [x] Add My Workout Program promo card to Community page Fitness section (green gradient, below Gym Buddy card)
+- [x] Create /my-workout page: weekly day filter tabs, starter exercises auto-seeded, Add Your Own dialog, Log Set button
+- [x] Wire /my-workout route in App.tsx
+- [x] Gym Buddy upsell card at bottom of workout page

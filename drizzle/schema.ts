@@ -1235,3 +1235,34 @@ export const gymSessionRsvps = mysqlTable("gym_session_rsvps", {
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 });
 export type GymSessionRsvp = typeof gymSessionRsvps.$inferSelect;
+
+// ─── Workout Program ──────────────────────────────────────────────────────────
+// User's personal exercise library (built-in starters + custom entries)
+export const workoutExercises = mysqlTable("workout_exercises", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  muscleGroup: varchar("muscle_group", { length: 80 }).notNull().default("Full Body"),
+  sets: int("sets").notNull().default(3),
+  reps: varchar("reps", { length: 30 }).notNull().default("10"),  // e.g. "10", "8-12", "60s"
+  notes: text("notes"),
+  isCustom: boolean("is_custom").notNull().default(false),
+  dayOfWeek: mysqlEnum("day_of_week", ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]),
+  sortOrder: int("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type WorkoutExercise = typeof workoutExercises.$inferSelect;
+export type InsertWorkoutExercise = typeof workoutExercises.$inferInsert;
+
+// Log of completed sets per exercise
+export const workoutLogs = mysqlTable("workout_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  exerciseId: int("exercise_id").notNull(),
+  setsCompleted: int("sets_completed").notNull().default(0),
+  repsActual: varchar("reps_actual", { length: 30 }),
+  weightLbs: double("weight_lbs"),
+  notes: text("notes"),
+  loggedAt: timestamp("logged_at").defaultNow().notNull(),
+});
+export type WorkoutLog = typeof workoutLogs.$inferSelect;

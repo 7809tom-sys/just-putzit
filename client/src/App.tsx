@@ -51,6 +51,7 @@ import LiveScores from "@/pages/LiveScores";
 import GymBuddy from "@/pages/GymBuddy";
 import GymPage from "@/pages/GymPage";
 import GymPitch from "@/pages/GymPitch";
+import MyWorkout from "@/pages/MyWorkout";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import Navbar from "@/components/Navbar";
@@ -125,6 +126,7 @@ function Router() {
         <Route path="/gym-buddy" component={GymBuddy} />
         <Route path="/gym-buddy/:gymId" component={GymPage} />
         <Route path="/gym-pitch" component={GymPitch} />
+        <Route path="/my-workout" component={MyWorkout} />
         <Route path="/sports/watch-party/:roomId" component={WatchParty} />
         <Route path="/family" component={Family} />
         <Route path="/trip-planner" component={TripPlanner} />
