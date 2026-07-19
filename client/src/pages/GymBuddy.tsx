@@ -225,30 +225,74 @@ export default function GymBuddy() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-orange-600 via-red-600 to-orange-800 px-4 pt-10 pb-8 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }} />
-        <div className="relative max-w-lg mx-auto text-center">
-          <div className="text-5xl mb-3">🏋️‍♂️</div>
-          <h1 className="text-3xl font-bold text-white mb-2">Gym Buddy</h1>
-          <p className="text-orange-100 text-sm leading-relaxed mb-6">
-            Find workout partners at your gym, schedule group sessions, and crush your fitness goals together.
+      {/* Hero — Sales-Ready */}
+      <div
+        className="relative overflow-hidden"
+        style={{ background: "linear-gradient(160deg, #1a0a00 0%, #7c1d00 40%, #c0390a 75%, #ff6b35 100%)" }}
+      >
+        {/* Decorative rings */}
+        <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full border-2 border-white/5" />
+        <div className="absolute -top-8 -right-8 w-48 h-48 rounded-full border border-white/8" />
+        <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full border border-white/5 -translate-x-1/2 translate-y-1/2" />
+
+        <div className="relative px-4 pt-10 pb-0 max-w-lg mx-auto">
+          {/* Eyebrow */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="bg-orange-400/30 text-orange-200 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-orange-400/30">
+              Just Putzit • Milwaukee &amp; Waukesha
+            </span>
+          </div>
+
+          {/* Main headline */}
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-none mb-3" style={{ letterSpacing: "-0.02em" }}>
+            Gym<br />
+            <span className="text-orange-300">Buddy.</span>
+          </h1>
+          <p className="text-white/75 text-base leading-relaxed mb-6 max-w-xs">
+            Find a real workout partner at your gym. Match by style, schedule sessions, and actually show up.
           </p>
-          <div className="flex gap-3 justify-center flex-wrap">
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white text-center">
-              <div className="text-xl font-bold">{gyms?.length ?? "—"}</div>
-              <div className="text-xs text-orange-100">Gyms</div>
+
+          {/* Value prop pills */}
+          <div className="flex flex-wrap gap-2 mb-7">
+            {[
+              { emoji: "🏋️", text: "Partner gyms" },
+              { emoji: "🤝", text: "Buddy matching" },
+              { emoji: "📅", text: "Group sessions" },
+              { emoji: "⚡", text: "Free to join" },
+            ].map(p => (
+              <span key={p.text} className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
+                {p.emoji} {p.text}
+              </span>
+            ))}
+          </div>
+
+          {/* CTA button */}
+          {!user && (
+            <Button
+              className="mb-8 bg-white text-orange-700 hover:bg-orange-50 font-bold text-sm px-6 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all active:scale-95"
+              onClick={() => navigate("/signup")}
+            >
+              Join Free →
+            </Button>
+          )}
+        </div>
+
+        {/* Stats bar */}
+        <div className="bg-black/30 backdrop-blur-sm mt-2">
+          <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-around gap-2">
+            <div className="text-center">
+              <div className="text-2xl font-extrabold text-white">{gyms?.length ?? 4}</div>
+              <div className="text-[11px] text-orange-200 font-medium uppercase tracking-wide">Partner Gyms</div>
             </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white text-center">
-              <div className="text-xl font-bold">{gyms?.reduce((sum, g) => sum + g.buddyCount, 0) ?? "—"}</div>
-              <div className="text-xs text-orange-100">Gym Buddies</div>
+            <div className="w-px h-8 bg-white/20" />
+            <div className="text-center">
+              <div className="text-2xl font-extrabold text-white">{gyms?.reduce((s, g) => s + g.buddyCount, 0) ?? 0}</div>
+              <div className="text-[11px] text-orange-200 font-medium uppercase tracking-wide">Gym Buddies</div>
             </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-white text-center">
-              <div className="text-xl font-bold">6</div>
-              <div className="text-xs text-orange-100">Workouts</div>
+            <div className="w-px h-8 bg-white/20" />
+            <div className="text-center">
+              <div className="text-2xl font-extrabold text-white">6</div>
+              <div className="text-[11px] text-orange-200 font-medium uppercase tracking-wide">Workouts</div>
             </div>
           </div>
         </div>

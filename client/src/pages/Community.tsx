@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, Plus, Search, BookOpen, Mountain, ChefHat, Music, Palette, Dumbbell, Globe, Gamepad2 } from "lucide-react";
+import { Users, Plus, Search, BookOpen, Mountain, ChefHat, Music, Palette, Dumbbell, Globe, Gamepad2, ChevronRight, Zap, Calendar } from "lucide-react";
+import { useLocation } from "wouter";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 
 const GROUP_CATEGORIES = [
@@ -41,6 +42,7 @@ export default function Community() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newGroup, setNewGroup] = useState({ name: "", description: "", category: "social", city: "" });
 
+  const [, navigate] = useLocation();
   const { data: groups, refetch } = trpc.community.getGroups.useQuery({
     // category filter not supported server-side yet, filter client-side
   });
@@ -180,6 +182,61 @@ export default function Community() {
             </button>
           ))}
         </div>
+
+        {/* Gym Buddy Feature Card — shown when Fitness is selected or always at top of All */}
+        {(selectedCategory === "fitness" || selectedCategory === "all") && (
+          <div
+            className="mb-6 rounded-2xl overflow-hidden cursor-pointer group"
+            onClick={() => navigate("/gym-buddy")}
+            style={{
+              background: "linear-gradient(135deg, #ff4500 0%, #ff6b35 40%, #ff8c42 100%)",
+              boxShadow: "0 8px 32px rgba(255,69,0,0.35)",
+            }}
+          >
+            <div className="p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  {/* Label */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[11px] font-bold text-white/70 uppercase tracking-widest">Just Putzit Feature</span>
+                  </div>
+                  {/* Headline */}
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight mb-1">
+                    🏋️ Gym Buddy
+                  </h2>
+                  <p className="text-white/85 text-sm sm:text-base mb-4 leading-relaxed">
+                    Find a workout partner at your gym. Match by workout style, schedule group sessions, and crush your fitness goals together.
+                  </p>
+                  {/* Value props */}
+                  <div className="flex flex-wrap gap-2 mb-5">
+                    {[
+                      { icon: <Dumbbell className="w-3.5 h-3.5" />, text: "Match by workout style" },
+                      { icon: <Calendar className="w-3.5 h-3.5" />, text: "Schedule sessions" },
+                      { icon: <Zap className="w-3.5 h-3.5" />, text: "Stay accountable" },
+                    ].map(vp => (
+                      <span key={vp.text} className="flex items-center gap-1.5 bg-white/20 text-white text-xs font-medium px-3 py-1.5 rounded-full">
+                        {vp.icon} {vp.text}
+                      </span>
+                    ))}
+                  </div>
+                  {/* CTA */}
+                  <button className="flex items-center gap-2 bg-white text-orange-600 font-bold text-sm px-5 py-2.5 rounded-full shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all active:scale-95">
+                    Find a Gym Buddy <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* Big emoji illustration */}
+                <div className="hidden sm:flex flex-col items-center justify-center flex-shrink-0 w-24 h-24 rounded-2xl bg-white/15 text-5xl">
+                  🏋️
+                </div>
+              </div>
+            </div>
+            {/* Bottom stats bar */}
+            <div className="bg-black/20 px-5 sm:px-6 py-2.5 flex items-center gap-4 text-white/80 text-xs font-medium">
+              <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Partner gyms in Milwaukee &amp; Waukesha</span>
+              <span className="hidden sm:flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Free to join</span>
+            </div>
+          </div>
+        )}
 
         {/* Groups Grid */}
         {filteredGroups.length === 0 ? (

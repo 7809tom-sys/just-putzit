@@ -731,3 +731,11 @@
 - [x] Add banner ad slot below Partner With Us section on GymBuddy.tsx hub
 - [x] Add banner ad slot between amenities and membership CTA on GymPage.tsx detail page
 - [x] Add Gym Buddy Hub and Gym Detail Pages options to Admin advertising panel page targeting
+
+## Gym Buddy — Sales-Ready Visibility Upgrade
+- [x] Add prominent Gym Buddy promo card to Community page Fitness section (full-width CTA card with hero image, value props, Find a Buddy button)
+- [ ] Add Gym Buddy as a pinnable module on the authenticated home feed
+- [x] Upgrade GymBuddy hub hero: bolder gradient, animated stats, clear 3-step value prop, partner gym logos
+- [x] Add dedicated /gym-pitch landing page (shareable URL for in-gym sales, gym-owner copy, QR-code-ready)
+- [x] Wire /gym-pitch route in App.tsx
+- [x] Save checkpoint and deliver

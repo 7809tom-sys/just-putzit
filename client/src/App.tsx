@@ -50,13 +50,14 @@ import WatchParty from "@/pages/WatchParty";
 import LiveScores from "@/pages/LiveScores";
 import GymBuddy from "@/pages/GymBuddy";
 import GymPage from "@/pages/GymPage";
+import GymPitch from "@/pages/GymPitch";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 
 // Routes that are allowed without account verification
-const PUBLIC_ROUTES = ["/login", "/signup", "/verify", "/verify-account", "/404", "/city/", "/events/", "/profile"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/verify", "/verify-account", "/404", "/city/", "/events/", "/profile", "/gym-pitch"];
 
 /**
  * Verification gate — runs on every navigation for logged-in users.
@@ -123,6 +124,7 @@ function Router() {
         <Route path="/sports/live-scores" component={LiveScores} />
         <Route path="/gym-buddy" component={GymBuddy} />
         <Route path="/gym-buddy/:gymId" component={GymPage} />
+        <Route path="/gym-pitch" component={GymPitch} />
         <Route path="/sports/watch-party/:roomId" component={WatchParty} />
         <Route path="/family" component={Family} />
         <Route path="/trip-planner" component={TripPlanner} />
