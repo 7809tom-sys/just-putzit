@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Phone, Globe, Users, Calendar, Dumbbell, CheckCircle, Plus, Clock, CalendarPlus } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Globe, Users, Calendar, Dumbbell, CheckCircle, Plus, Clock, CalendarPlus, Crown, Star, ExternalLink, Flag } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
@@ -287,6 +287,12 @@ export default function GymPage() {
     onSuccess: () => refetchSessions(),
     onError: (e: { message: string }) => toast.error(e.message),
   });
+  const claimGym = trpc.gym.claimGym.useMutation({
+    onSuccess: () => {
+      toast.success("Claim submitted! We'll review and contact you within 24 hours.");
+    },
+    onError: (e: { message: string }) => toast.error(e.message),
+  });
 
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showSessionDialog, setShowSessionDialog] = useState(false);
@@ -376,9 +382,12 @@ export default function GymPage() {
                 {gym.address ? `${gym.address}, ` : ""}{gym.city}, {gym.state}
               </p>
               <div className="flex gap-2 mt-2 flex-wrap">
-                {gym.isPartner && (
-                  <Badge className="bg-white/20 text-white border-white/30 text-xs">⭐ Partner Gym</Badge>
-                )}
+                {gym.isPartner && (() => {
+                  const tier = gym.partnerTier ?? "basic";
+                  if (tier === "premium") return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/40 text-xs"><Crown className="w-3 h-3 mr-1" />🏆 Premium Partner</Badge>;
+                  if (tier === "featured") return <Badge className="bg-orange-400/20 text-orange-200 border-orange-400/40 text-xs"><Star className="w-3 h-3 mr-1" />⭐ Featured Partner</Badge>;
+                  return <Badge className="bg-white/20 text-white border-white/30 text-xs">✓ Partner Gym</Badge>;
+                })()}
                 <Badge className="bg-white/20 text-white border-white/30 text-xs">
                   <Users className="w-3 h-3 mr-1" />{(gym as typeof gym & { buddyCount?: number }).buddyCount ?? 0} buddies
                 </Badge>
@@ -401,8 +410,22 @@ export default function GymPage() {
             )}
             {gym.membershipUrl && (
               <a href={gym.membershipUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 bg-orange-400/80 text-white text-xs px-3 py-1.5 rounded-full hover:bg-orange-400">
-                Join Gym
+                <ExternalLink className="w-3 h-3" /> Join Gym
               </a>
+            )}
+            {!gym.claimedByUserId && user && (
+              <button
+                onClick={() => claimGym.mutate({ gymId: id })}
+                disabled={claimGym.isPending}
+                className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm text-white/80 text-xs px-3 py-1.5 rounded-full hover:bg-white/20 border border-white/20 disabled:opacity-50"
+              >
+                <Flag className="w-3 h-3" /> {claimGym.isPending ? "Submitting..." : "Claim This Gym"}
+              </button>
+            )}
+            {gym.claimedByUserId && (
+              <span className="flex items-center gap-1.5 bg-green-500/20 text-green-300 text-xs px-3 py-1.5 rounded-full border border-green-500/30">
+                <CheckCircle className="w-3 h-3" /> Claimed
+              </span>
             )}
           </div>
         </div>
@@ -418,6 +441,46 @@ export default function GymPage() {
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Membership Referral CTA */}
+      {gym.membershipUrl && (
+        <div className="px-4 max-w-lg mx-auto mb-2">
+          <Card className={`border-2 ${
+            gym.partnerTier === "premium"
+              ? "border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-amber-500/5"
+              : gym.partnerTier === "featured"
+              ? "border-orange-500/30 bg-gradient-to-br from-orange-500/8 to-transparent"
+              : "border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent"
+          }`}>
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="text-2xl flex-shrink-0">🏋️</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm mb-0.5">Join {gym.name}</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Sign up for a membership through Just Putzit and get instantly connected with gym buddies in your area.
+                    {gym.referralCode && (
+                      <span className="ml-1 font-medium text-orange-400">Use code: {gym.referralCode}</span>
+                    )}
+                  </p>
+                  <a
+                    href={gym.membershipUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg text-white ${
+                      gym.partnerTier === "premium"
+                        ? "bg-yellow-500 hover:bg-yellow-600"
+                        : "bg-orange-500 hover:bg-orange-600"
+                    }`}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Get Membership
+                  </a>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

@@ -20,6 +20,9 @@ export const gymRouter = router({
       ...g,
       amenities: g.amenities ? (JSON.parse(g.amenities) as string[]) : [],
       buddyCount: countMap.get(g.id) ?? 0,
+      partnerTier: g.partnerTier ?? "basic",
+      claimedByUserId: g.claimedByUserId ?? null,
+      referralCode: g.referralCode ?? null,
     }));
   }),
 
@@ -32,7 +35,13 @@ export const gymRouter = router({
       const rows = await db.select().from(gyms).where(eq(gyms.id, input.gymId)).limit(1);
       if (!rows.length) throw new TRPCError({ code: "NOT_FOUND", message: "Gym not found" });
       const gym = rows[0];
-      return { ...gym, amenities: gym.amenities ? (JSON.parse(gym.amenities) as string[]) : [] };
+      return {
+        ...gym,
+        amenities: gym.amenities ? (JSON.parse(gym.amenities) as string[]) : [],
+        partnerTier: gym.partnerTier ?? "basic",
+        claimedByUserId: gym.claimedByUserId ?? null,
+        referralCode: gym.referralCode ?? null,
+      };
     }),
 
   // Get buddy profile for current user at a gym
@@ -259,6 +268,24 @@ export const gymRouter = router({
       }
       await db.insert(gymSessionRsvps).values({ sessionId: input.sessionId, userId: ctx.user.id });
       return { joined: true };
+    }),
+
+  // Claim a gym (sets claimedByUserId to current user, pending admin approval)
+  claimGym: protectedProcedure
+    .input(z.object({ gymId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select({ id: gyms.id, claimedByUserId: gyms.claimedByUserId })
+        .from(gyms).where(eq(gyms.id, input.gymId)).limit(1);
+      if (!rows.length) throw new TRPCError({ code: "NOT_FOUND", message: "Gym not found" });
+      if (rows[0].claimedByUserId) {
+        throw new TRPCError({ code: "CONFLICT", message: "This gym has already been claimed" });
+      }
+      await db.update(gyms)
+        .set({ claimedByUserId: ctx.user.id })
+        .where(eq(gyms.id, input.gymId));
+      return { success: true };
     }),
 
   // Get my RSVPs

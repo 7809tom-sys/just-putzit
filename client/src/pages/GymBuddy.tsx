@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dumbbell, Users, Calendar, MapPin, Phone, ExternalLink, Star, ChevronRight, Trophy, Zap, Heart } from "lucide-react";
+import { Dumbbell, Users, Calendar, MapPin, Phone, ExternalLink, Star, ChevronRight, Trophy, Zap, Heart, Crown, Building2, Mail } from "lucide-react";
 
 // ─── Exercise Guide Data ──────────────────────────────────────────────────────
 const EXERCISES = [
@@ -66,23 +66,60 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   Advanced: "bg-red-500/20 text-red-400 border-red-500/30",
 };
 
+// ─── Partner Tier Config ──────────────────────────────────────────────────────
+const TIER_CONFIG: Record<string, { label: string; badge: string; badgeClass: string; icon: React.ReactNode }> = {
+  premium: {
+    label: "Premium Partner",
+    badge: "🏆 Premium",
+    badgeClass: "bg-yellow-500/20 text-yellow-400 border-yellow-500/40",
+    icon: <Crown className="w-3 h-3 mr-1" />,
+  },
+  featured: {
+    label: "Featured Partner",
+    badge: "⭐ Featured",
+    badgeClass: "bg-orange-500/20 text-orange-400 border-orange-500/40",
+    icon: <Star className="w-3 h-3 mr-1" />,
+  },
+  basic: {
+    label: "Partner Gym",
+    badge: "✓ Partner",
+    badgeClass: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    icon: null,
+  },
+};
+
 // ─── Gym Card ─────────────────────────────────────────────────────────────────
 function GymCard({ gym }: { gym: {
   id: number; name: string; address: string | null; city: string; state: string | null;
   phone: string | null; websiteUrl: string | null; membershipUrl: string | null;
   description: string | null; isPartner: boolean; buddyCount: number;
-  amenities: string[];
+  amenities: string[]; partnerTier?: string | null; referralCode?: string | null;
 }}) {
   const [, navigate] = useLocation();
+  const tier = gym.partnerTier ?? "basic";
+  const tierCfg = TIER_CONFIG[tier] ?? TIER_CONFIG.basic;
+
   return (
     <Card
-      className="cursor-pointer hover:border-orange-500/50 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/10 bg-card border-border"
+      className={`cursor-pointer transition-all duration-200 hover:shadow-lg bg-card border-border ${
+        tier === "premium"
+          ? "hover:border-yellow-500/50 hover:shadow-yellow-500/10"
+          : tier === "featured"
+          ? "hover:border-orange-500/50 hover:shadow-orange-500/10"
+          : "hover:border-blue-500/30 hover:shadow-blue-500/5"
+      }`}
       onClick={() => navigate(`/gym-buddy/${gym.id}`)}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-2xl shadow-lg">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-lg ${
+              tier === "premium"
+                ? "bg-gradient-to-br from-yellow-500 to-amber-600"
+                : tier === "featured"
+                ? "bg-gradient-to-br from-orange-500 to-red-600"
+                : "bg-gradient-to-br from-blue-500 to-indigo-600"
+            }`}>
               🏋️
             </div>
             <div>
@@ -95,8 +132,8 @@ function GymCard({ gym }: { gym: {
           </div>
           <div className="flex flex-col items-end gap-1.5">
             {gym.isPartner && (
-              <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-xs">
-                <Star className="w-3 h-3 mr-1" /> Partner
+              <Badge className={`text-xs ${tierCfg.badgeClass}`}>
+                {tierCfg.icon}{tierCfg.badge}
               </Badge>
             )}
             <Badge variant="outline" className="text-xs">
@@ -274,7 +311,7 @@ export default function GymBuddy() {
             {EXERCISES.map((ex) => <ExerciseCard key={ex.name} ex={ex} />)}
           </TabsContent>
 
-          {/* Membership Tab */}
+          {/* Membership / Join Tab */}
           <TabsContent value="membership">
             <div className="space-y-4">
               <Card className="border-orange-500/30 bg-gradient-to-br from-orange-500/10 to-red-500/5">
@@ -289,7 +326,7 @@ export default function GymBuddy() {
                       "No judgments — welcoming to all fitness levels",
                       "Group fitness classes included",
                       "Personal training available",
-                      "Tanning, sauna, smoothie bar",
+                      "Tanning, sauna, smoothie bar (select locations)",
                       "Referral incentives for Just Putzit members",
                     ].map((item) => (
                       <li key={item} className="flex items-start gap-2 text-sm">
@@ -321,6 +358,108 @@ export default function GymBuddy() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* ─── Partner With Us Section ──────────────────────────────────────── */}
+        <div className="mt-10 mb-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Building2 className="w-5 h-5 text-orange-400" />
+            <h2 className="text-lg font-bold">Partner With Us</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-5">
+            Is your gym in the Milwaukee/Waukesha area? List your facility on Just Putzit and connect with motivated members looking for a home gym.
+          </p>
+
+          {/* Tier cards */}
+          <div className="grid gap-3">
+            {/* Basic */}
+            <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-transparent">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">✓ Basic</Badge>
+                    </div>
+                    <p className="font-semibold text-sm">Gym Listing</p>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <li>✓ Gym profile page</li>
+                      <li>✓ Buddy matching for members</li>
+                      <li>✓ Group session scheduling</li>
+                    </ul>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xl font-bold text-blue-400">$49</p>
+                    <p className="text-xs text-muted-foreground">/month</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Featured */}
+            <Card className="border-orange-500/40 bg-gradient-to-br from-orange-500/10 to-transparent">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/40 text-xs">⭐ Featured</Badge>
+                      <span className="text-xs text-orange-400 font-medium">Most Popular</span>
+                    </div>
+                    <p className="font-semibold text-sm">Featured Placement</p>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <li>✓ Everything in Basic</li>
+                      <li>✓ Featured badge on gym card</li>
+                      <li>✓ Priority in search results</li>
+                      <li>✓ Membership referral tracking</li>
+                    </ul>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xl font-bold text-orange-400">$99</p>
+                    <p className="text-xs text-muted-foreground">/month</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Premium */}
+            <Card className="border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-amber-500/5">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/40 text-xs">🏆 Premium</Badge>
+                    </div>
+                    <p className="font-semibold text-sm">Premium Partner</p>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <li>✓ Everything in Featured</li>
+                      <li>✓ Gold badge + homepage spotlight</li>
+                      <li>✓ Dedicated referral code</li>
+                      <li>✓ Monthly analytics report</li>
+                      <li>✓ Push notifications to nearby users</li>
+                    </ul>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xl font-bold text-yellow-400">$199</p>
+                    <p className="text-xs text-muted-foreground">/month</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* CTA */}
+          <div className="mt-4 bg-card border border-border rounded-xl p-4 text-center">
+            <Mail className="w-8 h-8 text-orange-400 mx-auto mb-2" />
+            <p className="font-semibold text-sm mb-1">Ready to partner?</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              Reach out and we'll get your gym listed within 24 hours.
+            </p>
+            <Button
+              className="bg-orange-500 hover:bg-orange-600 text-white w-full"
+              onClick={() => window.open("mailto:gyms@justputzit.com?subject=Gym%20Partnership%20Inquiry", "_blank")}
+            >
+              <Mail className="w-4 h-4 mr-2" /> Contact Us to Partner
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

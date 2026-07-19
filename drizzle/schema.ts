@@ -1191,6 +1191,9 @@ export const gyms = mysqlTable("gyms", {
   membershipUrl: varchar("membership_url", { length: 500 }),
   phone: varchar("phone", { length: 30 }),
   isPartner: boolean("is_partner").notNull().default(false),
+  partnerTier: varchar("partner_tier", { length: 20 }).default("basic"), // basic | featured | premium
+  claimedByUserId: int("claimed_by_user_id"),
+  referralCode: varchar("referral_code", { length: 50 }),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

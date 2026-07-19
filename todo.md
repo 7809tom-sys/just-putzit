@@ -714,3 +714,12 @@
 - [x] Show stacked avatar row on each SessionCard with -space-x-2 overlap, colored circles, emoji, and name tooltip
 - [x] Show "+N more" overflow badge when more than 5 participants
 - [x] Show "X going" count next to avatars
+
+## Gym Buddy Revenue Layer
+- [x] Fix gym seed data — replace LA Fitness with Crunch Fitness Milwaukee/Waukesha locations
+- [x] Add partnerTier (basic/featured/premium), claimedByUserId, membershipUrl, referralCode columns to gyms table
+- [x] Add "Claim This Gym" button on gym pages for unclaimed gyms
+- [x] Add gym.claimGym tRPC procedure (sets claimedByUserId, pending admin approval)
+- [x] Add "Featured Partner" gold badge and highlighted card styling for partner gyms
+- [x] Add membership referral CTA with tracking link on each gym page
+- [x] Show partnership pricing tiers on GymBuddy.tsx landing page (Basic $49/mo, Featured $99/mo, Premium $199/mo)
