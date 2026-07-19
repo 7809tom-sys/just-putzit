@@ -684,3 +684,21 @@
 - [x] Show 🏅 team abbreviation badge next to username in each chat message
 - [x] Add flair picker inline in chat toolbar (shows both teams + Neutral, toggles open/closed)
 - [x] Flair persists per user per room; loads on room entry via getMyFlair query
+
+## Game Day Chat Fan List — DM & City Display
+- [ ] Update watchParty.getRoom SQL to also return gpsCity from user_profiles for each player
+- [ ] Show city next to each fan's name in the Fans sidebar card
+- [ ] Add a "Message" button on each fan pill (hidden for own user)
+- [ ] Clicking Message navigates to /chat/:userId (existing DM chat) or creates a new match/DM thread
+- [ ] Show city in chat message header tooltip (hover over username shows "📍 City")
+
+## Gym Buddy Feature
+- [x] Schema: gyms, gym_buddy_profiles, gym_sessions, gym_session_rsvps tables created
+- [x] Apply DB migrations via webdev_execute_sql
+- [x] Backend: gym.listGyms, getGym, getMyBuddyProfile, saveBuddyProfile, findBuddies, listSessions, createSession, rsvpSession, getMyRsvps procedures
+- [x] Frontend: GymBuddy.tsx hub page — gym cards with buddy counts, workout-style matching, exercise guide
+- [x] Frontend: GymPage.tsx gym-specific page — gym info, buddy list, group session scheduler, profile editor
+- [x] Seed Crunch Fitness (4 Milwaukee/Waukesha locations) with amenities and partner status
+- [x] Exercise guide: Squats, Push-Ups, Planks, Lunges, Overhead Press, Glute Bridges with how-to and benefits
+- [x] Wire /gym-buddy and /gym-buddy/:gymId routes in App.tsx
+- [x] Save checkpoint and deliver

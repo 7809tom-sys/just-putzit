@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   date,
   double,
@@ -1174,3 +1175,60 @@ export const userHomepageLayout = mysqlTable("user_homepage_layout", {
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 export type UserHomepageLayout = typeof userHomepageLayout.$inferSelect;
+
+// ─── Gym Buddy Feature ────────────────────────────────────────────────────────
+export const gyms = mysqlTable("gyms", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  address: varchar("address", { length: 200 }),
+  city: varchar("city", { length: 100 }).notNull().default("Milwaukee"),
+  state: varchar("state", { length: 50 }).default("WI"),
+  lat: varchar("lat", { length: 20 }),
+  lng: varchar("lng", { length: 20 }),
+  amenities: text("amenities"), // JSON array of strings
+  logoUrl: varchar("logo_url", { length: 500 }),
+  websiteUrl: varchar("website_url", { length: 500 }),
+  membershipUrl: varchar("membership_url", { length: 500 }),
+  phone: varchar("phone", { length: 30 }),
+  isPartner: boolean("is_partner").notNull().default(false),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type Gym = typeof gyms.$inferSelect;
+
+export const gymBuddyProfiles = mysqlTable("gym_buddy_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  gymId: int("gym_id").notNull(),
+  workoutStyles: text("workout_styles").notNull().default("[]"), // JSON: ["cardio","lifting","yoga",...]
+  schedule: text("schedule").notNull().default("[]"), // JSON: ["Mon morning","Wed evening",...]
+  fitnessLevel: varchar("fitness_level", { length: 30 }).default("intermediate"),
+  goals: text("goals"),
+  bio: text("bio"),
+  isVerified: boolean("is_verified").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type GymBuddyProfile = typeof gymBuddyProfiles.$inferSelect;
+
+export const gymSessions = mysqlTable("gym_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  gymId: int("gym_id").notNull(),
+  hostUserId: int("host_user_id").notNull(),
+  title: varchar("title", { length: 150 }).notNull(),
+  workoutType: varchar("workout_type", { length: 80 }),
+  scheduledAt: bigint("scheduled_at", { mode: "number" }).notNull(),
+  durationMinutes: int("duration_minutes").default(60),
+  maxParticipants: int("max_participants").default(6),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type GymSession = typeof gymSessions.$inferSelect;
+
+export const gymSessionRsvps = mysqlTable("gym_session_rsvps", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("session_id").notNull(),
+  userId: int("user_id").notNull(),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+export type GymSessionRsvp = typeof gymSessionRsvps.$inferSelect;

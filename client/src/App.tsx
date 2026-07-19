@@ -48,6 +48,8 @@ import Bullgerdash from "@/pages/Bullgerdash";
 import Sports from "@/pages/Sports";
 import WatchParty from "@/pages/WatchParty";
 import LiveScores from "@/pages/LiveScores";
+import GymBuddy from "@/pages/GymBuddy";
+import GymPage from "@/pages/GymPage";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import Navbar from "@/components/Navbar";
@@ -119,6 +121,8 @@ function Router() {
         <Route path="/games-hub/:gameId" component={GamesHub} />
         <Route path="/sports" component={Sports} />
         <Route path="/sports/live-scores" component={LiveScores} />
+        <Route path="/gym-buddy" component={GymBuddy} />
+        <Route path="/gym-buddy/:gymId" component={GymPage} />
         <Route path="/sports/watch-party/:roomId" component={WatchParty} />
         <Route path="/family" component={Family} />
         <Route path="/trip-planner" component={TripPlanner} />
