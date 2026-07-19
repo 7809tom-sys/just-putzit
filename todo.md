@@ -702,3 +702,9 @@
 - [x] Exercise guide: Squats, Push-Ups, Planks, Lunges, Overhead Press, Glute Bridges with how-to and benefits
 - [x] Wire /gym-buddy and /gym-buddy/:gymId routes in App.tsx
 - [x] Save checkpoint and deliver
+
+## Add to Calendar — Gym Sessions
+- [x] Add addToCalendar utility function (generates Google Calendar, Apple/ICS, and Outlook links)
+- [x] Add "Add to Calendar" dropdown button (CalendarPlus icon) to each session card in GymPage.tsx
+- [x] Support Google Calendar (URL), Apple Calendar (.ics download), Outlook (URL)
+- [x] Pre-fill event title ("Session @ Gym"), location (gym address), start/end time (+1hr), and description

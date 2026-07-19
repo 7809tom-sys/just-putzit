@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Phone, Globe, Users, Calendar, Dumbbell, CheckCircle, Plus, Clock } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Globe, Users, Calendar, Dumbbell, CheckCircle, Plus, Clock, CalendarPlus } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 const WORKOUT_STYLES = [
@@ -104,7 +105,47 @@ function BuddyCard({ buddy, onMessage }: {
   );
 }
 
-function SessionCard({ session, onRsvp, myRsvps }: {
+function addToCalendar(type: "google" | "apple" | "outlook", session: {
+  title: string; scheduledAt: string; description: string | null;
+}, gymName: string, gymAddress: string) {
+  const start = new Date(session.scheduledAt);
+  const end = new Date(start.getTime() + 60 * 60 * 1000); // 1 hour default
+  const title = encodeURIComponent(`${session.title} @ ${gymName}`);
+  const details = encodeURIComponent(session.description || `Group workout at ${gymName}`);
+  const location = encodeURIComponent(gymAddress);
+
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+  if (type === "google") {
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}&location=${location}`;
+    window.open(url, "_blank");
+  } else if (type === "outlook") {
+    const url = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${start.toISOString()}&enddt=${end.toISOString()}&body=${details}&location=${location}`;
+    window.open(url, "_blank");
+  } else {
+    // Apple Calendar via .ics download
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      `DTSTART:${fmt(start)}`,
+      `DTEND:${fmt(end)}`,
+      `SUMMARY:${decodeURIComponent(title)}`,
+      `DESCRIPTION:${decodeURIComponent(details)}`,
+      `LOCATION:${decodeURIComponent(location)}`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const blob = new Blob([ics], { type: "text/calendar" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${session.title.replace(/\s+/g, "-")}.ics`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+}
+
+function SessionCard({ session, onRsvp, myRsvps, gymName, gymAddress }: {
   session: {
     id: number; title: string; description: string | null; workoutType: string;
     scheduledAt: string; maxParticipants: number | null; rsvpCount: number;
@@ -112,6 +153,8 @@ function SessionCard({ session, onRsvp, myRsvps }: {
   };
   onRsvp: (sessionId: number) => void;
   myRsvps: number[];
+  gymName: string;
+  gymAddress: string;
 }) {
   const isRsvped = myRsvps.includes(session.id);
   const date = new Date(session.scheduledAt);
@@ -157,17 +200,37 @@ function SessionCard({ session, onRsvp, myRsvps }: {
               </div>
             )}
           </div>
-          <Button
-            size="sm"
-            variant={isRsvped ? "default" : "outline"}
-            className={isRsvped
-              ? "bg-orange-500 hover:bg-orange-600 text-white flex-shrink-0"
-              : "border-orange-500/30 text-orange-400 hover:bg-orange-500/10 flex-shrink-0"}
-            disabled={isFull && !isRsvped}
-            onClick={() => onRsvp(session.id)}
-          >
-            {isRsvped ? "✓ Joined" : isFull ? "Full" : "Join"}
-          </Button>
+          <div className="flex flex-col gap-1.5 flex-shrink-0">
+            <Button
+              size="sm"
+              variant={isRsvped ? "default" : "outline"}
+              className={isRsvped
+                ? "bg-orange-500 hover:bg-orange-600 text-white"
+                : "border-orange-500/30 text-orange-400 hover:bg-orange-500/10"}
+              disabled={isFull && !isRsvped}
+              onClick={() => onRsvp(session.id)}
+            >
+              {isRsvped ? "✓ Joined" : isFull ? "Full" : "Join"}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-orange-400 px-2">
+                  <CalendarPlus className="w-3.5 h-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={() => addToCalendar("google", session, gymName, gymAddress)}>
+                  📅 Google Calendar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addToCalendar("apple", session, gymName, gymAddress)}>
+                  🍎 Apple Calendar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addToCalendar("outlook", session, gymName, gymAddress)}>
+                  📧 Outlook
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -408,7 +471,7 @@ export default function GymPage() {
               </div>
             ) : sessions && sessions.length > 0 ? (
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (sessions as any[]).map((s: any) => <SessionCard key={s.id} session={s} onRsvp={handleRsvp} myRsvps={myRsvps as number[]} />)
+              (sessions as any[]).map((s: any) => <SessionCard key={s.id} session={s} onRsvp={handleRsvp} myRsvps={myRsvps as number[]} gymName={gym.name} gymAddress={gym.address ? `${gym.address}, ${gym.city}, ${gym.state}` : `${gym.city}, ${gym.state}`} />)
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
