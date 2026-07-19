@@ -89,6 +89,34 @@ const TIER_CONFIG: Record<string, { label: string; badge: string; badgeClass: st
   },
 };
 
+// ─── Tier accent colours ─────────────────────────────────────────────────────
+const TIER_ACCENT = {
+  premium: {
+    bar: "bg-gradient-to-b from-yellow-400 to-amber-500",
+    glow: "hover:shadow-[0_8px_32px_rgba(234,179,8,0.22)]",
+    border: "hover:border-yellow-400/60",
+    icon: "bg-gradient-to-br from-yellow-400 to-amber-600",
+    cta: "text-yellow-400 group-hover:text-yellow-300",
+    pill: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  },
+  featured: {
+    bar: "bg-gradient-to-b from-orange-400 to-red-500",
+    glow: "hover:shadow-[0_8px_32px_rgba(249,115,22,0.22)]",
+    border: "hover:border-orange-400/60",
+    icon: "bg-gradient-to-br from-orange-400 to-red-600",
+    cta: "text-orange-400 group-hover:text-orange-300",
+    pill: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  },
+  basic: {
+    bar: "bg-gradient-to-b from-blue-400 to-indigo-500",
+    glow: "hover:shadow-[0_8px_32px_rgba(59,130,246,0.15)]",
+    border: "hover:border-blue-400/40",
+    icon: "bg-gradient-to-br from-blue-400 to-indigo-600",
+    cta: "text-blue-400 group-hover:text-blue-300",
+    pill: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  },
+} as const;
+
 // ─── Gym Card ─────────────────────────────────────────────────────────────────
 function GymCard({ gym }: { gym: {
   id: number; name: string; address: string | null; city: string; state: string | null;
@@ -97,84 +125,93 @@ function GymCard({ gym }: { gym: {
   amenities: string[]; partnerTier?: string | null; referralCode?: string | null;
 }}) {
   const [, navigate] = useLocation();
-  const tier = gym.partnerTier ?? "basic";
+  const tier = (gym.partnerTier ?? "basic") as keyof typeof TIER_ACCENT;
   const tierCfg = TIER_CONFIG[tier] ?? TIER_CONFIG.basic;
+  const accent = TIER_ACCENT[tier] ?? TIER_ACCENT.basic;
 
   return (
-    <Card
-      className={`cursor-pointer transition-all duration-200 hover:shadow-lg bg-card border-border ${
-        tier === "premium"
-          ? "hover:border-yellow-500/50 hover:shadow-yellow-500/10"
-          : tier === "featured"
-          ? "hover:border-orange-500/50 hover:shadow-orange-500/10"
-          : "hover:border-blue-500/30 hover:shadow-blue-500/5"
-      }`}
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => navigate(`/gym-buddy/${gym.id}`)}
+      onKeyDown={(e) => e.key === "Enter" && navigate(`/gym-buddy/${gym.id}`)}
+      className={`group relative flex overflow-hidden rounded-2xl border border-border bg-card cursor-pointer
+        transition-all duration-[220ms] ease-[cubic-bezier(0.23,1,0.32,1)]
+        hover:-translate-y-1 active:translate-y-0 active:scale-[0.99]
+        ${accent.glow} ${accent.border}`}
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-lg ${
-              tier === "premium"
-                ? "bg-gradient-to-br from-yellow-500 to-amber-600"
-                : tier === "featured"
-                ? "bg-gradient-to-br from-orange-500 to-red-600"
-                : "bg-gradient-to-br from-blue-500 to-indigo-600"
-            }`}>
-              🏋️
-            </div>
-            <div>
-              <CardTitle className="text-base leading-tight">{gym.name}</CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                {gym.address ? `${gym.address}, ` : ""}{gym.city}, {gym.state}
-              </p>
-            </div>
+      {/* Tier accent bar — left edge */}
+      <div className={`w-1 flex-shrink-0 ${accent.bar}`} />
+
+      <div className="flex-1 p-4">
+        {/* Top row: icon + name + badges */}
+        <div className="flex items-start gap-3 mb-3">
+          {/* Gym icon */}
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 shadow-md ${accent.icon}
+            transition-transform duration-[220ms] group-hover:scale-110`}>
+            🏋️
           </div>
-          <div className="flex flex-col items-end gap-1.5">
-            {gym.isPartner && (
-              <Badge className={`text-xs ${tierCfg.badgeClass}`}>
-                {tierCfg.icon}{tierCfg.badge}
-              </Badge>
-            )}
-            <Badge variant="outline" className="text-xs">
-              <Users className="w-3 h-3 mr-1" />
-              {gym.buddyCount} {gym.buddyCount === 1 ? "buddy" : "buddies"}
+
+          {/* Name + location */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-[15px] leading-snug text-foreground truncate">{gym.name}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 truncate">
+              <MapPin className="w-3 h-3 flex-shrink-0" />
+              {gym.address ? `${gym.address}, ` : ""}{gym.city}{gym.state ? `, ${gym.state}` : ""}
+            </p>
+          </div>
+
+          {/* Partner badge */}
+          {gym.isPartner && (
+            <Badge className={`text-[11px] flex-shrink-0 font-semibold ${tierCfg.badgeClass}`}>
+              {tierCfg.badge}
             </Badge>
-          </div>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="pt-0">
+
+        {/* Description */}
         {gym.description && (
-          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{gym.description}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-3 line-clamp-2">{gym.description}</p>
         )}
+
+        {/* Amenity pills */}
         {gym.amenities.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
-            {gym.amenities.slice(0, 5).map((a) => (
-              <span key={a} className="text-xs bg-muted/50 text-muted-foreground px-2 py-0.5 rounded-full border border-border">
+            {gym.amenities.slice(0, 4).map((a) => (
+              <span key={a} className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${accent.pill}`}>
                 {a}
               </span>
             ))}
-            {gym.amenities.length > 5 && (
-              <span className="text-xs text-muted-foreground">+{gym.amenities.length - 5} more</span>
+            {gym.amenities.length > 4 && (
+              <span className="text-[11px] text-muted-foreground px-2 py-0.5">+{gym.amenities.length - 4} more</span>
             )}
           </div>
         )}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
+
+        {/* Footer: phone + buddy count + CTA */}
+        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+          <div className="flex items-center gap-3">
             {gym.phone && (
-              <a href={`tel:${gym.phone}`} onClick={(e) => e.stopPropagation()}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <a
+                href={`tel:${gym.phone}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              >
                 <Phone className="w-3 h-3" /> {gym.phone}
               </a>
             )}
+            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <Users className="w-3 h-3" />
+              {gym.buddyCount} {gym.buddyCount === 1 ? "buddy" : "buddies"}
+            </span>
           </div>
-          <Button size="sm" variant="ghost" className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 -mr-2">
-            Find Buddies <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
+          <span className={`text-xs font-semibold flex items-center gap-1 transition-all duration-200 ${accent.cta}`}>
+            Find Buddies
+            <ChevronRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+          </span>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -299,20 +336,30 @@ export default function GymBuddy() {
       </div>
 
       {/* How it works */}
-      <div className="px-4 py-6 max-w-lg mx-auto">
-        <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-orange-400" /> How It Works
-        </h2>
+      <div className="px-4 pt-7 pb-2 max-w-lg mx-auto">
+        <div className="flex items-center gap-2 mb-5">
+          <Zap className="w-4 h-4 text-orange-400" />
+          <h2 className="text-sm font-bold uppercase tracking-widest text-orange-400">How It Works</h2>
+        </div>
         <div className="grid grid-cols-3 gap-3 mb-6">
           {[
-            { icon: "🏋️", title: "Pick Your Gym", desc: "Select from partner gyms in your area" },
-            { icon: "💪", title: "Set Your Style", desc: "Cardio, lifting, yoga — tell us your vibe" },
-            { icon: "🤝", title: "Find Buddies", desc: "Get matched with compatible workout partners" },
+            { num: "1", icon: "🏋️", title: "Pick Your Gym", desc: "Select from partner gyms in your area" },
+            { num: "2", icon: "💪", title: "Set Your Style", desc: "Cardio, lifting, yoga — tell us your vibe" },
+            { num: "3", icon: "🤝", title: "Find Buddies", desc: "Get matched with compatible workout partners" },
           ].map((step) => (
-            <div key={step.title} className="bg-card border border-border rounded-xl p-3 text-center">
-              <div className="text-2xl mb-1">{step.icon}</div>
-              <div className="text-xs font-semibold mb-1">{step.title}</div>
-              <div className="text-xs text-muted-foreground leading-tight">{step.desc}</div>
+            <div
+              key={step.title}
+              className="relative bg-card border border-border rounded-2xl p-3 text-center
+                hover:border-orange-500/30 hover:shadow-[0_4px_16px_rgba(249,115,22,0.1)]
+                transition-all duration-200"
+            >
+              {/* Step number */}
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
+                {step.num}
+              </span>
+              <div className="text-2xl mt-1 mb-1.5">{step.icon}</div>
+              <div className="text-xs font-bold mb-1 text-foreground">{step.title}</div>
+              <div className="text-[11px] text-muted-foreground leading-tight">{step.desc}</div>
             </div>
           ))}
         </div>
