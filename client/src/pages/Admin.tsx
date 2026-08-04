@@ -491,7 +491,7 @@ export default function Admin() {
 
   const refreshEventsMutation = trpc.safety.refreshEvents.useMutation({
     onSuccess: () => toast.success("Event refresh started — new events will appear within a minute"),
-    onError: () => toast.error("Failed to start event refresh"),
+    onError: (err) => toast.error(`Refresh failed: ${err.message}`),
   });
 
   // ── Access guard ────────────────────────────────────────────────────────────

@@ -760,3 +760,30 @@
 - [ ] Wire city filter into Activities page — default to user's detected city
 - [ ] Home feed shows city-relevant events module
 - [ ] Admin panel shows event source (crawled vs user-posted)
+
+## Comprehensive Real-Event Discovery System
+
+### Phase 1: Real Library & Venue Events (In Progress)
+- [x] Add Waukesha Public Library events from Google Business Profile (5 events live)
+- [ ] Build Google Places API crawler for libraries, museums, theaters in each city
+- [ ] Integrate GBP crawler into daily midnight refresh heartbeat
+- [ ] Add Milwaukee Public Library events via GBP crawler
+- [ ] Add Chicago museum events via GBP crawler
+
+### Phase 2: Multi-Source Integration (Planned)
+- [ ] Eventbrite event crawler for community events
+- [ ] Meetup.com group events crawler
+- [ ] Facebook Events crawler for local community pages
+- [ ] Ticketmaster integration for concerts and sports
+
+### Phase 3: Admin Controls (Planned)
+- [ ] Admin dashboard: toggle event sources per city
+- [ ] Source health monitoring (last crawl time, event count, error logs)
+- [ ] Manual source refresh button per source
+- [ ] Event deduplication and conflict resolution
+
+### Phase 4: User Discovery (Planned)
+- [ ] "Trending Events" widget on home feed
+- [ ] Event recommendations based on user interests
+- [ ] Event calendar view with filtering
+- [ ] Save/bookmark events feature
