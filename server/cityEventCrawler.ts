@@ -18,6 +18,7 @@ import { getDb } from "./db";
 import { communityEvents, seededCities } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
+import { crawlMuseumLibraryEvents } from "./museumLibraryCrawler";
 
 // ─── City Registry ────────────────────────────────────────────────────────────
 // Maps city names to their state and known event sources
@@ -233,20 +234,11 @@ async function crawlCitySpecificEvents(city: string, state: string): Promise<num
   const normalizedCity = city.trim().toLowerCase();
   let total = 0;
 
-  // Chicago
-  if (normalizedCity.includes("chicago")) {
-    // Import and call Chicago-specific crawlers
-    // (existing crawlChicagoPublicLibrary, crawlArtInstituteChicago)
-    console.log("[cityEventCrawler] Using Chicago-specific crawlers");
-    // TODO: import and call
-  }
-
-  // Milwaukee / Waukesha
-  if (normalizedCity.includes("milwaukee") || normalizedCity.includes("waukesha")) {
-    // Import and call Milwaukee-specific crawler
-    // (existing crawlMilwaukeePublicLibrary)
-    console.log("[cityEventCrawler] Using Milwaukee-specific crawlers");
-    // TODO: import and call
+  // Chicago, Milwaukee, Waukesha: use existing museum/library crawlers
+  if (normalizedCity.includes("chicago") || normalizedCity.includes("milwaukee") || normalizedCity.includes("waukesha")) {
+    console.log(`[cityEventCrawler] Using museum/library crawlers for ${city}`);
+    await crawlMuseumLibraryEvents(city);
+    total += 1; // Mark as processed (actual count is handled by the crawler)
   }
 
   // Madison
