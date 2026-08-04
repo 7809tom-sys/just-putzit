@@ -705,6 +705,17 @@ function LandingPage() {
           </Button>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border bg-muted/30 py-8">
+        <div className="container flex items-center justify-between text-sm text-muted-foreground">
+          <p>&copy; 2026 Just Putzit. All rights reserved.</p>
+          <div className="flex gap-6">
+            <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
+            <a href="/safety" className="hover:text-foreground transition-colors">Safety &amp; Trust</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

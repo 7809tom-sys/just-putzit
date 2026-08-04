@@ -270,6 +270,11 @@ export default function Navbar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/privacy" className="text-xs text-muted-foreground">
+                  Privacy Policy
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={logout} className="text-destructive">
                 Sign Out
               </DropdownMenuItem>

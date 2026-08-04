@@ -52,13 +52,14 @@ import GymBuddy from "@/pages/GymBuddy";
 import GymPage from "@/pages/GymPage";
 import GymPitch from "@/pages/GymPitch";
 import MyWorkout from "@/pages/MyWorkout";
+import Privacy from "@/pages/Privacy";
 import { FloatingInstallButton } from "@/components/FloatingInstallButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 
 // Routes that are allowed without account verification
-const PUBLIC_ROUTES = ["/login", "/signup", "/verify", "/verify-account", "/404", "/city/", "/events/", "/profile", "/gym-pitch"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/verify", "/verify-account", "/404", "/city/", "/events/", "/profile", "/gym-pitch", "/privacy"];
 
 /**
  * Verification gate — runs on every navigation for logged-in users.
@@ -138,6 +139,7 @@ function Router() {
         <Route path="/advertise" component={AdvertiseWithUs} />
         <Route path="/admin/advertising" component={AdminAdvertising} />
         <Route path="/admin" component={Admin} />
+        <Route path="/privacy" component={Privacy} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
