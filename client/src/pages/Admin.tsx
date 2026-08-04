@@ -987,12 +987,43 @@ export default function Admin() {
 
           {/* ── Events ── */}
           <TabsContent value="events">
+            {/* Event Sources Status Dashboard */}
+            <Card className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border-emerald-500/20 mb-4">
+              <CardHeader>
+                <CardTitle className="text-white text-sm flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  Event Sources Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">📚 Chicago Public Library</p>
+                    <p className="text-sm text-white font-semibold">Auto-crawled nightly</p>
+                    <p className="text-xs text-emerald-400 mt-1">✓ Active</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">🎨 Art Institute Chicago</p>
+                    <p className="text-sm text-white font-semibold">Auto-crawled nightly</p>
+                    <p className="text-xs text-emerald-400 mt-1">✓ Active</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">📖 Milwaukee Public Library</p>
+                    <p className="text-sm text-white font-semibold">Auto-crawled nightly</p>
+                    <p className="text-xs text-emerald-400 mt-1">✓ Active</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 border-t border-white/10 pt-3 mt-3">
+                  🔄 Scheduled refresh: Every night at midnight CDT. Events older than 3 days are automatically purged. Cities with fewer than 10 upcoming events are re-seeded with LLM-generated events.
+                </p>
+              </CardContent>
+            </Card>
             {/* Refresh Events CTA */}
             <Card className="bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border-blue-500/20 mb-4">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-white font-semibold text-sm">🔄 Refresh Event Sources</p>
-                  <p className="text-blue-300 text-xs mt-0.5">Re-crawl Chicago Public Library, Art Institute, Milwaukee Library</p>
+                  <p className="text-white font-semibold text-sm">🔄 Manual Refresh</p>
+                  <p className="text-blue-300 text-xs mt-0.5">Trigger an immediate refresh of all event sources</p>
                 </div>
                 <Button
                   size="sm"

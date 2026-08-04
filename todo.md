@@ -763,23 +763,28 @@
 
 ## Comprehensive Real-Event Discovery System
 
-### Phase 1: Real Library & Venue Events (In Progress)
+### Phase 1: Real Library & Venue Events (Complete)
 - [x] Add Waukesha Public Library events from Google Business Profile (5 events live)
-- [ ] Build Google Places API crawler for libraries, museums, theaters in each city
-- [ ] Integrate GBP crawler into daily midnight refresh heartbeat
-- [ ] Add Milwaukee Public Library events via GBP crawler
-- [ ] Add Chicago museum events via GBP crawler
+- [x] Chicago Public Library API crawler (Socrata)
+- [x] Art Institute of Chicago API crawler
+- [x] Milwaukee Public Library API crawler (Communico)
+- [x] Integrate all crawlers into daily midnight refresh heartbeat
+- [x] Auto-purge events older than 3 days
+- [x] Auto-reseed cities with fewer than 10 upcoming events
+- [x] Add event source status dashboard to Admin panel
 
 ### Phase 2: Multi-Source Integration (Planned)
 - [ ] Eventbrite event crawler for community events
 - [ ] Meetup.com group events crawler
 - [ ] Facebook Events crawler for local community pages
 - [ ] Ticketmaster integration for concerts and sports
+- [ ] Google Business Profile crawler for all venue types
 
-### Phase 3: Admin Controls (Planned)
-- [ ] Admin dashboard: toggle event sources per city
+### Phase 3: Admin Controls (In Progress)
+- [x] Event source status dashboard in Admin panel
+- [x] Manual refresh button for all sources
+- [ ] Per-source refresh buttons
 - [ ] Source health monitoring (last crawl time, event count, error logs)
-- [ ] Manual source refresh button per source
 - [ ] Event deduplication and conflict resolution
 
 ### Phase 4: User Discovery (Planned)
