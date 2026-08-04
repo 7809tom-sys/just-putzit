@@ -8,6 +8,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { registerPhotoUploadRoutes } from "../photoUpload";
 import { registerSEORoutes } from "../seo";
 import { scrapeEventsHandler } from "../scheduledScrape";
+import { refreshEventsHandler } from "../handlers/refreshEvents";
 import { registerVoiceRoutes } from "../voiceUpload";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -45,6 +46,7 @@ async function startServer() {
   registerSEORoutes(app);
   // Scheduled jobs (Heartbeat cron callbacks)
   app.post("/api/scheduled/scrape-events", scrapeEventsHandler);
+  app.post("/api/scheduled/refresh-events", refreshEventsHandler);
   // tRPC API
   app.use(
     "/api/trpc",

@@ -14,6 +14,7 @@ import { sportsScoresRouter } from "./routers/sportsScores";
 import { gymRouter } from "./routers/gym";
 import { workoutRouter } from "./routers/workout";
 import { autoSeedCityEvents } from "./cityEventSeeder";
+import { crawlAllCities } from "./museumLibraryCrawler";
 import {
   getOrCreateProfile,
   updateProfile,
@@ -1270,6 +1271,13 @@ Return JSON with questions array, each having optionA and optionB.`,
     listUsersWithLocation: protectedProcedure.query(async ({ ctx }) => {
       if (ctx.user.role !== "admin") throw new Error("Forbidden");
       return getUsersWithGpsLocations();
+    }),
+
+    refreshEvents: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Forbidden");
+      // Fire-and-forget crawl — returns immediately so the UI isn't blocked
+      crawlAllCities().catch((e) => console.error("[admin.refreshEvents] crawl error:", e));
+      return { ok: true, message: "Event refresh started in background" };
     }),
   }),
 

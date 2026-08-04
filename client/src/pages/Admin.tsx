@@ -489,6 +489,11 @@ export default function Admin() {
     onError: () => toast.error("Failed to delete photo"),
   });
 
+  const refreshEventsMutation = trpc.safety.refreshEvents.useMutation({
+    onSuccess: () => toast.success("Event refresh started — new events will appear within a minute"),
+    onError: () => toast.error("Failed to start event refresh"),
+  });
+
   // ── Access guard ────────────────────────────────────────────────────────────
   if (user?.role !== "admin") {
     return (
@@ -982,6 +987,24 @@ export default function Admin() {
 
           {/* ── Events ── */}
           <TabsContent value="events">
+            {/* Refresh Events CTA */}
+            <Card className="bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border-blue-500/20 mb-4">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-white font-semibold text-sm">🔄 Refresh Event Sources</p>
+                  <p className="text-blue-300 text-xs mt-0.5">Re-crawl Chicago Public Library, Art Institute, Milwaukee Library</p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => refreshEventsMutation.mutate()}
+                  disabled={refreshEventsMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-500 text-white rounded-full gap-2"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${refreshEventsMutation.isPending ? "animate-spin" : ""}`} />
+                  {refreshEventsMutation.isPending ? "Refreshing..." : "Refresh Now"}
+                </Button>
+              </CardContent>
+            </Card>
             <Card className="bg-white/5 border-white/10">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
