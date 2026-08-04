@@ -88,9 +88,13 @@ interface EventCardProps {
   onRsvp?: (id: number) => void;
   rsvpLoading?: boolean;
   hasRsvped?: boolean;
+  interestedCount?: number;
+  isInterested?: boolean;
+  onToggleInterest?: (id: number) => void;
+  interestLoading?: boolean;
 }
 
-function EventCard({ event, onRsvp, rsvpLoading, hasRsvped }: EventCardProps) {
+function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0, isInterested = false, onToggleInterest, interestLoading }: EventCardProps) {
   const CatIcon = CATEGORIES.find((c) => c.value === event.category)?.icon ?? Star;
   const numericId = typeof event.id === "string" ? parseInt(event.id.replace("eb_", ""), 10) : event.id;
 
@@ -167,6 +171,20 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped }: EventCardProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
+          {onToggleInterest && typeof event.id === "number" ? (
+            <button
+              onClick={() => onToggleInterest(numericId)}
+              disabled={interestLoading}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                isInterested
+                  ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                  : "text-gray-400 hover:text-red-300 border border-white/10 hover:border-red-500/30 hover:bg-red-500/5"
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${isInterested ? "fill-red-300" : ""}`} />
+              {interestedCount > 0 && <span className="text-xs font-semibold">{interestedCount}</span>}
+            </button>
+          ) : null}
           {onRsvp && typeof event.id === "number" ? (
             <Button
               size="sm"
@@ -221,6 +239,7 @@ export default function Events() {
     }
   }, [detectedCity, city]);
   const [rsvpingId, setRsvpingId] = useState<number | null>(null);
+  const [interestingId, setInterestingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const activeCity = city ?? detectedCity;
@@ -241,9 +260,17 @@ export default function Events() {
     enabled: !!user,
   });
 
+  const { data: myInterests = [], refetch: refetchInterests } = trpc.events.myInterests.useQuery(undefined, {
+    enabled: !!user,
+  });
+
   const rsvpedIds = useMemo(() => {
     return new Set((myRsvps as Array<{ rsvp: { eventId: number } }>).map((r) => r.rsvp.eventId));
   }, [myRsvps]);
+
+  const interestedIds = useMemo(() => {
+    return new Map((myInterests as Array<{ interest: { eventId: number; status: string } }>).map((i) => [i.interest.eventId, i.interest.status]));
+  }, [myInterests]);
 
   const rsvpMutation = trpc.events.rsvp.useMutation({
     onSuccess: (data, variables) => {
@@ -268,6 +295,44 @@ export default function Events() {
     }
     setRsvpingId(eventId);
     rsvpMutation.mutate({ eventId });
+  }
+
+  const interestMutation = trpc.events.markInterest.useMutation({
+    onSuccess: () => {
+      toast.success("Added to your interests! 💜");
+      setInterestingId(null);
+      void refetchInterests();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Could not mark interest. Please try again.");
+      setInterestingId(null);
+    },
+  });
+
+  const removeInterestMutation = trpc.events.removeInterest.useMutation({
+    onSuccess: () => {
+      toast.success("Removed from your interests.");
+      setInterestingId(null);
+      void refetchInterests();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Could not remove interest. Please try again.");
+      setInterestingId(null);
+    },
+  });
+
+  function handleToggleInterest(eventId: number) {
+    if (!user) {
+      toast.error("Sign in to mark events as interested!");
+      return;
+    }
+    setInterestingId(eventId);
+    const isCurrentlyInterested = interestedIds.has(eventId);
+    if (isCurrentlyInterested) {
+      removeInterestMutation.mutate({ eventId });
+    } else {
+      interestMutation.mutate({ eventId, status: "interested" });
+    }
   }
 
   // Merge community + Eventbrite events, then apply search filter
@@ -469,6 +534,10 @@ export default function Events() {
                 onRsvp={user ? handleRsvp : undefined}
                 rsvpLoading={rsvpingId === event.id}
                 hasRsvped={rsvpedIds.has(event.id)}
+                onToggleInterest={user ? handleToggleInterest : undefined}
+                isInterested={interestedIds.has(event.id)}
+                interestLoading={interestingId === event.id}
+                interestedCount={0}
               />
             ))}
           </div>

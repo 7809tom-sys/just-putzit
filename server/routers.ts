@@ -183,6 +183,12 @@ import {
   getUsersWithGpsLocations,
   getHomepageLayout,
   saveHomepageLayout,
+  markEventInterest,
+  removeEventInterest,
+  getEventInterests,
+  getInterestedCount,
+  getUserEventInterests,
+  getMatchesInterestedInSameEvents,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, MatchGameQuestion as GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import { familyProfiles, communityEvents } from "../drizzle/schema";
@@ -2289,6 +2295,36 @@ Return JSON with questions array, each having optionA and optionB.`,
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         await toggleSponsoredEvent(input.eventId, input.isSponsored);
         return { success: true };
+      }),
+
+    markInterest: protectedProcedure
+      .input(z.object({ eventId: z.number().int(), status: z.enum(["interested", "going", "attended"]).default("interested") }))
+      .mutation(async ({ ctx, input }) => {
+        return markEventInterest(ctx.user.id, input.eventId, input.status);
+      }),
+
+    removeInterest: protectedProcedure
+      .input(z.object({ eventId: z.number().int() }))
+      .mutation(async ({ ctx, input }) => {
+        return removeEventInterest(ctx.user.id, input.eventId);
+      }),
+
+    getInterested: publicProcedure
+      .input(z.object({ eventId: z.number().int() }))
+      .query(async ({ input }) => {
+        const interests = await getEventInterests(input.eventId);
+        const count = await getInterestedCount(input.eventId);
+        return { interests, count };
+      }),
+
+    myInterests: protectedProcedure.query(async ({ ctx }) => {
+      return getUserEventInterests(ctx.user.id);
+    }),
+
+    matchesInterestedInSameEvent: protectedProcedure
+      .input(z.object({ eventId: z.number().int() }))
+      .query(async ({ ctx, input }) => {
+        return getMatchesInterestedInSameEvents(ctx.user.id, input.eventId);
       }),
   }),
 

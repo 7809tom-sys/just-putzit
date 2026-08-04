@@ -821,3 +821,47 @@
 - [ ] Test Lincoln NE: verify LLM seeds events, show real library events
 - [ ] Test Denver CO: verify city detection, event crawling
 - [ ] Test Seattle WA: verify city detection, event crawling
+
+## Phase 1: Event-Based Matching Integration
+
+### Core Infrastructure
+- [x] Add event_interests table to schema (userId, eventId, interestedAt, status: interested/going/attended)
+- [ ] Add eventInterestedCount to community_events (denormalized for query performance)
+- [x] Create tRPC procedures: markEventInterest, removeEventInterest, getEventInterests, getInterestedUsers
+- [x] Create tRPC procedure: getMatchesInterestedInSameEvents(eventId)
+
+### Events Page UX
+- [x] Add "Interested" button to each event card (heart icon with count)
+- [ ] Show "X people interested" count below event title
+- [x] Clicking button toggles interest + shows confirmation toast
+- [ ] Show list of interested users (avatars + names) when tapping count
+
+### Matching Flow Integration
+- [ ] Add event_interests to match card data (show if match is interested in upcoming events)
+- [ ] Show "Also interested in [Event]" badge on match cards
+- [ ] Highlight matches who are interested in same event this weekend
+- [ ] Add "Want to go to [Event] together?" quick action button
+
+### Proposal & Chat Flow
+- [ ] Add "Want to go together?" button to match card and chat header
+- [ ] Create proposal modal: select event + optional message
+- [ ] Send proposal as special message type in chat
+- [ ] Show proposal status in chat (pending / accepted / declined)
+- [ ] Accept proposal → auto-add to calendar + show "You're going together!"
+
+### Milwaukee Event Seeding
+- [ ] Seed Summerfest (multi-week festival, major anchor)
+- [ ] Seed Jazz in the Park (free recurring series)
+- [ ] Seed Chill on the Hill (free recurring series)
+- [ ] Seed Traveling Beer Gardens (seasonal)
+- [ ] Seed Gallery Night (recurring)
+- [ ] Seed Night Market (recurring)
+- [ ] Seed ethnic festivals (Irish Fest, Mexican Fiesta, German Fest, PrideFest)
+- [ ] Seed neighborhood events (Brady Street, Bay View, Riverwest, Third Ward)
+- [ ] Seed State Fair and holiday markets
+
+### Analytics & Insights
+- [ ] Track "Interested" events (for trending/popular events)
+- [ ] Track proposals sent/accepted (conversion metric)
+- [ ] Show "trending this weekend" on Events page
+

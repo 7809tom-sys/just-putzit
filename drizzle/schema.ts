@@ -1287,3 +1287,17 @@ export const cityEventSources = mysqlTable("city_event_sources", {
 
 export type CityEventSource = typeof cityEventSources.$inferSelect;
 export type InsertCityEventSource = typeof cityEventSources.$inferInsert;
+
+// ─── Event Interests ──────────────────────────────────────────────────────────
+// Track which users are interested in attending events
+export const eventInterests = mysqlTable("event_interests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  eventId: int("event_id").notNull(),
+  status: mysqlEnum("status", ["interested", "going", "attended"]).notNull().default("interested"),
+  interestedAt: timestamp("interested_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type EventInterest = typeof eventInterests.$inferSelect;
+export type InsertEventInterest = typeof eventInterests.$inferInsert;

@@ -29,6 +29,7 @@ import {
   wyrChallenges,
   communityEvents,
   eventRsvps,
+  eventInterests,
   passkeyCredentials,
   loginAds,
   profilePhotos,
@@ -2514,4 +2515,121 @@ export async function saveHomepageLayout(
       .values({ userId, moduleId: m.moduleId, position: m.position, pinned: m.pinned })
       .onDuplicateKeyUpdate({ set: { position: m.position, pinned: m.pinned } });
   }
+}
+
+
+// ─── Event Interests ──────────────────────────────────────────────────────────
+export async function markEventInterest(userId: number, eventId: number, status: "interested" | "going" | "attended" = "interested") {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  // Check for existing interest
+  const existing = await db
+    .select()
+    .from(eventInterests)
+    .where(and(eq(eventInterests.userId, userId), eq(eventInterests.eventId, eventId)))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    // Update existing interest
+    await db
+      .update(eventInterests)
+      .set({ status })
+      .where(and(eq(eventInterests.userId, userId), eq(eventInterests.eventId, eventId)));
+  } else {
+    // Insert new interest
+    await db.insert(eventInterests).values({ userId, eventId, status });
+  }
+  
+  return { success: true };
+}
+
+export async function removeEventInterest(userId: number, eventId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  
+  await db
+    .delete(eventInterests)
+    .where(and(eq(eventInterests.userId, userId), eq(eventInterests.eventId, eventId)));
+  
+  return { success: true };
+}
+
+export async function getEventInterests(eventId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db
+    .select({
+      interest: eventInterests,
+      user: {
+        id: users.id,
+        name: users.name,
+        displayName: userProfiles.displayName,
+        avatarEmoji: userProfiles.avatarEmoji,
+        avatarColor: userProfiles.avatarColor,
+      },
+    })
+    .from(eventInterests)
+    .innerJoin(users, eq(eventInterests.userId, users.id))
+    .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
+    .where(eq(eventInterests.eventId, eventId))
+    .orderBy(desc(eventInterests.interestedAt));
+}
+
+export async function getInterestedCount(eventId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  const result = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(eventInterests)
+    .where(eq(eventInterests.eventId, eventId));
+  
+  return result[0]?.count ?? 0;
+}
+
+export async function getUserEventInterests(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db
+    .select({
+      interest: eventInterests,
+      event: communityEvents,
+    })
+    .from(eventInterests)
+    .innerJoin(communityEvents, eq(eventInterests.eventId, communityEvents.id))
+    .where(eq(eventInterests.userId, userId))
+    .orderBy(desc(communityEvents.eventDate));
+}
+
+export async function getMatchesInterestedInSameEvents(userId: number, eventId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Get all users interested in this event
+  const interestedUsers = await db
+    .select({ userId: eventInterests.userId })
+    .from(eventInterests)
+    .where(eq(eventInterests.eventId, eventId));
+  
+  const interestedUserIds = interestedUsers.map(u => u.userId).filter(id => id !== userId);
+  
+  if (interestedUserIds.length === 0) return [];
+  
+  // Find matches for this user that are also interested
+  return db
+    .select({
+      match: matches,
+      profile: userProfiles,
+    })
+    .from(matches)
+    .innerJoin(userProfiles, eq(userProfiles.userId, matches.user2Id))
+    .where(
+      and(
+        eq(matches.user1Id, userId),
+        or(...interestedUserIds.map(id => eq(matches.user2Id, id)))
+      )
+    );
 }
