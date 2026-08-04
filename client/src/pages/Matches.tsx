@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Heart, MessageCircle, Gamepad2, Sparkles, Users, Shield } from "lucide-react";
+import { Heart, MessageCircle, Gamepad2, Sparkles, Users, Shield, Calendar } from "lucide-react";
 
 export default function Matches() {
   const [, navigate] = useLocation();
@@ -126,6 +126,14 @@ function MatchCard({ match, navigate }: { match: any; navigate: any }) {
       <Badge variant="outline" className="mb-4 text-xs capitalize rounded-full">
         {profile?.networkType === "singles" ? "💙" : profile?.networkType === "couples" ? "💚" : "🧡"} {profile?.networkType || "singles"} Network
       </Badge>
+
+      {/* Event interests badge (placeholder for Phase 3) */}
+      <div className="mb-4 text-xs text-gray-600">
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+          <Calendar className="w-3 h-3" />
+          Interested in events
+        </span>
+      </div>
 
       {/* Actions */}
       <div className="flex gap-2">
