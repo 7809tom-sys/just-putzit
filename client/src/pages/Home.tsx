@@ -2,13 +2,14 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Pin, PinOff, Settings2, X, Check, Radio, RotateCcw } from "lucide-react";
+import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Pin, PinOff, Settings2, X, Check, Radio, RotateCcw, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
+import { useUserCity } from "@/hooks/useUserCity";
 
 // ─── Module definitions ───────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ const ALL_MODULES: ModuleDef[] = [
   { id: "family",     label: "Family Connect",      emoji: "👨‍👩‍👧", description: "Meet families nearby",         defaultPinned: false, defaultPosition: 8 },
   { id: "trip",       label: "Trip Planner",        emoji: "✈️", description: "Plan adventures together",       defaultPinned: false, defaultPosition: 9 },
   { id: "shoutout",   label: "Shout Out",           emoji: "📣", description: "Refer friends & earn rewards",   defaultPinned: false, defaultPosition: 10 },
+  { id: "localevents",label: "Local Events",         emoji: "🏙️", description: "Museum, library & community events", defaultPinned: false, defaultPosition: 11 },
 ];
 
 interface ActiveModule {
@@ -247,6 +249,33 @@ function TripModule({ navigate }: { navigate: (p: string) => void }) {
   );
 }
 
+function LocalEventsModule({ navigate }: { navigate: (p: string) => void }) {
+  const { city } = useUserCity();
+  return (
+    <div
+      className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-3xl p-6 cursor-pointer card-hover"
+      onClick={() => navigate("/events")}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <MapPin className="w-3.5 h-3.5 text-white/70" />
+            <p className="text-white/80 text-sm font-medium">{city}</p>
+          </div>
+          <h2 className="font-display font-bold text-2xl text-white">Local Events</h2>
+          <p className="text-white/70 text-sm mt-1">Museums, libraries & community</p>
+        </div>
+        <div className="text-5xl">🏙️</div>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <Button size="sm" className="bg-white/20 hover:bg-white/30 text-white border-0 rounded-full gap-2">
+          <Calendar className="w-3.5 h-3.5" /> Browse Events
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ShoutoutModule({ navigate }: { navigate: (p: string) => void }) {
   return (
     <div
@@ -278,6 +307,7 @@ function renderModule(moduleId: string, navigate: (p: string) => void, profile: 
     case "family":      return <FamilyModule navigate={navigate} />;
     case "trip":        return <TripModule navigate={navigate} />;
     case "shoutout":    return <ShoutoutModule navigate={navigate} />;
+    case "localevents": return <LocalEventsModule navigate={navigate} />;
     default:            return null;
   }
 }

@@ -320,6 +320,27 @@ export const appRouter = router({
         return getProfileByUserId(ctx.user.id);
       }),
 
+    getMyProfile: protectedProcedure.query(async ({ ctx }) => {
+      return getOrCreateProfile(ctx.user.id);
+    }),
+
+    updateCity: protectedProcedure
+      .input(z.object({
+        city: z.string().min(1).max(100),
+        lat: z.string().optional(),
+        lng: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await getOrCreateProfile(ctx.user.id);
+        await updateProfile(ctx.user.id, {
+          city: input.city,
+          ...(input.lat ? { latitude: input.lat } : {}),
+          ...(input.lng ? { longitude: input.lng } : {}),
+        });
+        autoSeedCityEvents(input.city).catch(() => {});
+        return { success: true, city: input.city };
+      }),
+
     completeOnboarding: protectedProcedure
       .input(
         z.object({

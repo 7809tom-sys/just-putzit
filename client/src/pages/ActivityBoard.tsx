@@ -66,10 +66,12 @@ const SOURCE_META: Record<string, { label: string; colorClass: string; icon: str
   eventbrite: { label: "Eventbrite", colorClass: "bg-orange-100 text-orange-700", icon: "🎟️" },
   scraped: { label: "Local", colorClass: "bg-gray-100 text-gray-600", icon: "📍" },
   admin: { label: "Just Putzit", colorClass: "bg-primary/10 text-primary", icon: "✅" },
+  chicago_library: { label: "Chicago Public Library", colorClass: "bg-blue-100 text-blue-700", icon: "📚" },
+  chicago_museum: { label: "Art Institute of Chicago", colorClass: "bg-rose-100 text-rose-700", icon: "🎨" },
 };
 
 // Source groups for quick filtering
-const LIBRARY_SOURCES = ["milwaukee_library", "waukesha_library"];
+const LIBRARY_SOURCES = ["milwaukee_library", "waukesha_library", "chicago_library", "chicago_museum"];
 const NEWSPAPER_SOURCES = ["jsonline", "milwaukee_journal", "waukesha_freeman", "newspaper", "onmilwaukee"];
 const COLLEGE_SOURCES = ["uwm", "marquette", "college", "university"];
 const COMMUNITY_SOURCES = ["church", "senior_center", "youth_group", "neighborhood", "general", "community"];
@@ -699,6 +701,8 @@ export default function ActivityBoard() {
                     { icon: "📰", name: "OnMilwaukee", type: "News" },
                     { icon: "📰", name: "Milwaukee Journal Sentinel", type: "Newspaper" },
                     { icon: "📰", name: "Waukesha Freeman", type: "Newspaper" },
+                    { icon: "📚", name: "Chicago Public Library", type: "Library" },
+                    { icon: "🎨", name: "Art Institute of Chicago", type: "Museum" },
                   ].map((s, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5">

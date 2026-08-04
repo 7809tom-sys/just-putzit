@@ -747,3 +747,16 @@
 - [x] Create /my-workout page: weekly day filter tabs, starter exercises auto-seeded, Add Your Own dialog, Log Set button
 - [x] Wire /my-workout route in App.tsx
 - [x] Gym Buddy upsell card at bottom of workout page
+
+## Auto City Detection + Museum & Library Event Crawler
+- [ ] Add detectedCity / preferredCity field to user_profiles schema and apply migration
+- [ ] Build useUserCity hook: GPS first (navigator.geolocation), IP geolocation fallback (ipapi.co)
+- [ ] Persist detected city via tRPC profile.updateCity procedure
+- [ ] Show city badge in Navbar (e.g. "📍 Chicago") with tap-to-change
+- [ ] Build server-side museum/library event crawler (Chicago Cultural Center, Chicago Public Library, Field Museum, Art Institute, Milwaukee Public Library, Milwaukee Art Museum, Discovery World)
+- [ ] Crawler deduplicates by title+date before inserting into community_events
+- [ ] Crawled events auto-published (isApproved = true) with source tag
+- [ ] Wire city filter into Events page — default to user's detected city
+- [ ] Wire city filter into Activities page — default to user's detected city
+- [ ] Home feed shows city-relevant events module
+- [ ] Admin panel shows event source (crawled vs user-posted)

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import {
-  Calendar,
+import { Calendar,
   MapPin,
   Clock,
   Users,
@@ -24,6 +23,7 @@ import {
   CheckCircle2,
   Search,
 } from "lucide-react";
+import { useUserCity } from "@/hooks/useUserCity";
 
 const CATEGORIES = [
   { value: "all", label: "All Events", icon: Star },
@@ -35,7 +35,7 @@ const CATEGORIES = [
   { value: "community", label: "Community", icon: Heart },
 ];
 
-const CITIES = ["All Cities", "Milwaukee", "Waukesha"];
+const CITIES = ["All Cities", "Milwaukee", "Waukesha", "Chicago", "Brookfield", "West Allis", "Wauwatosa"];
 
 function formatDate(dateStr: string | Date) {
   const d = new Date(dateStr);
@@ -210,13 +210,21 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped }: EventCardProps) {
 
 export default function Events() {
   const { user } = useAuth();
+  const { city: detectedCity } = useUserCity();
   const [category, setCategory] = useState("all");
-  const [city, setCity] = useState("All Cities");
+  const [city, setCity] = useState<string | null>(null); // null = use detectedCity
   const [freeOnly, setFreeOnly] = useState(false);
+  // Auto-set city to detected city on first load
+  useEffect(() => {
+    if (city === null && detectedCity) {
+      setCity(detectedCity);
+    }
+  }, [detectedCity, city]);
   const [rsvpingId, setRsvpingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const cityFilter = city === "All Cities" ? undefined : city;
+  const activeCity = city ?? detectedCity;
+  const cityFilter = activeCity === "All Cities" ? undefined : activeCity;
 
   const { data: ebEvents = [] } = trpc.events.getEventbrite.useQuery(
     { city: cityFilter ?? "Milwaukee" },
@@ -369,7 +377,7 @@ export default function Events() {
                 key={c}
                 onClick={() => setCity(c)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  city === c
+                  activeCity === c
                     ? "bg-white/15 text-white"
                     : "text-gray-400 hover:text-white"
                 }`}

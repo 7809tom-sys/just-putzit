@@ -1,8 +1,9 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap, MapPin, Calendar, Popcorn, Megaphone, Trophy, Dumbbell } from "lucide-react";
+import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap, MapPin, Calendar, Popcorn, Megaphone, Trophy, Dumbbell, ChevronDown } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { useUserCity } from "@/hooks/useUserCity";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,6 +20,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const shouldHide = !user || HIDE_NAVBAR_ROUTES.some(r => location.startsWith(r));
+  const { city: detectedCity, setCity } = useUserCity();
   const { data: notifications } = trpc.notifications.getAll.useQuery(undefined, {
     enabled: !shouldHide,
     refetchInterval: 30000,
@@ -123,6 +125,29 @@ export default function Navbar() {
                   No notifications yet — Sally is working on your matches! 💛
                 </div>
               )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* City badge */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1 rounded-full text-xs text-muted-foreground hidden sm:flex">
+                <MapPin className="w-3.5 h-3.5 text-orange-500" />
+                <span className="max-w-[80px] truncate">{detectedCity}</span>
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <div className="px-3 py-1.5 text-xs text-muted-foreground font-medium border-b">Switch City</div>
+              {["Milwaukee", "Waukesha", "Chicago", "Brookfield", "West Allis", "Wauwatosa"].map(c => (
+                <DropdownMenuItem
+                  key={c}
+                  onClick={() => setCity(c)}
+                  className={detectedCity === c ? "font-semibold text-primary" : ""}
+                >
+                  {detectedCity === c && <span className="mr-1.5">✓</span>}{c}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 

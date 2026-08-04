@@ -16,6 +16,7 @@ import { getDb } from "./db";
 import { communityEvents, seededCities } from "../drizzle/schema";
 import { eq, count } from "drizzle-orm";
 import { ENV } from "./_core/env";
+import { crawlMuseumLibraryEvents } from "./museumLibraryCrawler";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -243,11 +244,13 @@ export async function autoSeedCityEvents(city: string, state = "WI"): Promise<vo
 
     console.log(`[cityEventSeeder] New city: ${normalizedCity}, ${state} — geocoding + generating events...`);
 
-    // Geocode and generate in parallel
+    // Geocode, generate LLM events, and crawl real museum/library events in parallel
     const [coords, events] = await Promise.all([
       geocodeCity(normalizedCity, state),
       generateEventsForCity(normalizedCity, state),
     ]);
+    // Also crawl real events from public APIs (fire-and-forget, non-blocking)
+    crawlMuseumLibraryEvents(normalizedCity).catch(() => {});
 
     if (coords) {
       console.log(`[cityEventSeeder] Geocoded ${normalizedCity}: ${coords.lat}, ${coords.lng}`);
