@@ -792,3 +792,32 @@
 - [ ] Event recommendations based on user interests
 - [ ] Event calendar view with filtering
 - [ ] Save/bookmark events feature
+
+## Geographic Expansion — Support Any US City
+
+### Phase 1: City-Agnostic Crawlers (Complete)
+- [x] Refactor museumLibraryCrawler to support generic city-based library/museum discovery (cityEventCrawler.ts created)
+- [x] Build Eventbrite city-based event crawler (any city)
+- [x] Build Meetup.com city-based group crawler (any city)
+- [x] Add Google Places API crawler for venues by city
+- [x] Support Madison WI library/museum events (fallback to Eventbrite + Meetup)
+- [x] Support Lincoln NE library/museum events (fallback to Eventbrite + Meetup)
+- [x] Support Denver CO, Seattle WA, Austin TX, Portland OR, etc. (generic crawlers ready)
+
+### Phase 2: City Registry & Admin Controls (Planned)
+- [ ] Extend seededCities table to include all US cities with geocoding
+- [ ] Admin panel: City management (add, enable/disable, configure sources per city)
+- [ ] Per-city event source configuration (which crawlers to run)
+- [ ] Per-city gym/venue discovery settings
+
+### Phase 3: Geographic Home Feed (Planned)
+- [ ] Home feed shows city-relevant gyms (if any nearby)
+- [ ] Home feed shows city-relevant events (library, museums, community)
+- [ ] Home feed shows city-relevant community groups
+- [ ] City badge always visible in navbar with one-tap city switcher
+
+### Phase 4: Testing & Validation (Planned)
+- [ ] Test Madison WI: verify LLM seeds events, show real library events
+- [ ] Test Lincoln NE: verify LLM seeds events, show real library events
+- [ ] Test Denver CO: verify city detection, event crawling
+- [ ] Test Seattle WA: verify city detection, event crawling

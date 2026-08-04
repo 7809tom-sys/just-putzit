@@ -17,7 +17,7 @@ import { sdk } from "../_core/sdk";
 import { getDb } from "../db";
 import { communityEvents, seededCities } from "../../drizzle/schema";
 import { lt, gte, eq, count } from "drizzle-orm";
-import { crawlAllCities } from "../museumLibraryCrawler";
+import { crawlAllCitiesGeographic } from "../cityEventCrawler";
 import { autoSeedCityEvents } from "../cityEventSeeder";
 
 export async function refreshEventsHandler(req: Request, res: Response) {
@@ -37,10 +37,11 @@ export async function refreshEventsHandler(req: Request, res: Response) {
     const results: Record<string, unknown> = {};
 
     // ── Step 1: Crawl all real-data sources ──────────────────────────────────
-    console.log("[refreshEvents] Starting real-data crawl for all cities...");
-    await crawlAllCities();
+    console.log("[refreshEvents] Starting geographic crawl for all seeded cities...");
+    const crawlCount = await crawlAllCitiesGeographic();
     results.crawlComplete = true;
-    console.log("[refreshEvents] Crawl complete.");
+    results.eventsInserted = crawlCount;
+    console.log(`[refreshEvents] Crawl complete: ${crawlCount} events inserted.`);
 
     // ── Step 2: Purge past events (older than 3 days) ─────────────────────────
     const cutoff = new Date();

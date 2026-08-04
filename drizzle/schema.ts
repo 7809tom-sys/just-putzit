@@ -1266,3 +1266,24 @@ export const workoutLogs = mysqlTable("workout_logs", {
   loggedAt: timestamp("logged_at").defaultNow().notNull(),
 });
 export type WorkoutLog = typeof workoutLogs.$inferSelect;
+export type InsertWorkoutLog = typeof workoutLogs.$inferInsert;
+
+// ─── City Event Sources Configuration ──────────────────────────────────────────
+// Allows admins to enable/disable event sources per city
+export const cityEventSources = mysqlTable("city_event_sources", {
+  id: bigint({ mode: "number" }).primaryKey().autoincrement(),
+  city: varchar("city", { length: 100 }).notNull(),
+  state: varchar("state", { length: 2 }).notNull(),
+  sourceType: mysqlEnum("source_type", [
+    "chicago_library", "chicago_museum", "milwaukee_library", 
+    "madison_library", "lincoln_library", "eventbrite", "meetup", "google_places"
+  ]).notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  lastCrawlTime: timestamp("last_crawl_time").defaultNow(),
+  eventCount: int("event_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CityEventSource = typeof cityEventSources.$inferSelect;
+export type InsertCityEventSource = typeof cityEventSources.$inferInsert;
