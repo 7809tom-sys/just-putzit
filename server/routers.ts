@@ -328,7 +328,27 @@ export const appRouter = router({
       }),
 
     getMyProfile: protectedProcedure.query(async ({ ctx }) => {
-      return getOrCreateProfile(ctx.user.id);
+      const profile = await getOrCreateProfile(ctx.user.id);
+      // Regenerate profile summary if stale (fire-and-forget)
+      if (profile?.traits) {
+        const traits = profile.traits as ProfileTraits;
+        const lastUpdated = (profile.updatedAt as Date)?.getTime() || 0;
+        const now = Date.now();
+        const isStale = now - lastUpdated > 30 * 60 * 1000;
+        if (!traits.aiSummary || isStale) {
+          const userName = profile.displayName || ctx.user.name || "friend";
+          generateProfileSummary(traits, userName)
+            .then((newSummary) => {
+              if (newSummary && newSummary !== traits.aiSummary) {
+                updateProfile(ctx.user.id, {
+                  traits: { ...traits, aiSummary: newSummary },
+                }).catch(() => {});
+              }
+            })
+            .catch(() => {});
+        }
+      }
+      return profile;
     }),
 
     updateCity: protectedProcedure
