@@ -16,6 +16,15 @@ import { workoutRouter } from "./routers/workout";
 import { autoSeedCityEvents } from "./cityEventSeeder";
 import { crawlAllCities } from "./museumLibraryCrawler";
 import { getLatestInterviewLearnings } from "./profileLearning";
+import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
+
+const ACTIVITY_CATEGORY_VALUES = [
+  "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
+  "cooking_class", "escape_room", "wine_tasting", "hiking", "park",
+  "library", "church", "community_center", "sports", "arts", "swimming_pool",
+  "beach", "basketball", "dirt_track", "ymca", "public_gym", "golf",
+  "disc_golf", "volleyball", "tennis", "other",
+] as const;
 import {
   getOrCreateProfile,
   updateProfile,
@@ -111,6 +120,8 @@ import {
   recordReferral,
   getCampusBySlug,
   getCommunityEvents,
+  getSallyEventSuggestions,
+  recordSallyEventFeedback,
   createCommunityEvent,
   rsvpToEvent,
   getUserEventRsvps,
@@ -353,20 +364,27 @@ export const appRouter = router({
           latitude: z.string().optional(),
           longitude: z.string().optional(),
           city: z.string().optional(),
+          state: z.string().max(32).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         await getOrCreateProfile(ctx.user.id);
         await updateProfile(ctx.user.id, input);
-        // Fire-and-forget: auto-seed events for new city
+        // Fire-and-forget: refresh city-specific events and public recreation after a location change.
         if (input.city) {
-          autoSeedCityEvents(input.city).catch(() => {});
+          autoSeedCityEvents(input.city, input.state ?? "WI").catch(() => {});
+          refreshPublicActivitiesForCity(input.city, input.state).catch(() => {});
         }
         return getProfileByUserId(ctx.user.id);
       }),
 
     getMyProfile: protectedProcedure.query(async ({ ctx }) => {
       const profile = await getOrCreateProfile(ctx.user.id);
+      if (profile?.city) {
+        // Keeps the local feed warm on login without delaying profile rendering.
+        autoSeedCityEvents(profile.city, profile.state ?? "WI").catch(() => {});
+        refreshPublicActivitiesForCity(profile.city, profile.state ?? undefined).catch(() => {});
+      }
       // Regenerate profile summary if stale (fire-and-forget)
       if (profile?.traits) {
         const traits = profile.traits as ProfileTraits;
@@ -392,6 +410,7 @@ export const appRouter = router({
     updateCity: protectedProcedure
       .input(z.object({
         city: z.string().min(1).max(100),
+        state: z.string().max(32).optional(),
         lat: z.string().optional(),
         lng: z.string().optional(),
       }))
@@ -399,10 +418,12 @@ export const appRouter = router({
         await getOrCreateProfile(ctx.user.id);
         await updateProfile(ctx.user.id, {
           city: input.city,
+          ...(input.state ? { state: input.state } : {}),
           ...(input.lat ? { latitude: input.lat } : {}),
           ...(input.lng ? { longitude: input.lng } : {}),
         });
-        autoSeedCityEvents(input.city).catch(() => {});
+        autoSeedCityEvents(input.city, input.state ?? "WI").catch(() => {});
+        refreshPublicActivitiesForCity(input.city, input.state).catch(() => {});
         return { success: true, city: input.city };
       }),
 
@@ -478,6 +499,11 @@ export const appRouter = router({
       const session = await createInterviewSession(ctx.user.id);
       if (!session) throw new Error("Failed to create session");
 
+      if (profile?.city) {
+        autoSeedCityEvents(profile.city, profile.state ?? "WI").catch(() => {});
+      }
+      const eventSuggestions = await getSallyEventSuggestions(ctx.user.id, profile?.city ?? undefined, 3);
+
       const existingTraits = profile?.traits as ProfileTraits ?? {};
       const interviewCount = profile?.interviewCount ?? 0;
       const userName = profile?.displayName || ctx.user.name || "friend";
@@ -515,13 +541,29 @@ Rules:
         greeting = `Welcome back, ${userName}! 🌟 I've missed you! I already know a few things about you, but there's always more to discover. Today I want to ask you something a little different: **${await generateFollowUpQuestion(existingTraits, interviewCount)}**`;
       }
 
+      if (eventSuggestions.length > 0) {
+        greeting += " I also pulled a few verified upcoming events from your community below—tell me which ones feel like you, and I’ll use that to make future picks smarter.";
+      }
+
       const messages: InterviewMessage[] = [
         { role: "assistant", content: greeting, timestamp: Date.now() },
       ];
 
       await updateInterviewSession(session.id, { messages });
-      return { sessionId: session.id, message: greeting };
+      return { sessionId: session.id, message: greeting, eventSuggestions };
     }),
+
+    eventFeedback: protectedProcedure
+      .input(z.object({
+        sessionId: z.number(),
+        eventId: z.number(),
+        response: z.enum(["interested", "not_for_me"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const session = await getInterviewSession(input.sessionId);
+        if (!session || session.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+        return recordSallyEventFeedback(ctx.user.id, input.eventId, input.response, input.sessionId);
+      }),
 
     chat: protectedProcedure
       .input(
@@ -1362,12 +1404,14 @@ Return JSON with questions array, each having optionA and optionB.`,
     create: protectedProcedure
       .input(z.object({
         name: z.string(),
-        category: z.enum(["bowling","mini_golf","kayaking","movies","dining","coffee","cooking_class","escape_room","wine_tasting","hiking","park","library","church","community_center","sports","arts","other"]),
+        category: z.enum(ACTIVITY_CATEGORY_VALUES),
         description: z.string().optional(),
         address: z.string().optional(),
         city: z.string().optional(),
         phone: z.string().optional(),
         website: z.string().optional(),
+        isPublicAccess: z.boolean().optional(),
+        accessNotes: z.string().max(300).optional(),
         referralFeePerVisit: z.number().default(100),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -1379,8 +1423,13 @@ Return JSON with questions array, each having optionA and optionB.`,
   activityBoard: router({
     getAll: protectedProcedure
       .input(z.object({ city: z.string().optional(), category: z.string().optional() }))
-      .query(async ({ input }) => {
-        return getActivityListings(input.city, input.category);
+      .query(async ({ ctx, input }) => {
+        const profile = await getProfileByUserId(ctx.user.id);
+        const city = input.city ?? profile?.city ?? undefined;
+        if (city) {
+          await refreshPublicActivitiesForCity(city, profile?.state ?? undefined).catch(() => {});
+        }
+        return getActivityListings(city, input.category);
       }),
 
         getById: protectedProcedure
@@ -1412,12 +1461,14 @@ Return JSON with questions array, each having optionA and optionB.`,
         venueId: z.number(),
         title: z.string(),
         description: z.string().optional(),
-        category: z.enum(["bowling","mini_golf","kayaking","movies","dining","coffee","cooking_class","escape_room","wine_tasting","hiking","park","library","church","community_center","sports","arts","other"]),
+        category: z.enum(ACTIVITY_CATEGORY_VALUES),
         eventDate: z.string().optional(),
         durationMinutes: z.number().optional(),
         maxGroupSize: z.number().optional(),
         isRecurring: z.boolean().optional(),
         recurringSchedule: z.string().optional(),
+        isPublicAccess: z.boolean().optional(),
+        accessNotes: z.string().max(300).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new Error("Forbidden");
@@ -1740,7 +1791,7 @@ Return JSON with questions array, each having optionA and optionB.`,
     registerVenue: protectedProcedure
       .input(z.object({
         name: z.string().min(2).max(200),
-        category: z.enum(["bowling","mini_golf","kayaking","movies","dining","coffee","cooking_class","escape_room","wine_tasting","hiking","park","library","church","community_center","sports","arts","other"]),
+        category: z.enum(ACTIVITY_CATEGORY_VALUES),
         description: z.string().max(1000).optional(),
         address: z.string().max(300).optional(),
         city: z.string().max(100).optional(),
@@ -1748,6 +1799,8 @@ Return JSON with questions array, each having optionA and optionB.`,
         website: z.string().max(300).optional(),
         contactEmail: z.string().max(320).optional(),
         referralFeePerVisit: z.number().min(0).max(5000),
+        isPublicAccess: z.boolean().optional(),
+        accessNotes: z.string().max(300).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         return createVenuePartner({ ...input, ownerUserId: ctx.user.id });
@@ -1758,12 +1811,14 @@ Return JSON with questions array, each having optionA and optionB.`,
         venueId: z.number(),
         title: z.string().min(2).max(200),
         description: z.string().max(1000).optional(),
-        category: z.enum(["bowling","mini_golf","kayaking","movies","dining","coffee","cooking_class","escape_room","wine_tasting","hiking","park","library","church","community_center","sports","arts","other"]),
+        category: z.enum(ACTIVITY_CATEGORY_VALUES),
         priceDollars: z.number().min(0).max(2000),
         hasTickets: z.boolean(),
         imageEmoji: z.string().max(10).optional(),
         maxGroupSize: z.number().min(1).max(100).optional(),
         recurringSchedule: z.string().max(100).optional(),
+        isPublicAccess: z.boolean().optional(),
+        accessNotes: z.string().max(300).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const venue = await getVenueById(input.venueId);
@@ -1778,6 +1833,8 @@ Return JSON with questions array, each having optionA and optionB.`,
           imageEmoji: input.imageEmoji || "🎉",
           maxGroupSize: input.maxGroupSize,
           recurringSchedule: input.recurringSchedule,
+          isPublicAccess: input.isPublicAccess ?? false,
+          accessNotes: input.accessNotes,
           isRecurring: !!input.recurringSchedule,
         });
       }),

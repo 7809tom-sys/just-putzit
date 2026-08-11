@@ -18,9 +18,16 @@ const CATEGORIES = [
   { id: "mini_golf", label: "Mini Golf", emoji: "⛳" },
   { id: "go_karts", label: "Go-Karts", emoji: "🏎️" },
   { id: "kayaking", label: "Kayaking", emoji: "🚣" },
+  { id: "swimming_pool", label: "Pools", emoji: "🏊" },
   { id: "beach", label: "Beaches", emoji: "🏖️" },
   { id: "basketball", label: "Basketball", emoji: "🏀" },
   { id: "tennis", label: "Tennis", emoji: "🎾" },
+  { id: "volleyball", label: "Volleyball", emoji: "🏐" },
+  { id: "golf", label: "Golf", emoji: "⛳" },
+  { id: "disc_golf", label: "Disc Golf", emoji: "🥏" },
+  { id: "dirt_track", label: "Dirt Tracks", emoji: "🏍️" },
+  { id: "ymca", label: "YMCA", emoji: "🤝" },
+  { id: "public_gym", label: "Public Gyms", emoji: "🏋️" },
   { id: "movies", label: "Movies", emoji: "🎦" },
   { id: "dining", label: "Dining", emoji: "🍽️" },
   { id: "coffee", label: "Coffee", emoji: "☕" },
@@ -28,6 +35,7 @@ const CATEGORIES = [
   { id: "escape_room", label: "Escape Room", emoji: "🔐" },
   { id: "hiking", label: "Hiking", emoji: "🥾" },
   { id: "library", label: "Library", emoji: "📚" },
+  { id: "church", label: "Churches", emoji: "⛪" },
   { id: "arts", label: "Arts", emoji: "🎨" },
   { id: "sports", label: "Sports", emoji: "⚽" },
   { id: "other", label: "Other", emoji: "🌟" },
@@ -518,7 +526,27 @@ export default function ActivityBoard() {
                                   )}
                                 </p>
                               )}
-                              {(activity.priceCents ?? 0) > 0 ? (
+                              {((activity as any).isPublicAccess || (activity as any).venueIsPublicAccess) && (
+                                <div className="mt-2 space-y-1">
+                                  <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Open to the public</Badge>
+                                  <p className="text-xs text-gray-500">
+                                    {(activity as any).accessNotes ?? (activity as any).venueAccessNotes ?? "Confirm current hours, guest rules, reservations, and fees before you go."}
+                                  </p>
+                                </div>
+                              )}
+                              {(activity as any).venueWebsite && (
+                                <a
+                                  href={(activity as any).venueWebsite}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                >
+                                  Check access & hours <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
+                              {((activity as any).isPublicAccess || (activity as any).venueIsPublicAccess) ? (
+                                <p className="text-xs text-gray-500 mt-1">Public access · fees or reservations may apply</p>
+                              ) : (activity.priceCents ?? 0) > 0 ? (
                                 <p className="text-xs text-gray-500 mt-1">
                                   ${((activity.priceCents ?? 0) / 100).toFixed(2)} per person
                                 </p>

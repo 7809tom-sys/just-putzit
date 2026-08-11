@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
-import { Send, Clock, CheckCircle2 } from "lucide-react";
+import { Send, Clock, CheckCircle2, CalendarDays, Heart, ThumbsDown, MapPin } from "lucide-react";
 
 const INTERVIEW_SECONDS = 90;
 
@@ -19,6 +19,14 @@ export default function Interview() {
   const [isComplete, setIsComplete] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [eventSuggestions, setEventSuggestions] = useState<Array<{
+    id: number;
+    title: string;
+    eventDate: Date | string;
+    venueName?: string | null;
+    city: string;
+    feedback?: "interested" | "not_for_me" | null;
+  }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -26,6 +34,7 @@ export default function Interview() {
     onSuccess: data => {
       setSessionId(data.sessionId);
       setMessages([{ role: "assistant", content: data.message }]);
+      setEventSuggestions(data.eventSuggestions ?? []);
       setIsStarted(true);
       startTimer();
     },
@@ -46,6 +55,16 @@ export default function Interview() {
       setIsSending(false);
       toast.error("Something went wrong. Please try again.");
     },
+  });
+
+  const eventFeedback = trpc.interview.eventFeedback.useMutation({
+    onSuccess: (data, variables) => {
+      setEventSuggestions((current) => current.map((event) => (
+        event.id === variables.eventId ? { ...event, feedback: data.response } : event
+      )));
+      toast.success(data.response === "interested" ? "Sally will remember this sounds like your kind of event." : "Got it — Sally will use that to sharpen future picks.");
+    },
+    onError: () => toast.error("We couldn't save that event feedback. Please try again."),
   });
 
   const completeInterview = trpc.interview.complete.useMutation({
@@ -191,6 +210,36 @@ export default function Interview() {
               </div>
             </div>
           ))}
+          {eventSuggestions.length > 0 && (
+            <section className="rounded-2xl border border-primary/15 bg-primary/5 p-3" aria-label="Sally's current local event suggestions">
+              <div className="mb-2 flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-primary" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">Sally’s current local picks</p>
+                  <p className="text-xs text-muted-foreground">Tell Sally what feels like you. She’ll learn from every response.</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {eventSuggestions.map((event) => (
+                  <article key={event.id} className={`rounded-xl border bg-white p-3 ${event.feedback === "not_for_me" ? "opacity-60" : ""}`}>
+                    <p className="text-sm font-semibold text-foreground">{event.title}</p>
+                    <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                      <p>{new Date(event.eventDate).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</p>
+                      {(event.venueName || event.city) && <p className="flex items-center gap-1"><MapPin className="h-3 w-3" />{event.venueName ?? event.city}{event.venueName ? ` · ${event.city}` : ""}</p>}
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <Button size="sm" className="h-8 rounded-full bg-primary text-xs text-white hover:bg-primary/90" disabled={!sessionId || eventFeedback.isPending || event.feedback === "interested"} onClick={() => sessionId && eventFeedback.mutate({ sessionId, eventId: event.id, response: "interested" })}>
+                        <Heart className="mr-1 h-3.5 w-3.5" /> {event.feedback === "interested" ? "Interested" : "Sounds good"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-8 rounded-full text-xs" disabled={!sessionId || eventFeedback.isPending || event.feedback === "not_for_me"} onClick={() => sessionId && eventFeedback.mutate({ sessionId, eventId: event.id, response: "not_for_me" })}>
+                        <ThumbsDown className="mr-1 h-3.5 w-3.5" /> Not for me
+                      </Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
           {isSending && (
             <div className="flex justify-start gap-2">
               <div className="w-8 h-8 rounded-full gradient-sally flex items-center justify-center text-sm">🤖</div>

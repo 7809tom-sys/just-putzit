@@ -1,5 +1,6 @@
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { selectCurrentVerifiedEvents } from "./eventRecommendations";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -30,6 +31,7 @@ import {
   communityEvents,
   eventRsvps,
   eventInterests,
+  eventRecommendationFeedback,
   passkeyCredentials,
   loginAds,
   profilePhotos,
@@ -515,6 +517,8 @@ export async function getActivityListings(city?: string, category?: string) {
       priceCents: activityListings.priceCents,
       hasTickets: activityListings.hasTickets,
       imageEmoji: activityListings.imageEmoji,
+      isPublicAccess: activityListings.isPublicAccess,
+      accessNotes: activityListings.accessNotes,
       isSponsored: activityListings.isSponsored,
       isActive: activityListings.isActive,
       createdAt: activityListings.createdAt,
@@ -525,6 +529,8 @@ export async function getActivityListings(city?: string, category?: string) {
       venueLng: venuePartners.longitude,
       venuePhone: venuePartners.phone,
       venueWebsite: venuePartners.website,
+      venueIsPublicAccess: venuePartners.isPublicAccess,
+      venueAccessNotes: venuePartners.accessNotes,
     })
     .from(activityListings)
     .leftJoin(venuePartners, eq(activityListings.venueId, venuePartners.id))
@@ -1359,6 +1365,54 @@ export async function getCommunityEvents(filters: {
     .where(and(...conditions))
     .orderBy(communityEvents.eventDate)
     .limit(filters.limit ?? 100);
+}
+
+export async function getSallyEventSuggestions(userId: number, city?: string, limit = 3) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const upcoming = await getCommunityEvents({ city, limit: 30 });
+  const feedback = await db
+    .select({ eventId: eventRecommendationFeedback.eventId, response: eventRecommendationFeedback.response })
+    .from(eventRecommendationFeedback)
+    .where(eq(eventRecommendationFeedback.userId, userId));
+  const responses = new Map(feedback.map((item) => [item.eventId, item.response]));
+
+  return selectCurrentVerifiedEvents(upcoming, responses, limit)
+    .map((event) => ({ ...event, feedback: responses.get(event.id) ?? null }));
+}
+
+export async function recordSallyEventFeedback(
+  userId: number,
+  eventId: number,
+  response: "interested" | "not_for_me",
+  interviewSessionId?: number,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  const existing = await db
+    .select({ id: eventRecommendationFeedback.id })
+    .from(eventRecommendationFeedback)
+    .where(and(eq(eventRecommendationFeedback.userId, userId), eq(eventRecommendationFeedback.eventId, eventId)))
+    .limit(1);
+
+  if (existing[0]) {
+    await db
+      .update(eventRecommendationFeedback)
+      .set({ response, interviewSessionId: interviewSessionId ?? null })
+      .where(eq(eventRecommendationFeedback.id, existing[0].id));
+  } else {
+    await db.insert(eventRecommendationFeedback).values({ userId, eventId, response, interviewSessionId: interviewSessionId ?? null });
+  }
+
+  if (response === "interested") {
+    await markEventInterest(userId, eventId, "interested");
+  } else {
+    await removeEventInterest(userId, eventId);
+  }
+
+  return { success: true, response };
 }
 
 export async function createCommunityEvent(data: InsertCommunityEvent) {

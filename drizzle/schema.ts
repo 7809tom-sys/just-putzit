@@ -68,6 +68,7 @@ export const userProfiles = mysqlTable("user_profiles", {
   latitude: varchar("latitude", { length: 20 }),
   longitude: varchar("longitude", { length: 20 }),
   city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 32 }),
   campusId: int("campusId"),
   schoolEmail: varchar("schoolEmail", { length: 320 }),
   inviteCode: varchar("inviteCode", { length: 40 }),
@@ -244,7 +245,9 @@ export const venuePartners = mysqlTable("venue_partners", {
   category: mysqlEnum("category", [
     "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
     "cooking_class", "escape_room", "wine_tasting", "hiking", "park",
-    "library", "church", "community_center", "sports", "arts", "other"
+    "library", "church", "community_center", "sports", "arts", "swimming_pool",
+    "beach", "basketball", "dirt_track", "ymca", "public_gym", "golf",
+    "disc_golf", "volleyball", "tennis", "other"
   ]).notNull().default("other"),
   description: text("description"),
   address: text("address"),
@@ -253,6 +256,8 @@ export const venuePartners = mysqlTable("venue_partners", {
   longitude: varchar("longitude", { length: 20 }),
   phone: varchar("phone", { length: 30 }),
   website: varchar("website", { length: 300 }),
+  isPublicAccess: boolean("is_public_access").notNull().default(false),
+  accessNotes: varchar("access_notes", { length: 300 }),
   referralFeePerVisit: int("referralFeePerVisit").notNull().default(100), // cents
   commissionPct: int("commissionPct").notNull().default(12), // platform commission on bookings (percent)
   ownerUserId: int("ownerUserId"), // vendor account that owns this venue
@@ -274,7 +279,9 @@ export const activityListings = mysqlTable("activity_listings", {
   category: mysqlEnum("category", [
     "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
     "cooking_class", "escape_room", "wine_tasting", "hiking", "park",
-    "library", "church", "community_center", "sports", "arts", "other"
+    "library", "church", "community_center", "sports", "arts", "swimming_pool",
+    "beach", "basketball", "dirt_track", "ymca", "public_gym", "golf",
+    "disc_golf", "volleyball", "tennis", "other"
   ]).notNull().default("other"),
   eventDate: timestamp("eventDate"),
   durationMinutes: int("durationMinutes").default(120),
@@ -288,6 +295,8 @@ export const activityListings = mysqlTable("activity_listings", {
   priceCents: int("priceCents").notNull().default(0), // 0 = free RSVP activity
   hasTickets: boolean("hasTickets").notNull().default(false),
   imageEmoji: varchar("imageEmoji", { length: 10 }).notNull().default("\uD83C\uDF89"),
+  isPublicAccess: boolean("is_public_access").notNull().default(false),
+  accessNotes: varchar("access_notes", { length: 300 }),
   isSponsored: boolean("isSponsored").notNull().default(false),
   isActive: boolean("isActive").notNull().default(true),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -295,6 +304,15 @@ export const activityListings = mysqlTable("activity_listings", {
 
 export type ActivityListing = typeof activityListings.$inferSelect;
 export type InsertActivityListing = typeof activityListings.$inferInsert;
+
+// ─── Public Activity Discovery Refreshes ──────────────────────────────────────
+export const cityActivityRefreshes = mysqlTable("city_activity_refreshes", {
+  id: int("id").autoincrement().primaryKey(),
+  city: varchar("city", { length: 100 }).notNull(),
+  state: varchar("state", { length: 32 }),
+  lastRefreshedAt: timestamp("last_refreshed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // ─── Activity RSVPs ───────────────────────────────────────────────────────────
 export const activityRsvps = mysqlTable("activity_rsvps", {
@@ -1301,3 +1319,16 @@ export const eventInterests = mysqlTable("event_interests", {
 
 export type EventInterest = typeof eventInterests.$inferSelect;
 export type InsertEventInterest = typeof eventInterests.$inferInsert;
+
+// ─── Sally Event Recommendation Feedback ──────────────────────────────────────
+export const eventRecommendationFeedback = mysqlTable("event_recommendation_feedback", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  eventId: int("event_id").notNull(),
+  interviewSessionId: int("interview_session_id"),
+  response: mysqlEnum("response", ["interested", "not_for_me"]).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EventRecommendationFeedback = typeof eventRecommendationFeedback.$inferSelect;

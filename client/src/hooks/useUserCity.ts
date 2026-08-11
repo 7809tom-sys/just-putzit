@@ -21,7 +21,7 @@ export type DetectedCity = {
 };
 
 const SUPPORTED_CITIES = [
-  "Milwaukee", "Waukesha", "Chicago", "Brookfield", "West Allis",
+  "Milwaukee", "Waukesha", "Chicago", "Brookfield", "West Allis", "Oklahoma City",
   "Wauwatosa", "Racine", "Kenosha", "Madison", "Green Bay",
   "Evanston", "Oak Park", "Naperville", "Aurora", "Joliet",
 ];
@@ -98,28 +98,35 @@ export function useUserCity() {
     if (isDetecting) return;
     setIsDetecting(true);
     try {
-      // 1. Profile city
+      // Start with the saved city so the page has an immediate local context.
       if (profile?.city) {
-        setDetectedCity({ city: profile.city, state: "", country: "", source: "profile" });
-        setIsDetecting(false);
-        return;
+        setDetectedCity({ city: profile.city, state: profile.state ?? "", country: "", source: "profile" });
       }
-      // 2. GPS
+
+      // On login, check GPS even when a saved city exists. If the person is now in a
+      // different community, updateCity starts the idempotent local events + activities refresh.
       const gps = await detectByGPS();
       if (gps) {
         setDetectedCity(gps);
-        if (user) {
-          updateCityMutation.mutate({ city: gps.city, lat: gps.lat?.toString(), lng: gps.lng?.toString() });
+        if (user && (gps.city.toLowerCase() !== profile?.city?.toLowerCase() || gps.state !== profile?.state)) {
+          updateCityMutation.mutate({ city: gps.city, state: gps.state, lat: gps.lat?.toString(), lng: gps.lng?.toString() });
         }
         setIsDetecting(false);
         return;
       }
-      // 3. IP fallback
+
+      // Keep the saved city if location permission is unavailable.
+      if (profile?.city) {
+        setIsDetecting(false);
+        return;
+      }
+
+      // IP fallback for first-time users.
       const ip = await detectByIP();
       if (ip) {
         setDetectedCity(ip);
         if (user) {
-          updateCityMutation.mutate({ city: ip.city });
+          updateCityMutation.mutate({ city: ip.city, state: ip.state });
         }
         setIsDetecting(false);
         return;
@@ -129,7 +136,7 @@ export function useUserCity() {
     } finally {
       setIsDetecting(false);
     }
-  }, [profile, user, isDetecting]);
+  }, [profile, user, isDetecting, updateCityMutation]);
 
   useEffect(() => {
     detect();
@@ -138,9 +145,9 @@ export function useUserCity() {
   const setCity = useCallback((city: string) => {
     setDetectedCity(prev => prev ? { ...prev, city, source: "profile" } : { city, state: "", country: "", source: "profile" });
     if (user) {
-      updateCityMutation.mutate({ city });
+      updateCityMutation.mutate({ city, state: detectedCity?.state });
     }
-  }, [user]);
+  }, [user, detectedCity?.state, updateCityMutation]);
 
   return {
     city: detectedCity?.city ?? "Milwaukee",

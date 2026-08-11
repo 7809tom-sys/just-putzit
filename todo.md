@@ -281,15 +281,20 @@
 ## Local Venues & City-Based Activities
 - [ ] Seed Waukesha local venues (Farmers Market, Frame Park mini golf, parks, etc.) into activityListings
 - [ ] Seed Milwaukee local venues into activityListings
+- [x] Add public-access recreation categories and venues: pools, beaches, dirt tracks, basketball, YMCAs, guest-access gyms, golf, disc golf, volleyball, and tennis
 - [ ] Add city filter to ActivityBoard and Events pages based on user profile city
 - [ ] Show distance estimate from user city on activity/event cards
 - [ ] Auto-show city-relevant venues when user opens Activities page
+- [x] Trigger an idempotent local activity and event refresh after login or a GPS city change
+- [x] Include churches and church-hosted activities in city-aware community discovery
+- [x] Include high-school and community-theater productions with attendance, audition, volunteer, class, and membership pathways
 
 ## Admin Email Outreach
 - [ ] Add venueOutreach DB table (id, venueId, toEmail, subject, body, sentAt, status)
 - [ ] Add sendOutreachEmail tRPC procedure (admin only) using built-in email or SMTP
 - [ ] Add Outreach tab in Admin panel with venue list and compose email form
 - [ ] Show email history log per venue in Admin panel
+- [ ] Add college performing-arts sources and outreach templates for musical plays and theater productions
 
 ## Sally Continuous Profile Enrichment
 - [ ] After every Sally chat message, extract new traits/hobbies/preferences and MERGE into profile (not overwrite)
@@ -297,6 +302,8 @@
 - [ ] Profile traits, hobbies, dream vacation, personality tags all accumulate across sessions
 - [ ] Identity fields (gender, orientation, age) extracted if mentioned in any conversation
 - [ ] Profile completeness score shown to user to encourage more chatting
+- [x] During Sally interviews, offer current local events and capture interested/not-for-me feedback for future recommendations
+- [x] During Sally interviews, offer current local events and capture interested/not-for-me feedback for future recommendations
 - [x] Show a “What Sally learned recently” profile indicator sourced from the latest completed interview
 - [x] Animate newly learned profile traits with a subtle first-load highlight
 
