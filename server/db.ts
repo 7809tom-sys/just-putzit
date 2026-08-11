@@ -201,6 +201,17 @@ export async function getLatestInterviewSession(userId: number) {
   return result[0] ?? null;
 }
 
+export async function getLatestCompletedInterviewSessions(userId: number, limit = 2) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(interviewSessions)
+    .where(and(eq(interviewSessions.userId, userId), sql`${interviewSessions.completedAt} IS NOT NULL`))
+    .orderBy(desc(interviewSessions.completedAt))
+    .limit(limit);
+}
+
 // ─── Matches ──────────────────────────────────────────────────────────────────
 
 export async function createMatch(user1Id: number, user2Id: number, score: number, reason: string) {

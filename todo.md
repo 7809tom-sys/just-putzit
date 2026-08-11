@@ -297,6 +297,7 @@
 - [ ] Profile traits, hobbies, dream vacation, personality tags all accumulate across sessions
 - [ ] Identity fields (gender, orientation, age) extracted if mentioned in any conversation
 - [ ] Profile completeness score shown to user to encourage more chatting
+- [x] Show a “What Sally learned recently” profile indicator sourced from the latest completed interview
 
 ## Public Game Lobby
 - [ ] Add game_rooms and game_room_players DB tables (city, max players, game type, status)
@@ -864,4 +865,3 @@
 - [ ] Track "Interested" events (for trending/popular events)
 - [ ] Track proposals sent/accepted (conversion metric)
 - [ ] Show "trending this weekend" on Events page
-

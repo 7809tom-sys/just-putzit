@@ -15,6 +15,7 @@ import { gymRouter } from "./routers/gym";
 import { workoutRouter } from "./routers/workout";
 import { autoSeedCityEvents } from "./cityEventSeeder";
 import { crawlAllCities } from "./museumLibraryCrawler";
+import { getLatestInterviewLearnings } from "./profileLearning";
 import {
   getOrCreateProfile,
   updateProfile,
@@ -24,6 +25,7 @@ import {
   getInterviewSession,
   updateInterviewSession,
   getLatestInterviewSession,
+  getLatestCompletedInterviewSessions,
   createMatch,
   getMatchesForUser,
   getMatchById,
@@ -294,7 +296,27 @@ export const appRouter = router({
   // ─── Profile ──────────────────────────────────────────────────────────────
   profile: router({
     get: protectedProcedure.query(async ({ ctx }) => {
-      return getOrCreateProfile(ctx.user.id);
+      const profile = await getOrCreateProfile(ctx.user.id);
+      // Regenerate profile summary if stale (fire-and-forget)
+      if (profile?.traits) {
+        const traits = profile.traits as ProfileTraits;
+        const lastUpdated = (profile.updatedAt as Date)?.getTime() || 0;
+        const now = Date.now();
+        const isStale = now - lastUpdated > 30 * 60 * 1000;
+        if (!traits.aiSummary || isStale) {
+          const userName = profile.displayName || ctx.user.name || "friend";
+          generateProfileSummary(traits, userName)
+            .then((newSummary) => {
+              if (newSummary && newSummary !== traits.aiSummary) {
+                updateProfile(ctx.user.id, {
+                  traits: { ...traits, aiSummary: newSummary },
+                }).catch(() => {});
+              }
+            })
+            .catch(() => {});
+        }
+      }
+      return profile;
     }),
 
     getById: protectedProcedure
@@ -302,6 +324,22 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return getProfileByUserId(input.userId);
       }),
+
+    latestLearning: protectedProcedure.query(async ({ ctx }) => {
+      const sessions = await getLatestCompletedInterviewSessions(ctx.user.id);
+      const latestSession = sessions[0];
+      if (!latestSession) {
+        return { latestInterviewAt: null, learnedTraits: [] };
+      }
+
+      return {
+        latestInterviewAt: latestSession.completedAt ?? latestSession.createdAt,
+        learnedTraits: getLatestInterviewLearnings(
+          latestSession.extractedTraits,
+          sessions[1]?.extractedTraits,
+        ),
+      };
+    }),
 
     update: protectedProcedure
       .input(
@@ -586,7 +624,7 @@ Rules:
 
           // Regenerate AI summary if we have enough data
           if (Object.keys(mergedTraits).length > 2) {
-            mergedTraits.aiSummary = await generateProfileSummary(mergedTraits, userName);
+            mergedTraits.aiSummary = await generateProfileSummary(mergedTraits, userName, messages);
           }
 
           await updateProfile(ctx.user.id, {
@@ -3082,17 +3120,36 @@ async function extractIdentityFromInterview(messages: InterviewMessage[]): Promi
   }
 }
 
-async function generateProfileSummary(traits: ProfileTraits, userName: string): Promise<string> {
+async function generateProfileSummary(traits: ProfileTraits, userName: string, interviewMessages?: InterviewMessage[]): Promise<string> {
+  let interviewContext = "";
+  if (interviewMessages && interviewMessages.length > 0) {
+    const userResponses = interviewMessages
+      .filter((m) => m.role === "user")
+      .map((m) => m.content)
+      .join(" | ");
+    interviewContext = `Interview responses: ${userResponses.substring(0, 1500)}`;
+  }
+
+  const systemPrompt = `You are Sally from Just Putzit. Write a SHORT, AUTHENTIC 2-3 sentence personality summary for ${userName}.
+
+IMPORTANT RULES:
+- Be SPECIFIC and REAL, not generic
+- Capture actual personality signals from their interviews
+- AVOID clichés: no "vibrant connections", "infectious energy", "adventure", "blast"
+- If they mention specific interests (cabinetry, songwriting, humor, directness), INCLUDE THEM
+- Sound like a friend describing them, not a dating app template
+- Be honest about quirks and personality
+- Max 3 sentences`;
+
+  const userContent = `${interviewContext}\n\nProfile traits: ${JSON.stringify(traits)}`;
+
   const response = await invokeLLM({
     messages: [
-      {
-        role: "system",
-        content: `You are Sally from Just Putzit. Write a warm, 2-3 sentence personality summary for ${userName} based on their profile traits. Make it feel like a glowing introduction from a best friend. Be specific and genuine.`,
-      },
-      { role: "user", content: JSON.stringify(traits) },
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userContent },
     ],
   });
-  return (response.choices[0]?.message?.content as string) || `${userName} is a wonderful person with a great personality!`;
+  return (response.choices[0]?.message?.content as string) || `${userName} is a genuine person!`;
 }
 
 // ─── Game-to-Profile Intelligence ─────────────────────────────────────────────

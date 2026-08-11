@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft } from "lucide-react";
+import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft, Sparkles, Brain } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
@@ -21,6 +21,7 @@ export default function Profile() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const { data: profile, isLoading, refetch: refetchProfile } = trpc.profile.get.useQuery();
+  const { data: latestLearning } = trpc.profile.latestLearning.useQuery();
   const { data: photos, refetch: refetchPhotos } = trpc.profile.getPhotos.useQuery();
   const setPrimary = trpc.profile.setPrimaryPhoto.useMutation({
     onSuccess: () => {
@@ -358,6 +359,56 @@ export default function Profile() {
               </div>
               <p className="text-sm text-foreground italic">"{traits.aiSummary}"</p>
             </div>
+          )}
+
+          {/* Latest interview learning indicator */}
+          {latestLearning?.latestInterviewAt && (
+            <section className="mt-4 rounded-2xl border border-violet-200/80 bg-gradient-to-br from-violet-50 via-white to-amber-50/70 p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
+                  <Brain className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <h2 className="text-sm font-bold text-violet-950">What Sally learned recently</h2>
+                    <span className="inline-flex items-center gap-1 text-xs text-violet-700">
+                      <Sparkles className="h-3 w-3" aria-hidden="true" />
+                      Latest interview
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-violet-800/80">
+                    {new Date(latestLearning.latestInterviewAt).toLocaleDateString(undefined, {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                    {latestLearning.learnedTraits.length > 0
+                      ? " · These are the new details Sally added to your profile."
+                      : " · Sally reviewed this chat, but did not add any new profile details."}
+                  </p>
+
+                  {latestLearning.learnedTraits.length > 0 && (
+                    <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {latestLearning.learnedTraits.map((trait) => (
+                        <div key={trait.key} className="rounded-xl border border-violet-100 bg-white/90 px-3 py-2">
+                          <dt className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                            {trait.label}
+                            {trait.status === "updated" ? " · Updated" : " · New"}
+                          </dt>
+                          <dd className="mt-1 flex flex-wrap gap-1.5">
+                            {trait.values.map((value) => (
+                              <span key={`${trait.key}-${value}`} className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-950">
+                                {value}
+                              </span>
+                            ))}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </div>
+              </div>
+            </section>
           )}
 
           {/* Action buttons */}
