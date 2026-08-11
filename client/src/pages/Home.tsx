@@ -3,7 +3,7 @@ import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Settings2, X, Radio, RotateCcw, Calendar } from "lucide-react";
+import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Settings2, X, Radio, RotateCcw, Calendar, CalendarPlus, Navigation } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -15,6 +15,7 @@ import { useUserCity } from "@/hooks/useUserCity";
 import { toggleHomepageSection } from "@shared/homepageLayout";
 import { filterHomepageDiscovery, type HomepageDiscoveryDateRange, type HomepageDiscoverySort } from "@shared/homepageDiscovery";
 import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
+import { buildTodayPlanSelection } from "@shared/todaysPlan";
 
 // ─── Module definitions ───────────────────────────────────────────────────────
 
@@ -413,6 +414,154 @@ function ShoutoutModule({ navigate }: { navigate: (p: string) => void }) {
   );
 }
 
+type NearbyDiscoveryItem = {
+  id: number;
+  kind: "event" | "activity";
+  title: string;
+  category?: string | null;
+  eventDate?: Date | string | null;
+  endDate?: Date | string | null;
+  venueName?: string | null;
+  venueCity?: string | null;
+  address?: string | null;
+  externalUrl?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  distanceMiles?: number | null;
+};
+
+function calendarDate(value: Date | string) {
+  return new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function getCalendarUrl(item: NearbyDiscoveryItem) {
+  if (!item.eventDate) return null;
+  const start = new Date(item.eventDate);
+  const end = item.endDate ? new Date(item.endDate) : new Date(start.getTime() + 60 * 60 * 1000);
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: item.title,
+    dates: `${calendarDate(start)}/${calendarDate(end)}`,
+    details: `Found on Just Putzit${item.externalUrl ? `\\n${item.externalUrl}` : ""}`,
+    location: [item.venueName, item.address, item.venueCity].filter(Boolean).join(", "),
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function getDirectionsUrl(item: NearbyDiscoveryItem) {
+  const destination = item.lat != null && item.lng != null ? `${item.lat},${item.lng}` : [item.venueName, item.address, item.venueCity].filter(Boolean).join(", ");
+  return destination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}` : null;
+}
+
+function StandardDiscoveryCard({ item, onPlan, navigate }: { item: NearbyDiscoveryItem; onPlan: () => void; navigate: (path: string) => void }) {
+  const detailPath = item.kind === "event" ? "/events" : `/activities/${item.id}`;
+  const dateLabel = item.eventDate ? new Date(item.eventDate).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "Flexible date";
+  const calendarUrl = getCalendarUrl(item);
+  const directionsUrl = getDirectionsUrl(item);
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">{item.kind}</span>
+            {item.category && <span className="truncate text-[11px] text-muted-foreground">{item.category}</span>}
+          </div>
+          <h3 className="truncate font-semibold text-sm text-foreground">{item.title}</h3>
+        </div>
+        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {dateLabel}{item.venueName ? ` · ${item.venueName}` : ""}{item.venueCity ? ` · ${item.venueCity}` : ""}{item.distanceMiles != null ? ` · ${formatMilesAway(item.distanceMiles)}` : ""}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="button" size="sm" className="h-8 rounded-full gap-1.5" onClick={onPlan}>
+          <CalendarPlus className="h-3.5 w-3.5" /> Plan it
+        </Button>
+        <Button type="button" size="sm" variant="outline" className="h-8 rounded-full gap-1.5" onClick={() => navigate(detailPath)}>
+          Details <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+        {calendarUrl && <a href={calendarUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"><Calendar className="h-3.5 w-3.5" /> Calendar</a>}
+        {directionsUrl && <a href={directionsUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"><Navigation className="h-3.5 w-3.5" /> Directions</a>}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+        <span>Want company? Start with the public event.</span>
+        <button type="button" className="font-semibold text-primary hover:underline" onClick={() => navigate(detailPath)}>Meet safely</button>
+      </div>
+    </div>
+  );
+}
+
+function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
+  const { city, detectedCity } = useUserCity();
+  const [radiusMiles, setRadiusMiles] = useState(25);
+  const hasGps = detectedCity?.lat != null && detectedCity?.lng != null;
+  const userLat = hasGps ? Number(detectedCity?.lat) : undefined;
+  const userLng = hasGps ? Number(detectedCity?.lng) : undefined;
+  const utils = trpc.useUtils();
+  const { data: events = [], isLoading: eventsLoading } = trpc.events.list.useQuery({
+    city: hasGps ? undefined : city,
+    lat: userLat,
+    lng: userLng,
+    radiusMiles: hasGps ? radiusMiles : undefined,
+    limit: 12,
+  });
+  const { data: activities = [], isLoading: activitiesLoading } = trpc.activityBoard.getAll.useQuery({
+    city,
+    lat: userLat,
+    lng: userLng,
+    radiusMiles,
+  });
+  const { data: plan } = trpc.homepage.getTodaysPlan.useQuery();
+  const savePlan = trpc.homepage.saveTodaysPlan.useMutation({ onSuccess: () => utils.homepage.getTodaysPlan.invalidate() });
+  const clearPlan = trpc.homepage.clearTodaysPlan.useMutation({ onSuccess: () => utils.homepage.getTodaysPlan.invalidate() });
+
+  const items: NearbyDiscoveryItem[] = [
+    ...events.map((event: any) => ({
+      id: Number(event.id), kind: "event" as const, title: event.title, category: event.category,
+      eventDate: event.eventDate, endDate: event.endDate, venueName: event.venueName, venueCity: event.city ?? event.venueCity,
+      address: event.address, externalUrl: event.externalUrl, lat: event.lat, lng: event.lng, distanceMiles: hasGps && event.lat != null && event.lng != null ? haversineDistanceMiles(userLat!, userLng!, Number(event.lat), Number(event.lng)) : event.distanceMiles,
+    })),
+    ...activities.map((activity: any) => ({
+      id: Number(activity.id), kind: "activity" as const, title: activity.title, category: activity.category,
+      eventDate: activity.eventDate, endDate: activity.endDate, venueName: activity.venueName, venueCity: activity.venueCity ?? activity.city,
+      address: activity.address, externalUrl: activity.externalUrl, lat: activity.lat, lng: activity.lng, distanceMiles: activity.distanceMiles,
+    })),
+  ].sort((a, b) => new Date(a.eventDate ?? "9999-12-31").getTime() - new Date(b.eventDate ?? "9999-12-31").getTime()).slice(0, 4);
+
+  const selected = plan ? items.find((item) => (item.kind === "event" && item.id === plan.eventId) || (item.kind === "activity" && item.id === plan.activityId)) : undefined;
+  const isLoading = eventsLoading || activitiesLoading;
+  const planTitle = selected?.title ?? (plan ? "Your saved plan" : null);
+
+  return (
+    <section className="rounded-3xl border border-border/70 bg-white p-5 shadow-sm sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><Navigation className="h-3.5 w-3.5" /> Near you today</div>
+          <h2 className="mt-1 font-display text-2xl font-bold text-foreground">What’s happening in {city}?</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Pick one thing to do, then use your plan to coordinate safely.</p>
+        </div>
+        <select aria-label="Nearby discovery radius" value={radiusMiles} onChange={(event) => setRadiusMiles(Number(event.target.value))} className="rounded-full border border-border bg-background px-3 py-2 text-xs font-medium text-foreground">
+          <option value={10}>Within 10 miles</option><option value={25}>Within 25 miles</option><option value={50}>Within 50 miles</option>
+        </select>
+      </div>
+
+      {planTitle && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-primary/5 p-4">
+          <div><p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Today’s plan</p><p className="mt-1 font-semibold text-foreground">{planTitle}</p>{selected?.venueName && <p className="text-xs text-muted-foreground">{selected.venueName} · {selected.distanceMiles != null ? formatMilesAway(selected.distanceMiles) : "nearby"}</p>}</div>
+          <div className="flex gap-2"><Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => clearPlan.mutate()}>Clear</Button>{selected && <Button type="button" size="sm" className="rounded-full" onClick={() => navigate(selected.kind === "event" ? "/events" : `/activities/${selected.id}`)}>Open</Button>}</div>
+        </div>
+      )}
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {isLoading && <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground sm:col-span-2">Finding current events and activities near you…</div>}
+        {!isLoading && items.map((item) => <StandardDiscoveryCard key={`${item.kind}-${item.id}`} item={item} navigate={navigate} onPlan={() => savePlan.mutate(buildTodayPlanSelection(item))} />)}
+        {!isLoading && items.length === 0 && <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground sm:col-span-2">No verified listings matched this radius. Try 50 miles or search another city.</div>}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => navigate("/events")}>Browse events</Button><Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => navigate("/activities")}>Browse activities</Button></div>
+    </section>
+  );
+}
+
 function renderModule(moduleId: string, navigate: (p: string) => void, profile: any, matches: any[]) {
   switch (moduleId) {
     case "sally":       return <SallyModule profile={profile} navigate={navigate} />;
@@ -605,6 +754,10 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
 
         <div className="mb-6 max-w-xl">
           <LocationOverrideControl compact />
+        </div>
+
+        <div className="mb-6">
+          <NearbyNowModule navigate={navigate} />
         </div>
 
         {/* Identity completion prompt */}

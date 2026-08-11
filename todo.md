@@ -889,3 +889,10 @@
 - [x] Verify automatic GPS permission, exact city/state discovery, nearby event/activity results, distance labels, and radius filters across the mobile flow
 - [x] Add manual city or ZIP-code location search with persisted override and a return-to-GPS control for traveling members
 - [x] Add saved locations for home and frequently visited cities or ZIP codes with quick switching
+
+## Homepage Experience Improvements
+- [x] Add a useful “What’s happening near you” discovery strip to Home
+- [x] Standardize event and activity card metadata and actions on Home
+- [x] Add Today’s Plan persistence and Home actions for event/activity planning
+- [x] Add calendar, directions, and safe social coordination handoffs to Today’s Plan
+- [x] Add tests and verify the responsive Home experience

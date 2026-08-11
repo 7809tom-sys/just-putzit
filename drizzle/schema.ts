@@ -1351,3 +1351,17 @@ export const savedLocations = mysqlTable("saved_locations", {
 
 export type SavedLocation = typeof savedLocations.$inferSelect;
 export type InsertSavedLocation = typeof savedLocations.$inferInsert;
+
+// ─── Today’s Plan ──────────────────────────────────────────────────────────────
+export const todaysPlans = mysqlTable("todays_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  eventId: int("eventId"),
+  activityId: int("activityId"),
+  note: varchar("note", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TodaysPlan = typeof todaysPlans.$inferSelect;
+export type InsertTodaysPlan = typeof todaysPlans.$inferInsert;

@@ -49,6 +49,7 @@ import {
   tripPlans,
   userHomepageLayout,
   savedLocations,
+  todaysPlans,
   triviaQuestions,
   triviaRooms,
   triviaRoomPlayers,
@@ -2651,6 +2652,28 @@ export async function saveHomepageLayout(
   }
 }
 
+// ─── Today’s Plan ──────────────────────────────────────────────────────────────
+export async function getTodaysPlan(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(todaysPlans).where(eq(todaysPlans.userId, userId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function saveTodaysPlan(userId: number, data: { eventId?: number | null; activityId?: number | null; note?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.insert(todaysPlans).values({ userId, eventId: data.eventId ?? null, activityId: data.activityId ?? null, note: data.note ?? null }).onDuplicateKeyUpdate({
+    set: { eventId: data.eventId ?? null, activityId: data.activityId ?? null, note: data.note ?? null },
+  });
+  return getTodaysPlan(userId);
+}
+
+export async function clearTodaysPlan(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(todaysPlans).where(eq(todaysPlans.userId, userId));
+}
 
 // ─── Event Interests ──────────────────────────────────────────────────────────
 export async function markEventInterest(userId: number, eventId: number, status: "interested" | "going" | "attended" = "interested") {

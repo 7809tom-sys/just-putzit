@@ -210,6 +210,9 @@ import {
   createSavedLocation,
   updateSavedLocation,
   deleteSavedLocation,
+  getTodaysPlan,
+  saveTodaysPlan,
+  clearTodaysPlan,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, MatchGameQuestion as GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import { familyProfiles, communityEvents } from "../drizzle/schema";
@@ -2990,6 +2993,21 @@ Return JSON with questions array, each having optionA and optionB.`,
         await saveHomepageLayout(ctx.user.id, input.modules);
         return { success: true };
       }),
+
+    getTodaysPlan: protectedProcedure.query(({ ctx }) => getTodaysPlan(ctx.user.id)),
+
+    saveTodaysPlan: protectedProcedure
+      .input(z.object({
+        eventId: z.number().int().positive().nullable().optional(),
+        activityId: z.number().int().positive().nullable().optional(),
+        note: z.string().max(255).nullable().optional(),
+      }))
+      .mutation(({ input, ctx }) => saveTodaysPlan(ctx.user.id, input)),
+
+    clearTodaysPlan: protectedProcedure.mutation(async ({ ctx }) => {
+      await clearTodaysPlan(ctx.user.id);
+      return { success: true };
+    }),
   }),
 
   advertising: router({
