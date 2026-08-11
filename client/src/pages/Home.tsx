@@ -8,6 +8,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
+import { LocationOverrideControl } from "@/components/LocationOverrideControl";
 import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
 import { useUserCity } from "@/hooks/useUserCity";
@@ -495,7 +496,7 @@ function CustomizeDrawer({
           </button>
         </div>
 
-        {/* Module list */}
+        {/* Active modules */}
         <div className="overflow-y-auto flex-1 p-4 space-y-2">
           {draft.map((m) => {
             const def = ALL_MODULES.find(d => d.id === m.moduleId);
@@ -600,6 +601,10 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
             <Settings2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Customize</span>
           </button>
+        </div>
+
+        <div className="mb-6 max-w-xl">
+          <LocationOverrideControl compact />
         </div>
 
         {/* Identity completion prompt */}

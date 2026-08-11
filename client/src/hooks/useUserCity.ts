@@ -7,7 +7,7 @@
  *  3. Fall back to IP geolocation (ipapi.co/json — free, no key needed).
  *  4. Persist the result to the user profile via tRPC.
  */
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -17,8 +17,19 @@ export type DetectedCity = {
   country: string;
   lat?: number;
   lng?: number;
-  source: "profile" | "gps" | "ip";
+  source: "profile" | "gps" | "ip" | "manual";
+  postalCode?: string;
+  displayName?: string;
 };
+
+const US_STATE_CODES = new Set([
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC",
+]);
+
+function isUsState(value: string) {
+  const normalized = value.trim().toUpperCase();
+  return US_STATE_CODES.has(normalized) || normalized === "UNITED STATES" || normalized.endsWith(" USA");
+}
 
 const SUPPORTED_CITIES = [
   "Milwaukee", "Waukesha", "Chicago", "Brookfield", "West Allis", "Oklahoma City",
@@ -45,7 +56,8 @@ async function reverseGeocode(lat: number, lng: number): Promise<{ city: string;
     const city = addr.city ?? addr.town ?? addr.village ?? addr.county ?? "";
     const state = addr.state ?? "";
     const country = addr.country_code?.toUpperCase() ?? "";
-    return city ? { city: normalizeCityName(city), state, country } : null;
+    if (!city || country !== "US") return null;
+    return { city: normalizeCityName(city), state, country };
   } catch {
     return null;
   }
@@ -67,9 +79,27 @@ async function detectByGPS(): Promise<DetectedCity | null> {
   });
 }
 
-function parseVerifiedCityLabel(label: string): { city: string; state: string } {
+const MANUAL_LOCATION_KEY_PREFIX = "justputzit:manual-location:";
+
+function getManualLocationKey(userId?: number | string) {
+  return `${MANUAL_LOCATION_KEY_PREFIX}${userId ?? "guest"}`;
+}
+
+function readStoredManualLocation(userId?: number | string): DetectedCity | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(getManualLocationKey(userId));
+    return raw ? (JSON.parse(raw) as DetectedCity) : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseVerifiedCityLabel(label: string): { city: string; state: string } | null {
   const [cityPart, ...stateParts] = label.split(",");
-  return { city: cityPart.trim(), state: stateParts.join(",").trim() };
+  const city = cityPart.trim();
+  const state = stateParts.join(",").trim();
+  return city && isUsState(state) ? { city, state } : null;
 }
 
 async function detectByIP(): Promise<DetectedCity | null> {
@@ -79,9 +109,9 @@ async function detectByIP(): Promise<DetectedCity | null> {
     const data = await res.json();
     const city = data.city ?? "";
     const state = data.region ?? "";
-    const country = data.country_code ?? "";
-    if (!city) return null;
-    return { city: normalizeCityName(city), state, country, source: "ip" };
+    const country = String(data.country_code ?? "").toUpperCase();
+    if (!city || (country && country !== "US")) return null;
+    return { city: normalizeCityName(city), state, country: country || "US", source: "ip" };
   } catch {
     return null;
   }
@@ -90,6 +120,8 @@ async function detectByIP(): Promise<DetectedCity | null> {
 export function useUserCity() {
   const { user } = useAuth();
   const [detectedCity, setDetectedCity] = useState<DetectedCity | null>(null);
+  const [manualOverride, setManualOverride] = useState<DetectedCity | null>(() => readStoredManualLocation(user?.id));
+  const [manualSearch, setManualSearch] = useState("");
   const [isDetecting, setIsDetecting] = useState(false);
   const detectionKeyRef = useRef<string | null>(null);
 
@@ -99,15 +131,28 @@ export function useUserCity() {
   });
 
   const updateCityMutation = trpc.profile.updateCity.useMutation();
+  const manualLocationInput = useMemo(() => ({ query: manualSearch || "  " }), [manualSearch]);
+  const manualLocationQuery = trpc.location.resolve.useQuery(manualLocationInput, {
+    enabled: !!user && manualSearch.trim().length >= 2,
+    retry: false,
+  });
 
   const detect = useCallback(async () => {
     if (isDetecting) return;
     setIsDetecting(true);
     try {
+      const savedManualOverride = manualOverride ?? readStoredManualLocation(user?.id);
+      if (savedManualOverride) {
+        setManualOverride(savedManualOverride);
+        setDetectedCity(savedManualOverride);
+        setIsDetecting(false);
+        return;
+      }
+
       // Prefer a previously GPS-verified city over a stale or manually entered profile city.
       const verifiedLabel = profile?.gpsVerifiedCity ?? "";
       const verifiedLocation = verifiedLabel ? parseVerifiedCityLabel(verifiedLabel) : null;
-      const trustedSavedLocation = verifiedLocation ?? (profile?.city ? { city: profile.city, state: profile.state ?? "" } : null);
+      const trustedSavedLocation = verifiedLocation ?? (profile?.city && isUsState(profile.state ?? "") ? { city: profile.city, state: profile.state ?? "" } : null);
       if (trustedSavedLocation) {
         setDetectedCity({
           ...trustedSavedLocation,
@@ -159,15 +204,70 @@ export function useUserCity() {
     } finally {
       setIsDetecting(false);
     }
-  }, [profile, user, isDetecting, updateCityMutation]);
+  }, [profile, user, isDetecting, manualOverride, updateCityMutation]);
 
   useEffect(() => {
     if (!user?.id) return;
-    const detectionKey = `${user.id}:${profile?.city ?? ""}:${profile?.state ?? ""}`;
+    const detectionKey = `${user.id}:${profile?.city ?? ""}:${profile?.state ?? ""}:${manualOverride?.city ?? ""}`;
     if (detectionKeyRef.current === detectionKey) return;
     detectionKeyRef.current = detectionKey;
     void detect();
-  }, [user?.id, profile?.city, profile?.state]);
+  }, [user?.id, profile?.city, profile?.state, manualOverride]);
+
+  useEffect(() => {
+    const stored = readStoredManualLocation(user?.id);
+    setManualOverride(stored);
+    if (stored) setDetectedCity(stored);
+    detectionKeyRef.current = null;
+  }, [user?.id]);
+
+  useEffect(() => {
+    const onLocationChanged = () => {
+      const stored = readStoredManualLocation(user?.id);
+      setManualOverride(stored);
+      if (stored) setDetectedCity(stored);
+    };
+    window.addEventListener("justputzit:location-changed", onLocationChanged);
+    return () => window.removeEventListener("justputzit:location-changed", onLocationChanged);
+  }, [user?.id]);
+
+  useEffect(() => {
+    const resolved = manualLocationQuery.data;
+    if (!resolved || !manualSearch.trim()) return;
+    const location: DetectedCity = {
+      city: resolved.city,
+      state: resolved.state,
+      country: resolved.country,
+      lat: resolved.lat,
+      lng: resolved.lng,
+      postalCode: resolved.postalCode,
+      displayName: resolved.displayName,
+      source: "manual",
+    };
+    setManualOverride(location);
+    setDetectedCity(location);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(getManualLocationKey(user?.id), JSON.stringify(location));
+      window.dispatchEvent(new Event("justputzit:location-changed"));
+    }
+    updateCityMutation.mutate({ city: location.city, state: location.state, lat: String(location.lat), lng: String(location.lng) });
+    setManualSearch("");
+  }, [manualLocationQuery.data, manualSearch, updateCityMutation, user?.id]);
+
+  const setManualLocation = useCallback((query: string) => {
+    const value = query.trim();
+    if (value.length >= 2) setManualSearch(value);
+  }, []);
+
+  const clearManualLocation = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(getManualLocationKey(user?.id));
+      window.dispatchEvent(new Event("justputzit:location-changed"));
+    }
+    setManualOverride(null);
+    setDetectedCity(null);
+    detectionKeyRef.current = null;
+  }, [user?.id]);
 
   const setCity = useCallback((city: string) => {
     setDetectedCity(prev => prev ? { ...prev, city, source: "profile" } : { city, state: "", country: "", source: "profile" });
@@ -180,6 +280,11 @@ export function useUserCity() {
     city: detectedCity?.city ?? "Milwaukee",
     detectedCity,
     isDetecting,
+    isResolvingManualLocation: manualLocationQuery.isFetching,
+    manualLocationError: manualLocationQuery.error?.message ?? null,
+    isManualOverride: detectedCity?.source === "manual",
     setCity,
+    setManualLocation,
+    clearManualLocation,
   };
 }

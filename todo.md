@@ -281,8 +281,8 @@
 - [ ] Add mobile-responsive padding/spacing to key pages
 
 ## Local Venues & City-Based Activities
-- [ ] Seed Waukesha local venues (Farmers Market, Frame Park mini golf, parks, etc.) into activityListings
-- [ ] Seed Milwaukee local venues into activityListings
+- [x] Seed Waukesha local venues (Farmers Market, Frame Park mini golf, parks, etc.) into activityListings
+- [x] Seed Milwaukee local venues into activityListings
 - [x] Add public-access recreation categories and venues: pools, beaches, dirt tracks, basketball, YMCAs, guest-access gyms, golf, disc golf, volleyball, and tennis
 - [x] Add city filter to ActivityBoard and Events pages based on user profile city
 - [x] Show distance estimate from user city on activity/event cards
@@ -887,3 +887,4 @@
 - [x] Make GPS-detected city and state authoritative for discovery, keep Waukesha separate from Milwaukee, and prevent broad-city fallback leakage
 - [x] Show miles away and let members filter events and activities to a 10, 25, or 50-mile radius
 - [x] Verify automatic GPS permission, exact city/state discovery, nearby event/activity results, distance labels, and radius filters across the mobile flow
+- [x] Add manual city or ZIP-code location search with persisted override and a return-to-GPS control for traveling members

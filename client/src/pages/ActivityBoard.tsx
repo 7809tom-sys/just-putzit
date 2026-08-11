@@ -11,6 +11,7 @@ import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, 
 import { MapView } from "@/components/Map";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
+import { LocationOverrideControl } from "@/components/LocationOverrideControl";
 import { useUserCity } from "@/hooks/useUserCity";
 import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
 
@@ -294,6 +295,10 @@ export default function ActivityBoard() {
               Submit Event
             </Button>
           )}
+        </div>
+
+        <div className="mb-6 max-w-xl">
+          <LocationOverrideControl compact />
         </div>
 
         {/* Tab Switcher */}

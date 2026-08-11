@@ -25,6 +25,7 @@ import { Calendar,
 } from "lucide-react";
 import { useUserCity } from "@/hooks/useUserCity";
 import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
+import { LocationOverrideControl } from "@/components/LocationOverrideControl";
 
 const CATEGORIES = [
   { value: "all", label: "All Events", icon: Star },
@@ -239,17 +240,19 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0,
 
 export default function Events() {
   const { user } = useAuth();
-  const { city: detectedCity, detectedCity: detectedLocation } = useUserCity();
+  const { city: detectedCity, detectedCity: detectedLocation, isManualOverride } = useUserCity();
   const [category, setCategory] = useState("all");
   const [radiusMiles, setRadiusMiles] = useState(25);
   const [city, setCity] = useState<string | null>(null); // null = use detectedCity
   const [freeOnly, setFreeOnly] = useState(false);
-  // Auto-set city to detected city on first load
+  // Keep the page aligned with the selected travel location; restore GPS city after clearing it.
   useEffect(() => {
-    if (city === null && detectedCity) {
+    if (isManualOverride) {
+      setCity(null);
+    } else if (detectedCity && city === null) {
       setCity(detectedCity);
     }
-  }, [detectedCity, city]);
+  }, [detectedCity, isManualOverride, city]);
   const [rsvpingId, setRsvpingId] = useState<number | null>(null);
   const [interestingId, setInterestingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -405,6 +408,10 @@ export default function Events() {
                 match might show up too. 😊
               </p>
             </div>
+          </div>
+
+          <div className="mt-5 max-w-xl">
+            <LocationOverrideControl compact />
           </div>
 
           {/* Stats strip */}

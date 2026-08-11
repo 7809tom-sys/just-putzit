@@ -18,6 +18,7 @@ import { crawlAllCities } from "./museumLibraryCrawler";
 import { getLatestInterviewLearnings } from "./profileLearning";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
+import { isValidLocationQuery, resolveLocationQuery } from "./locationResolver";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -263,6 +264,22 @@ export const appRouter = router({
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
         return { success: true, userId: user.id };
+      }),
+  }),
+
+  // ─── Manual Location Search ────────────────────────────────────────────────
+  location: router({
+    resolve: protectedProcedure
+      .input(z.object({ query: z.string().trim().min(2).max(120) }))
+      .query(async ({ input }) => {
+        if (!isValidLocationQuery(input.query)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a city or ZIP code." });
+        }
+        const resolved = await resolveLocationQuery(input.query);
+        if (!resolved) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "We could not find that city or ZIP code." });
+        }
+        return resolved;
       }),
   }),
 

@@ -44,9 +44,15 @@ export default function Activities() {
 
   const { data: profile } = trpc.profile.get.useQuery();
   const { detectedCity } = useUserCity();
+  const profileLocationMatchesDetectedCity = Boolean(
+    profile?.gpsVerifiedLat &&
+    profile?.gpsVerifiedLng &&
+    detectedCity?.city &&
+    profile?.gpsVerifiedCity?.toLowerCase().startsWith(detectedCity.city.toLowerCase()),
+  );
   const trustedLocation = detectedCity?.lat !== undefined && detectedCity?.lng !== undefined
     ? { lat: detectedCity.lat, lng: detectedCity.lng }
-    : profile?.gpsVerifiedLat && profile?.gpsVerifiedLng
+    : profileLocationMatchesDetectedCity
       ? { lat: Number(profile.gpsVerifiedLat), lng: Number(profile.gpsVerifiedLng) }
       : null;
   const updateLocation = trpc.profile.update.useMutation();
@@ -82,10 +88,12 @@ export default function Activities() {
             lat: r.geometry?.location?.lat() || 0,
             lng: r.geometry?.location?.lng() || 0,
             openNow: r.opening_hours?.isOpen?.(),
-            distanceMiles: haversineDistanceMiles(location, {
-              lat: r.geometry?.location?.lat() || 0,
-              lng: r.geometry?.location?.lng() || 0,
-            }),
+            distanceMiles: haversineDistanceMiles(
+              location.lat,
+              location.lng,
+              r.geometry?.location?.lat() || 0,
+              r.geometry?.location?.lng() || 0,
+            ),
           }));
           setPlaces(mapped);
           // Add markers
