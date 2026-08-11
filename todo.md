@@ -284,9 +284,9 @@
 - [ ] Seed Waukesha local venues (Farmers Market, Frame Park mini golf, parks, etc.) into activityListings
 - [ ] Seed Milwaukee local venues into activityListings
 - [x] Add public-access recreation categories and venues: pools, beaches, dirt tracks, basketball, YMCAs, guest-access gyms, golf, disc golf, volleyball, and tennis
-- [ ] Add city filter to ActivityBoard and Events pages based on user profile city
-- [ ] Show distance estimate from user city on activity/event cards
-- [ ] Auto-show city-relevant venues when user opens Activities page
+- [x] Add city filter to ActivityBoard and Events pages based on user profile city
+- [x] Show distance estimate from user city on activity/event cards
+- [x] Auto-show city-relevant venues when user opens Activities page
 - [x] Trigger an idempotent local activity and event refresh after login or a GPS city change
 - [x] Include churches and church-hosted activities in city-aware community discovery
 - [x] Include high-school and community-theater productions with attendance, audition, volunteer, class, and membership pathways
@@ -886,3 +886,4 @@
 - [x] Show administrator promotion date and last active login date in the admin member-management table
 - [x] Make GPS-detected city and state authoritative for discovery, keep Waukesha separate from Milwaukee, and prevent broad-city fallback leakage
 - [x] Show miles away and let members filter events and activities to a 10, 25, or 50-mile radius
+- [x] Verify automatic GPS permission, exact city/state discovery, nearby event/activity results, distance labels, and radius filters across the mobile flow

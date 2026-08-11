@@ -7,7 +7,7 @@
  *  3. Fall back to IP geolocation (ipapi.co/json — free, no key needed).
  *  4. Persist the result to the user profile via tRPC.
  */
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -67,6 +67,11 @@ async function detectByGPS(): Promise<DetectedCity | null> {
   });
 }
 
+function parseVerifiedCityLabel(label: string): { city: string; state: string } {
+  const [cityPart, ...stateParts] = label.split(",");
+  return { city: cityPart.trim(), state: stateParts.join(",").trim() };
+}
+
 async function detectByIP(): Promise<DetectedCity | null> {
   try {
     const res = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(5000) });
@@ -86,6 +91,7 @@ export function useUserCity() {
   const { user } = useAuth();
   const [detectedCity, setDetectedCity] = useState<DetectedCity | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
+  const detectionKeyRef = useRef<string | null>(null);
 
   // Read saved city from profile
   const { data: profile } = trpc.profile.getMyProfile.useQuery(undefined, {
@@ -98,9 +104,26 @@ export function useUserCity() {
     if (isDetecting) return;
     setIsDetecting(true);
     try {
-      // Start with the saved city so the page has an immediate local context.
-      if (profile?.city) {
-        setDetectedCity({ city: profile.city, state: profile.state ?? "", country: "", source: "profile" });
+      // Prefer a previously GPS-verified city over a stale or manually entered profile city.
+      const verifiedLabel = profile?.gpsVerifiedCity ?? "";
+      const verifiedLocation = verifiedLabel ? parseVerifiedCityLabel(verifiedLabel) : null;
+      const trustedSavedLocation = verifiedLocation ?? (profile?.city ? { city: profile.city, state: profile.state ?? "" } : null);
+      if (trustedSavedLocation) {
+        setDetectedCity({
+          ...trustedSavedLocation,
+          country: "US",
+          lat: verifiedLocation && profile?.gpsVerifiedLat ? Number(profile.gpsVerifiedLat) : undefined,
+          lng: verifiedLocation && profile?.gpsVerifiedLng ? Number(profile.gpsVerifiedLng) : undefined,
+          source: verifiedLocation ? "gps" : "profile",
+        });
+        if (user && verifiedLocation && (profile?.city !== verifiedLocation.city || profile?.state !== verifiedLocation.state)) {
+          updateCityMutation.mutate({
+            city: verifiedLocation.city,
+            state: verifiedLocation.state || undefined,
+            lat: profile?.gpsVerifiedLat ?? undefined,
+            lng: profile?.gpsVerifiedLng ?? undefined,
+          });
+        }
       }
 
       // On login, check GPS even when a saved city exists. If the person is now in a
@@ -115,8 +138,8 @@ export function useUserCity() {
         return;
       }
 
-      // Keep the saved city if location permission is unavailable.
-      if (profile?.city) {
+      // Keep the trusted saved/verified city if location permission is unavailable.
+      if (trustedSavedLocation) {
         setIsDetecting(false);
         return;
       }
@@ -139,8 +162,12 @@ export function useUserCity() {
   }, [profile, user, isDetecting, updateCityMutation]);
 
   useEffect(() => {
-    detect();
-  }, [profile?.city]);
+    if (!user?.id) return;
+    const detectionKey = `${user.id}:${profile?.city ?? ""}:${profile?.state ?? ""}`;
+    if (detectionKeyRef.current === detectionKey) return;
+    detectionKeyRef.current = detectionKey;
+    void detect();
+  }, [user?.id, profile?.city, profile?.state]);
 
   const setCity = useCallback((city: string) => {
     setDetectedCity(prev => prev ? { ...prev, city, source: "profile" } : { city, state: "", country: "", source: "profile" });
