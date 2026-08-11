@@ -49,6 +49,22 @@ type UserRow = {
   createdAt: Date | string;
 };
 
+type SallyEventFeedbackRow = {
+  id: number;
+  response: "interested" | "not_for_me";
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  userId: number;
+  userName: string | null;
+  userEmail: string | null;
+  eventId: number;
+  eventTitle: string;
+  eventDate: Date | string;
+  eventCity: string;
+  eventVenueName: string | null;
+  eventExternalUrl: string | null;
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const reasonColors: Record<string, string> = {
   scammer: "bg-red-100 text-red-800",
@@ -441,6 +457,9 @@ export default function Admin() {
   const { data: allPhotos, refetch: refetchPhotos } = trpc.safety.getAllPhotos.useQuery(undefined, {
     enabled: user?.role === "admin" && activeTab === "photos",
   });
+  const { data: sallyEventFeedback, isLoading: feedbackLoading } = trpc.safety.getSallyEventFeedback.useQuery({ limit: 200 }, {
+    enabled: user?.role === "admin" && activeTab === "sally-feedback",
+  });
   const searchInput = useMemo(() => ({ query: search, limit: 50, offset: 0 }), [search]);
   const { data: userList, isLoading: usersLoading } = trpc.safety.searchUsers.useQuery(searchInput, {
     enabled: user?.role === "admin",
@@ -514,6 +533,9 @@ export default function Admin() {
 
   const pendingReports = reports?.filter((r) => r.status === "pending") ?? [];
   const unresolvedFlags = flags?.filter((f) => !f.resolvedAt) ?? [];
+  const feedbackRows = (sallyEventFeedback ?? []) as SallyEventFeedbackRow[];
+  const interestedFeedbackCount = feedbackRows.filter((item) => item.response === "interested").length;
+  const declinedFeedbackCount = feedbackRows.filter((item) => item.response === "not_for_me").length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -612,6 +634,9 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="events" className="rounded-full gap-1.5">
               <Calendar className="w-3.5 h-3.5" /> Events
+            </TabsTrigger>
+            <TabsTrigger value="sally-feedback" className="rounded-full gap-1.5">
+              <Heart className="w-3.5 h-3.5" /> Sally Feedback
             </TabsTrigger>
             <TabsTrigger value="users" className="rounded-full gap-1.5">
               <Users className="w-3.5 h-3.5" /> Users
@@ -820,6 +845,56 @@ export default function Admin() {
                             Review <ChevronRight className="w-3 h-3 ml-1" />
                           </Button>
                         </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* ── Sally Event Feedback ── */}
+          <TabsContent value="sally-feedback">
+            <div className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <StatCard label="Responses" value={feedbackRows.length} icon={<MessageSquare className="w-5 h-5 text-blue-600" />} accent="bg-blue-50" sub="from Sally interviews" />
+                <StatCard label="Interested" value={interestedFeedbackCount} icon={<Heart className="w-5 h-5 text-rose-600" />} accent="bg-rose-50" sub="event matches to learn from" />
+                <StatCard label="Not for me" value={declinedFeedbackCount} icon={<XCircle className="w-5 h-5 text-slate-600" />} accent="bg-slate-50" sub="future picks should avoid" />
+              </div>
+
+              <Card className="border-none shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base"><Heart className="w-4 h-4 text-rose-500" /> Sally’s local event feedback</CardTitle>
+                  <p className="text-sm text-muted-foreground">Review what members said about Sally’s verified event recommendations during interviews. Responses improve future suggestions and event-based matches.</p>
+                </CardHeader>
+                <CardContent>
+                  {feedbackLoading ? (
+                    <div className="flex justify-center py-12"><Spinner /></div>
+                  ) : feedbackRows.length === 0 ? (
+                    <div className="py-12 text-center">
+                      <Heart className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
+                      <p className="font-medium text-foreground">No feedback yet</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Feedback will appear here after members respond to Sally’s event picks during an interview.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {feedbackRows.map((feedback) => (
+                        <article key={feedback.id} className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge className={feedback.response === "interested" ? "bg-rose-100 text-rose-800 hover:bg-rose-100" : "bg-slate-100 text-slate-700 hover:bg-slate-100"}>
+                                {feedback.response === "interested" ? "Interested" : "Not for me"}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">{fmtDate(feedback.updatedAt)}</span>
+                            </div>
+                            <p className="mt-2 truncate font-medium text-foreground">{feedback.eventTitle}</p>
+                            <p className="text-sm text-muted-foreground">{feedback.eventVenueName ?? "Community venue"} · {feedback.eventCity} · {fmtDate(feedback.eventDate)}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Member: {feedback.userName ?? "Unnamed"}{feedback.userEmail ? ` · ${feedback.userEmail}` : ""}</p>
+                          </div>
+                          {feedback.eventExternalUrl && (
+                            <a href={feedback.eventExternalUrl} target="_blank" rel="noreferrer" className="shrink-0 text-sm font-medium text-primary hover:underline">Open source</a>
+                          )}
+                        </article>
                       ))}
                     </div>
                   )}

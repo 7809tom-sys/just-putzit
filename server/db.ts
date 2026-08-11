@@ -1422,6 +1422,33 @@ export async function recordSallyEventFeedback(
   return { success: true, response };
 }
 
+export async function getAdminSallyEventFeedback(limit = 200) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select({
+      id: eventRecommendationFeedback.id,
+      response: eventRecommendationFeedback.response,
+      createdAt: eventRecommendationFeedback.createdAt,
+      updatedAt: eventRecommendationFeedback.updatedAt,
+      userId: users.id,
+      userName: users.name,
+      userEmail: users.email,
+      eventId: communityEvents.id,
+      eventTitle: communityEvents.title,
+      eventDate: communityEvents.eventDate,
+      eventCity: communityEvents.city,
+      eventVenueName: communityEvents.venueName,
+      eventExternalUrl: communityEvents.externalUrl,
+    })
+    .from(eventRecommendationFeedback)
+    .innerJoin(users, eq(eventRecommendationFeedback.userId, users.id))
+    .innerJoin(communityEvents, eq(eventRecommendationFeedback.eventId, communityEvents.id))
+    .orderBy(desc(eventRecommendationFeedback.updatedAt))
+    .limit(limit);
+}
+
 export async function createCommunityEvent(data: InsertCommunityEvent) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");

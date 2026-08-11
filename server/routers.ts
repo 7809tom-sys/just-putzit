@@ -124,6 +124,7 @@ import {
   getCommunityEvents,
   getSallyEventSuggestions,
   recordSallyEventFeedback,
+  getAdminSallyEventFeedback,
   createCommunityEvent,
   rsvpToEvent,
   getUserEventRsvps,
@@ -1405,6 +1406,10 @@ Return JSON with questions array, each having optionA and optionB.`,
       crawlAllCities().catch((e) => console.error("[admin.refreshEvents] crawl error:", e));
       return { ok: true, message: "Event refresh started in background" };
     }),
+
+    getSallyEventFeedback: adminProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).default(200) }))
+      .query(async ({ input }) => getAdminSallyEventFeedback(input.limit)),
   }),
 
   // ─── Venues & Activities ──────────────────────────────────────────────────

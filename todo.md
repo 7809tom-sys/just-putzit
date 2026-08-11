@@ -271,6 +271,7 @@
 - [x] Promote owner account to admin role in DB
 - [x] Add Admin link to Navbar for admin users only
 - [x] Add an admin-only member management page for granting and removing administrator roles
+- [x] Add an admin dashboard tab for reviewing Sally interview event recommendation feedback
 
 ## Mobile Navigation & Feature Parity
 - [ ] Audit Navbar for mobile breakpoint — what is hidden/collapsed
