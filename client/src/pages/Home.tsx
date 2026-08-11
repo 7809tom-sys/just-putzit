@@ -12,6 +12,7 @@ import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
 import { useUserCity } from "@/hooks/useUserCity";
 import { toggleHomepageSection } from "@shared/homepageLayout";
+import { filterHomepageDiscovery, type HomepageDiscoveryDateRange, type HomepageDiscoverySort } from "@shared/homepageDiscovery";
 
 // ─── Module definitions ───────────────────────────────────────────────────────
 
@@ -109,13 +110,60 @@ function MatchesModule({ matches, navigate }: { matches: any[]; navigate: (p: st
   );
 }
 
-function ActivitiesModule({ navigate }: { navigate: (p: string) => void }) {
+function DiscoveryFilters({
+  dateRange,
+  category,
+  sortBy,
+  onDateChange,
+  onCategoryChange,
+  onSortChange,
+  categories,
+}: {
+  dateRange: HomepageDiscoveryDateRange;
+  category: string;
+  sortBy: HomepageDiscoverySort;
+  onDateChange: (value: HomepageDiscoveryDateRange) => void;
+  onCategoryChange: (value: string) => void;
+  onSortChange: (value: HomepageDiscoverySort) => void;
+  categories: Array<{ value: string; label: string }>;
+}) {
+  const selectClass = "rounded-full border border-white/25 bg-white/15 px-2.5 py-1.5 text-xs text-white outline-none [&>option]:text-foreground";
   return (
-    <div
-      className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-3xl p-6 cursor-pointer card-hover"
-      onClick={() => navigate("/activities")}
-    >
-      <div className="flex items-center justify-between">
+    <div className="flex flex-wrap gap-2 mt-4" onClick={(event) => event.stopPropagation()}>
+      <select aria-label="Filter by date" value={dateRange} onChange={(event) => onDateChange(event.target.value as HomepageDiscoveryDateRange)} className={selectClass}>
+        <option value="all">Any date</option>
+        <option value="week">Next 7 days</option>
+        <option value="month">Next 30 days</option>
+      </select>
+      <select aria-label="Filter by category" value={category} onChange={(event) => onCategoryChange(event.target.value)} className={selectClass}>
+        {categories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+      </select>
+      <select aria-label="Sort discovery results" value={sortBy} onChange={(event) => onSortChange(event.target.value as HomepageDiscoverySort)} className={selectClass}>
+        <option value="date">Sort: date</option>
+        <option value="category">Sort: category</option>
+      </select>
+    </div>
+  );
+}
+
+function ActivitiesModule({ navigate }: { navigate: (p: string) => void }) {
+  const [dateRange, setDateRange] = useState<HomepageDiscoveryDateRange>("all");
+  const [category, setCategory] = useState("all");
+  const [sortBy, setSortBy] = useState<HomepageDiscoverySort>("date");
+  const { data: activities = [], isLoading } = trpc.activityBoard.getAll.useQuery({});
+  const filtered = filterHomepageDiscovery(activities, { dateRange, category, sortBy }).slice(0, 2);
+  const categories = [
+    { value: "all", label: "All activities" },
+    { value: "sports", label: "Sports" },
+    { value: "outdoors", label: "Outdoors" },
+    { value: "fitness", label: "Fitness" },
+    { value: "arts", label: "Arts" },
+    { value: "community", label: "Community" },
+  ];
+
+  return (
+    <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-3xl p-6 card-hover" onClick={() => navigate("/activities")}>
+      <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-white/80 text-sm font-medium mb-1">Discover</p>
           <h2 className="font-display font-bold text-2xl text-white">Local Activities</h2>
@@ -123,8 +171,22 @@ function ActivitiesModule({ navigate }: { navigate: (p: string) => void }) {
         </div>
         <div className="text-5xl">🗺️</div>
       </div>
-      <Button size="sm" className="mt-4 bg-white/20 hover:bg-white/30 text-white border-0 rounded-full gap-2">
-        Explore <ChevronRight className="w-3.5 h-3.5" />
+      <DiscoveryFilters dateRange={dateRange} category={category} sortBy={sortBy} onDateChange={setDateRange} onCategoryChange={setCategory} onSortChange={setSortBy} categories={categories} />
+      <div className="mt-3 space-y-2">
+        {isLoading && <p className="text-xs text-white/70">Finding activities near you…</p>}
+        {!isLoading && filtered.map((activity: any) => (
+          <button key={activity.id} type="button" className="w-full text-left rounded-2xl bg-white/15 hover:bg-white/25 p-3 text-white transition-colors" onClick={(event) => { event.stopPropagation(); navigate(`/activities/${activity.id}`); }}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-sm truncate">{activity.title}</span>
+              <span className="text-[11px] text-white/70 whitespace-nowrap">{activity.category ?? "Activity"}</span>
+            </div>
+            <p className="text-xs text-white/70 mt-1">{activity.eventDate ? new Date(activity.eventDate).toLocaleDateString() : "Flexible date"}{activity.venueCity ? ` · ${activity.venueCity}` : ""}</p>
+          </button>
+        ))}
+        {!isLoading && filtered.length === 0 && <p className="text-xs text-white/70">No activities match those filters.</p>}
+      </div>
+      <Button size="sm" className="mt-4 bg-white/20 hover:bg-white/30 text-white border-0 rounded-full gap-2" onClick={(event) => { event.stopPropagation(); navigate("/activities"); }}>
+        Explore all <ChevronRight className="w-3.5 h-3.5" />
       </Button>
     </div>
   );
@@ -253,27 +315,50 @@ function TripModule({ navigate }: { navigate: (p: string) => void }) {
 
 function LocalEventsModule({ navigate }: { navigate: (p: string) => void }) {
   const { city } = useUserCity();
+  const [dateRange, setDateRange] = useState<HomepageDiscoveryDateRange>("all");
+  const [category, setCategory] = useState("all");
+  const [sortBy, setSortBy] = useState<HomepageDiscoverySort>("date");
+  const { data: events = [], isLoading } = trpc.events.list.useQuery({ city, limit: 30 });
+  const filtered = filterHomepageDiscovery(events, { dateRange, category, sortBy }).slice(0, 2);
+  const categories = [
+    { value: "all", label: "All events" },
+    { value: "plays", label: "Plays & musicals" },
+    { value: "arts", label: "Arts" },
+    { value: "music", label: "Music" },
+    { value: "community", label: "Community" },
+    { value: "outdoors", label: "Outdoors" },
+  ];
+
   return (
-    <div
-      className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-3xl p-6 cursor-pointer card-hover"
-      onClick={() => navigate("/events")}
-    >
-      <div className="flex items-center justify-between">
+    <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-3xl p-6 card-hover" onClick={() => navigate("/events")}>
+      <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <MapPin className="w-3.5 h-3.5 text-white/70" />
             <p className="text-white/80 text-sm font-medium">{city}</p>
           </div>
           <h2 className="font-display font-bold text-2xl text-white">Local Events</h2>
-          <p className="text-white/70 text-sm mt-1">Museums, libraries & community</p>
+          <p className="text-white/70 text-sm mt-1">Plays, concerts, museums & community events</p>
         </div>
         <div className="text-5xl">🏙️</div>
       </div>
-      <div className="flex gap-2 mt-4">
-        <Button size="sm" className="bg-white/20 hover:bg-white/30 text-white border-0 rounded-full gap-2">
-          <Calendar className="w-3.5 h-3.5" /> Browse Events
-        </Button>
+      <DiscoveryFilters dateRange={dateRange} category={category} sortBy={sortBy} onDateChange={setDateRange} onCategoryChange={setCategory} onSortChange={setSortBy} categories={categories} />
+      <div className="mt-3 space-y-2">
+        {isLoading && <p className="text-xs text-white/70">Finding current events near you…</p>}
+        {!isLoading && filtered.map((event: any) => (
+          <button key={event.id} type="button" className="w-full text-left rounded-2xl bg-white/15 hover:bg-white/25 p-3 text-white transition-colors" onClick={(clickEvent) => { clickEvent.stopPropagation(); navigate("/events"); }}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-sm truncate">{event.title}</span>
+              <span className="text-[11px] text-white/70 whitespace-nowrap">{event.category ?? "Event"}</span>
+            </div>
+            <p className="text-xs text-white/70 mt-1">{event.eventDate ? new Date(event.eventDate).toLocaleDateString() : "Date to be announced"}{event.venueName ? ` · ${event.venueName}` : ""}</p>
+          </button>
+        ))}
+        {!isLoading && filtered.length === 0 && <p className="text-xs text-white/70">No events match those filters.</p>}
       </div>
+      <Button size="sm" className="mt-4 bg-white/20 hover:bg-white/30 text-white border-0 rounded-full gap-2" onClick={(event) => { event.stopPropagation(); navigate("/events"); }}>
+        <Calendar className="w-3.5 h-3.5" /> Browse all <ChevronRight className="w-3.5 h-3.5" />
+      </Button>
     </div>
   );
 }

@@ -881,3 +881,5 @@
 - [ ] Track proposals sent/accepted (conversion metric)
 - [ ] Show "trending this weekend" on Events page
 - [x] Add drag-and-drop ordering for selected personalized homepage sections and persist new positions
+- [x] Add homepage filters so events, plays, and activities can be sorted by date or category in place
+- [x] Add homepage filters so events, plays, and activities can be sorted by date or category in place
