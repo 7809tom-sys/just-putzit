@@ -298,6 +298,7 @@
 - [ ] Identity fields (gender, orientation, age) extracted if mentioned in any conversation
 - [ ] Profile completeness score shown to user to encourage more chatting
 - [x] Show a “What Sally learned recently” profile indicator sourced from the latest completed interview
+- [x] Animate newly learned profile traits with a subtle first-load highlight
 
 ## Public Game Lobby
 - [ ] Add game_rooms and game_room_players DB tables (city, max players, game type, status)

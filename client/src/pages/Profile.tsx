@@ -389,8 +389,12 @@ export default function Profile() {
 
                   {latestLearning.learnedTraits.length > 0 && (
                     <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {latestLearning.learnedTraits.map((trait) => (
-                        <div key={trait.key} className="rounded-xl border border-violet-100 bg-white/90 px-3 py-2">
+                      {latestLearning.learnedTraits.map((trait, index) => (
+                        <div
+                          key={trait.key}
+                          className={`${trait.status === "learned" ? "sally-new-trait" : ""} rounded-xl border border-violet-100 bg-white/90 px-3 py-2`}
+                          style={{ animationDelay: `${Math.min(index, 6) * 70}ms` }}
+                        >
                           <dt className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
                             {trait.label}
                             {trait.status === "updated" ? " · Updated" : " · New"}
