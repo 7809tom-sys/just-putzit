@@ -3,10 +3,10 @@ import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, Settings2, X, Radio, RotateCcw, Calendar } from "lucide-react";
+import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Settings2, X, Radio, RotateCcw, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
@@ -326,9 +326,26 @@ function CustomizeDrawer({
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState<ActiveModule[]>([...layout]);
+  const dragIndex = useRef<number | null>(null);
 
   const toggleSection = (moduleId: string) => {
     const next = toggleHomepageSection(draft, moduleId);
+    setDraft(next);
+    onSave(next);
+  };
+
+  const handleDragStart = (index: number) => {
+    dragIndex.current = index;
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    const sourceIndex = dragIndex.current;
+    dragIndex.current = null;
+    if (sourceIndex === null || sourceIndex === targetIndex) return;
+    const reordered = [...draft];
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+    const next = reordered.map((section, position) => ({ ...section, position }));
     setDraft(next);
     onSave(next);
   };
@@ -355,7 +372,7 @@ function CustomizeDrawer({
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
             <h2 className="font-bold text-lg">Customize Your Home</h2>
-            <p className="text-xs text-muted-foreground">{pinnedCount} section{pinnedCount !== 1 ? "s" : ""} selected · changes appear automatically</p>
+            <p className="text-xs text-muted-foreground">{pinnedCount} selected · check to add, drag to reorder</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors">
             <X className="w-4 h-4" />
@@ -370,10 +387,15 @@ function CustomizeDrawer({
             return (
               <div
                 key={m.moduleId}
+                draggable={m.pinned}
+                onDragStart={() => handleDragStart(draft.indexOf(m))}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => handleDrop(draft.indexOf(m))}
                 className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
                   m.pinned ? "bg-card border-primary/30 shadow-sm" : "bg-muted/40 border-dashed border-border/60"
                 }`}
               >
+                {m.pinned && <GripVertical className="h-4 w-4 flex-shrink-0 cursor-grab text-muted-foreground" aria-hidden="true" />}
                 <span className="text-xl">{def.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className={`font-medium text-sm ${!m.pinned ? "text-muted-foreground" : ""}`}>{def.label}</p>
@@ -392,6 +414,7 @@ function CustomizeDrawer({
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-border space-y-2">
+          <p className="text-center text-xs text-muted-foreground">Your order is saved automatically.</p>
           <Button className="w-full" onClick={onClose}>Done</Button>
           <Button
             variant="ghost"

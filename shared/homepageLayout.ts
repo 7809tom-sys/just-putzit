@@ -14,3 +14,23 @@ export function toggleHomepageSection(
       : section
   ));
 }
+
+export function reorderHomepageSections(
+  sections: HomepageSection[],
+  sourceIndex: number,
+  targetIndex: number,
+): HomepageSection[] {
+  if (
+    sourceIndex === targetIndex ||
+    sourceIndex < 0 ||
+    targetIndex < 0 ||
+    sourceIndex >= sections.length ||
+    targetIndex >= sections.length
+  ) {
+    return sections;
+  }
+  const next = [...sections];
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  return next.map((section, position) => ({ ...section, position }));
+}

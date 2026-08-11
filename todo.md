@@ -880,3 +880,4 @@
 - [ ] Track "Interested" events (for trending/popular events)
 - [ ] Track proposals sent/accepted (conversion metric)
 - [ ] Show "trending this weekend" on Events page
+- [x] Add drag-and-drop ordering for selected personalized homepage sections and persist new positions
