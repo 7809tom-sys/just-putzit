@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { MapView } from "@/components/Map";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 import { useUserCity } from "@/hooks/useUserCity";
+import { LocationOverrideControl } from "@/components/LocationOverrideControl";
 import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
 
 type Place = {
@@ -183,6 +184,9 @@ export default function Activities() {
         <div className="mb-6">
           <h1 className="font-display font-bold text-3xl text-foreground">Local Activities 🗺️</h1>
           <p className="text-muted-foreground mt-1">Discover nearby places to explore with your matches</p>
+        </div>
+        <div className="mb-6 max-w-xl">
+          <LocationOverrideControl compact />
         </div>
 
         {/* Sally suggestion */}
