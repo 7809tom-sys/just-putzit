@@ -2,14 +2,16 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Pin, PinOff, Settings2, X, Check, Radio, RotateCcw, Calendar } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, Settings2, X, Radio, RotateCcw, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
 import { useUserCity } from "@/hooks/useUserCity";
+import { toggleHomepageSection } from "@shared/homepageLayout";
 
 // ─── Module definitions ───────────────────────────────────────────────────────
 
@@ -324,30 +326,11 @@ function CustomizeDrawer({
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState<ActiveModule[]>([...layout]);
-  const dragIdx = useRef<number | null>(null);
 
-  const togglePin = (moduleId: string) => {
-    setDraft(prev => prev.map(m => m.moduleId === moduleId ? { ...m, pinned: !m.pinned } : m));
-  };
-
-  const handleDragStart = (idx: number) => { dragIdx.current = idx; };
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    if (dragIdx.current === null || dragIdx.current === idx) return;
-    setDraft(prev => {
-      const next = [...prev];
-      const [moved] = next.splice(dragIdx.current!, 1);
-      next.splice(idx, 0, moved);
-      dragIdx.current = idx;
-      return next.map((m, i) => ({ ...m, position: i }));
-    });
-  };
-  const handleDragEnd = () => { dragIdx.current = null; };
-
-  const handleSave = () => {
-    const normalized = draft.map((m, i) => ({ ...m, position: i }));
-    onSave(normalized);
-    onClose();
+  const toggleSection = (moduleId: string) => {
+    const next = toggleHomepageSection(draft, moduleId);
+    setDraft(next);
+    onSave(next);
   };
 
   const handleReset = () => {
@@ -357,6 +340,7 @@ function CustomizeDrawer({
       pinned: m.defaultPinned,
     }));
     setDraft(defaults);
+    onSave(defaults);
   };
 
   const pinnedCount = draft.filter(m => m.pinned).length;
@@ -371,7 +355,7 @@ function CustomizeDrawer({
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
             <h2 className="font-bold text-lg">Customize Your Home</h2>
-            <p className="text-xs text-muted-foreground">{pinnedCount} module{pinnedCount !== 1 ? "s" : ""} pinned · drag to reorder</p>
+            <p className="text-xs text-muted-foreground">{pinnedCount} section{pinnedCount !== 1 ? "s" : ""} selected · changes appear automatically</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors">
             <X className="w-4 h-4" />
@@ -380,35 +364,27 @@ function CustomizeDrawer({
 
         {/* Module list */}
         <div className="overflow-y-auto flex-1 p-4 space-y-2">
-          {draft.map((m, idx) => {
+          {draft.map((m) => {
             const def = ALL_MODULES.find(d => d.id === m.moduleId);
             if (!def) return null;
             return (
               <div
                 key={m.moduleId}
-                draggable
-                onDragStart={() => handleDragStart(idx)}
-                onDragOver={e => handleDragOver(e, idx)}
-                onDragEnd={handleDragEnd}
-                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-grab active:cursor-grabbing ${
-                  m.pinned ? "bg-card border-border" : "bg-muted/40 border-dashed border-border/60 opacity-60"
+                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
+                  m.pinned ? "bg-card border-primary/30 shadow-sm" : "bg-muted/40 border-dashed border-border/60"
                 }`}
               >
-                <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <span className="text-xl">{def.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className={`font-medium text-sm ${!m.pinned ? "text-muted-foreground" : ""}`}>{def.label}</p>
                   <p className="text-xs text-muted-foreground truncate">{def.description}</p>
                 </div>
-                <button
-                  onClick={() => togglePin(m.moduleId)}
-                  className={`p-1.5 rounded-full transition-colors flex-shrink-0 ${
-                    m.pinned ? "bg-primary/10 text-primary hover:bg-primary/20" : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
-                  title={m.pinned ? "Unpin" : "Pin to home"}
-                >
-                  {m.pinned ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
-                </button>
+                <Checkbox
+                  checked={m.pinned}
+                  onCheckedChange={() => toggleSection(m.moduleId)}
+                  aria-label={`${m.pinned ? "Remove" : "Add"} ${def.label} from your home page`}
+                  className="h-5 w-5 flex-shrink-0"
+                />
               </div>
             );
           })}
@@ -416,12 +392,7 @@ function CustomizeDrawer({
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-border space-y-2">
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-            <Button className="flex-1 gap-2" onClick={handleSave}>
-              <Check className="w-4 h-4" /> Save Layout
-            </Button>
-          </div>
+          <Button className="w-full" onClick={onClose}>Done</Button>
           <Button
             variant="ghost"
             size="sm"

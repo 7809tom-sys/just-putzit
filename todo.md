@@ -309,6 +309,10 @@
 - [x] Show a “What Sally learned recently” profile indicator sourced from the latest completed interview
 - [x] Animate newly learned profile traits with a subtle first-load highlight
 
+## Personalized Homepage Sections
+- [x] Let members select homepage sections with checkboxes and automatically show their selections on Home
+- [x] Persist selected homepage sections per member and retain a recommended default set
+
 ## Public Game Lobby
 - [ ] Add game_rooms and game_room_players DB tables (city, max players, game type, status)
 - [ ] tRPC: createRoom, listRooms (filtered by city), joinRoom, leaveRoom, getRoomState
