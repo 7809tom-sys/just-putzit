@@ -8,13 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatAdminDate } from "@shared/adminDates";
 
 type MemberRow = {
   id: number;
   name: string | null;
   email: string | null;
   role: "user" | "admin" | "banned";
+  adminPromotedAt: Date | string | null;
+  lastSignedIn: Date | string | null;
 };
+
 
 export default function AdminMembers() {
   const { user } = useAuth();
@@ -107,6 +111,10 @@ export default function AdminMembers() {
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-foreground">{member.name ?? "Unnamed member"}</p>
                           <p className="truncate text-sm text-muted-foreground">{member.email ?? "No email on file"}</p>
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                            <span><strong className="font-semibold text-foreground/70">Promoted:</strong> {isAdministrator ? formatAdminDate(member.adminPromotedAt) : "—"}</span>
+                            <span><strong className="font-semibold text-foreground/70">Last active:</strong> {formatAdminDate(member.lastSignedIn)}</span>
+                          </div>
                         </div>
                         <Badge variant={isAdministrator ? "default" : isBanned ? "destructive" : "secondary"} className="shrink-0 capitalize">{isAdministrator && <Crown className="mr-1 h-3 w-3" />}{member.role}</Badge>
                       </div>

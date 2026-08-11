@@ -24,6 +24,7 @@ export const users = mysqlTable("users", {
   emailVerifyToken: varchar("emailVerifyToken", { length: 128 }),
   emailVerifyExpires: timestamp("emailVerifyExpires"),
   role: mysqlEnum("role", ["user", "admin", "banned"]).default("user").notNull(),
+  adminPromotedAt: timestamp("adminPromotedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

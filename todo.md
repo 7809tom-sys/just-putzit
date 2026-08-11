@@ -883,6 +883,6 @@
 - [x] Add drag-and-drop ordering for selected personalized homepage sections and persist new positions
 - [x] Add homepage filters so events, plays, and activities can be sorted by date or category in place
 - [x] Add homepage filters so events, plays, and activities can be sorted by date or category in place
-- [ ] Show administrator promotion date and last active login date in the admin member-management table
+- [x] Show administrator promotion date and last active login date in the admin member-management table
 - [x] Make GPS-detected city and state authoritative for discovery, keep Waukesha separate from Milwaukee, and prevent broad-city fallback leakage
 - [x] Show miles away and let members filter events and activities to a 10, 25, or 50-mile radius

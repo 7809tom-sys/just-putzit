@@ -132,7 +132,10 @@ export async function getAllUsers() {
 export async function setMemberAdministratorRole(userId: number, role: "user" | "admin") {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  await db.update(users).set({ role }).where(eq(users.id, userId));
+  await db.update(users).set({
+    role,
+    adminPromotedAt: role === "admin" ? new Date() : null,
+  }).where(eq(users.id, userId));
   return getUserById(userId);
 }
 
@@ -970,6 +973,8 @@ export async function searchUsers(query: string, limit = 50, offset = 0) {
       name: users.name,
       email: users.email,
       role: users.role,
+      adminPromotedAt: users.adminPromotedAt,
+      lastSignedIn: users.lastSignedIn,
       createdAt: users.createdAt,
     })
     .from(users)
@@ -985,6 +990,8 @@ export async function searchUsers(query: string, limit = 50, offset = 0) {
       name: users.name,
       email: users.email,
       role: users.role,
+      adminPromotedAt: users.adminPromotedAt,
+      lastSignedIn: users.lastSignedIn,
       createdAt: users.createdAt,
     })
     .from(users)
