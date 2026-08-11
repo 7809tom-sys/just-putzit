@@ -24,6 +24,7 @@ import { Calendar,
   Search,
 } from "lucide-react";
 import { useUserCity } from "@/hooks/useUserCity";
+import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
 
 const CATEGORIES = [
   { value: "all", label: "All Events", icon: Star },
@@ -77,6 +78,8 @@ interface EventCardProps {
     venueName?: string | null;
     address?: string | null;
     city: string;
+    lat?: number | null;
+    lng?: number | null;
     isFree: boolean;
     priceCents: number;
     externalUrl?: string | null;
@@ -92,9 +95,11 @@ interface EventCardProps {
   isInterested?: boolean;
   onToggleInterest?: (id: number) => void;
   interestLoading?: boolean;
+  userLat?: number;
+  userLng?: number;
 }
 
-function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0, isInterested = false, onToggleInterest, interestLoading }: EventCardProps) {
+function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0, isInterested = false, onToggleInterest, interestLoading, userLat, userLng }: EventCardProps) {
   const CatIcon = CATEGORIES.find((c) => c.value === event.category)?.icon ?? Star;
   const numericId = typeof event.id === "string" ? parseInt(event.id.replace("eb_", ""), 10) : event.id;
 
@@ -163,6 +168,12 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0,
               </span>
             </div>
           )}
+          {userLat !== undefined && userLng !== undefined && event.lat != null && event.lng != null && (
+            <div className="flex items-center gap-2 text-sm text-orange-200">
+              <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+              <span>{formatMilesAway(haversineDistanceMiles(userLat, userLng, Number(event.lat), Number(event.lng)))}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <Users className="w-3.5 h-3.5 text-orange-400 shrink-0" />
             <span>{event.rsvpCount} going</span>
@@ -228,8 +239,9 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0,
 
 export default function Events() {
   const { user } = useAuth();
-  const { city: detectedCity } = useUserCity();
+  const { city: detectedCity, detectedCity: detectedLocation } = useUserCity();
   const [category, setCategory] = useState("all");
+  const [radiusMiles, setRadiusMiles] = useState(25);
   const [city, setCity] = useState<string | null>(null); // null = use detectedCity
   const [freeOnly, setFreeOnly] = useState(false);
   // Auto-set city to detected city on first load
@@ -244,6 +256,9 @@ export default function Events() {
 
   const activeCity = city ?? detectedCity;
   const cityFilter = activeCity === "All Cities" ? undefined : activeCity;
+  const userLat = detectedLocation?.lat;
+  const userLng = detectedLocation?.lng;
+  const hasGps = userLat !== undefined && userLng !== undefined && cityFilter !== undefined;
 
   const { data: ebEvents = [] } = trpc.events.getEventbrite.useQuery(
     { city: cityFilter ?? "Milwaukee" },
@@ -251,9 +266,12 @@ export default function Events() {
   );
 
   const { data: events = [], isLoading, refetch } = trpc.events.list.useQuery({
-    city: cityFilter,
+    city: hasGps ? undefined : cityFilter,
     category: category === "all" ? undefined : category,
     isFree: freeOnly ? true : undefined,
+    lat: hasGps ? userLat : undefined,
+    lng: hasGps ? userLng : undefined,
+    radiusMiles: hasGps ? radiusMiles : undefined,
   });
 
   const { data: myRsvps = [] } = trpc.events.myRsvps.useQuery(undefined, {
@@ -452,6 +470,18 @@ export default function Events() {
             ))}
           </div>
 
+          {hasGps && (
+            <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300">
+              <MapPin className="w-4 h-4 text-orange-400" />
+              <span className="whitespace-nowrap">Within</span>
+              <select aria-label="Event search radius" value={radiusMiles} onChange={(event) => setRadiusMiles(Number(event.target.value))} className="bg-transparent text-white outline-none [&>option]:text-foreground">
+                <option value={10}>10 miles</option>
+                <option value={25}>25 miles</option>
+                <option value={50}>50 miles</option>
+              </select>
+            </label>
+          )}
+
           <button
             onClick={() => setFreeOnly(!freeOnly)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
@@ -527,6 +557,8 @@ export default function Events() {
               imageUrl?: string | null;
               rsvpCount: number;
               source?: string;
+              lat?: number | null;
+              lng?: number | null;
             }>).map((event) => (
               <EventCard
                 key={event.id}
@@ -537,6 +569,8 @@ export default function Events() {
                 onToggleInterest={user ? handleToggleInterest : undefined}
                 isInterested={interestedIds.has(event.id)}
                 interestLoading={interestingId === event.id}
+                userLat={hasGps ? userLat : undefined}
+                userLng={hasGps ? userLng : undefined}
                 interestedCount={0}
               />
             ))}

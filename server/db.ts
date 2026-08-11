@@ -501,7 +501,11 @@ export async function recordReferralVisit(activityId: number) {
 
 // ─── Activity Listings ────────────────────────────────────────────────────────
 
-export async function getActivityListings(city?: string, category?: string) {
+export async function getActivityListings(
+  city?: string,
+  category?: string,
+  geo?: { lat?: number; lng?: number; radiusMiles?: number },
+) {
   const db = await getDb();
   if (!db) return [];
 
@@ -547,23 +551,33 @@ export async function getActivityListings(city?: string, category?: string) {
 
   let filtered = rows;
 
-  // City filter: match venue city (case-insensitive partial match)
-  if (city && city.trim()) {
+  // GPS is authoritative when available; city is the fallback for users without coordinates.
+  if (geo?.lat !== undefined && geo.lng !== undefined) {
+    const radiusMiles = geo.radiusMiles ?? 25;
+    filtered = filtered.filter((row) => {
+      if (row.venueLat === null || row.venueLng === null) return false;
+      return haversineDistanceKm(geo.lat!, geo.lng!, Number(row.venueLat), Number(row.venueLng)) <= radiusMiles * 1.60934;
+    });
+  } else if (city && city.trim()) {
     const cityLower = city.toLowerCase();
     filtered = filtered.filter(r => {
       if (!r.venueCity) return false;
       const vc = r.venueCity.toLowerCase();
       return vc.includes(cityLower) || cityLower.includes(vc);
     });
-    // If no city match, fall back to all (so page is never empty)
-    if (filtered.length === 0) filtered = rows;
+    // Keep the city-specific feed honest; do not silently replace it with another city.
   }
 
   if (category && category !== "all") {
     filtered = filtered.filter(r => r.category === category);
   }
 
-  return filtered.slice(0, 80);
+  return filtered.slice(0, 80).map((row) => ({
+    ...row,
+    distanceMiles: geo?.lat !== undefined && geo.lng !== undefined && row.venueLat !== null && row.venueLng !== null
+      ? haversineDistanceKm(geo.lat, geo.lng, Number(row.venueLat), Number(row.venueLng)) / 1.60934
+      : null,
+  }));
 }
 
 export async function getActivityById(activityId: number) {
@@ -1343,8 +1357,12 @@ export async function getCommunityEvents(filters: {
   if (filters.lat !== undefined && filters.lng !== undefined) {
     const radiusMiles = filters.radiusMiles ?? 90;
     const radiusKm = radiusMiles * 1.60934;
-    // Haversine distance in km via SQL — only include events that have lat/lng stored
-    // OR fall back to city match (for older events without coords)
+    // GPS-radius queries must only include events with coordinates. If a city is
+    // explicitly supplied, older records without coordinates may remain as a
+    // city-specific fallback; never use a global fallback for a GPS query.
+    const missingCoordinateFallback = filters.city
+      ? sql` OR (${communityEvents.lat} IS NULL AND ${communityEvents.city} = ${filters.city})`
+      : sql``;
     conditions.push(
       sql`(
         (${communityEvents.lat} IS NOT NULL AND ${communityEvents.lng} IS NOT NULL AND
@@ -1354,8 +1372,7 @@ export async function getCommunityEvents(filters: {
             POWER(SIN((RADIANS(${communityEvents.lng}) - RADIANS(${filters.lng})) / 2), 2)
           )) <= ${radiusKm}
         )
-        OR
-        (${communityEvents.lat} IS NULL AND ${filters.city ? sql`${communityEvents.city} = ${filters.city}` : sql`1=1`})
+        ${missingCoordinateFallback}
       )`
     );
   } else if (filters.city) {
@@ -1485,12 +1502,18 @@ export async function getUserEventRsvps(userId: number) {
     .orderBy(communityEvents.eventDate);
 }
 
-export async function getEventbriteEvents(city: string, token: string) {
+export async function getEventbriteEvents(
+  city: string,
+  token: string,
+  location?: { lat?: number; lng?: number; radiusMiles?: number },
+) {
   if (!token) return [];
   try {
-    const query = encodeURIComponent(`${city} WI`);
+    const locationQuery = location?.lat !== undefined && location.lng !== undefined
+      ? `location.latitude=${location.lat}&location.longitude=${location.lng}&location.within=${(location.radiusMiles ?? 25) * 1.60934}km`
+      : `location.address=${encodeURIComponent(`${city} WI`)}&location.within=30km`;
     const res = await fetch(
-      `https://www.eventbriteapi.com/v3/events/search/?location.address=${query}&location.within=30km&categories=103,110,113&expand=venue&token=${token}`,
+      `https://www.eventbriteapi.com/v3/events/search/?${locationQuery}&categories=103,110,113&expand=venue&token=${token}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     if (!res.ok) return [];
@@ -1498,16 +1521,19 @@ export async function getEventbriteEvents(city: string, token: string) {
       id: string; name: { text: string }; description: { text: string };
       start: { utc: string }; end: { utc: string };
       url: string; is_free: boolean; logo?: { url: string };
-      venue?: { name: string; address: { localized_address_display: string } };
+      venue?: { name: string; address: { localized_address_display: string }; latitude?: string; longitude?: string };
     }> };
     return (json.events ?? []).map((e) => ({
       id: `eb_${e.id}`,
       title: e.name.text,
       description: e.description?.text ?? "",
+      category: "community" as const,
       eventDate: e.start.utc,
       endDate: e.end.utc,
       venueName: e.venue?.name ?? "",
       address: e.venue?.address?.localized_address_display ?? "",
+      lat: e.venue?.latitude ? Number(e.venue.latitude) : null,
+      lng: e.venue?.longitude ? Number(e.venue.longitude) : null,
       city,
       isFree: e.is_free,
       priceCents: 0,

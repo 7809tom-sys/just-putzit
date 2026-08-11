@@ -1447,14 +1447,30 @@ Return JSON with questions array, each having optionA and optionB.`,
 
   activityBoard: router({
     getAll: protectedProcedure
-      .input(z.object({ city: z.string().optional(), category: z.string().optional() }))
+      .input(z.object({
+        city: z.string().optional(),
+        category: z.string().optional(),
+        lat: z.number().optional(),
+        lng: z.number().optional(),
+        radiusMiles: z.number().min(1).max(100).optional(),
+      }))
       .query(async ({ ctx, input }) => {
         const profile = await getProfileByUserId(ctx.user.id);
         const city = input.city ?? profile?.city ?? undefined;
+        const profileLat = profile?.latitude ? Number(profile.latitude) : undefined;
+        const profileLng = profile?.longitude ? Number(profile.longitude) : undefined;
         if (city) {
           await refreshPublicActivitiesForCity(city, profile?.state ?? undefined).catch(() => {});
         }
-        return getActivityListings(city, input.category);
+        return getActivityListings(
+          city,
+          input.category,
+          {
+            lat: input.lat ?? profileLat,
+            lng: input.lng ?? profileLng,
+            radiusMiles: input.radiusMiles,
+          },
+        );
       }),
 
         getById: protectedProcedure
@@ -2422,11 +2438,20 @@ Return JSON with questions array, each having optionA and optionB.`,
     }),
 
     getEventbrite: publicProcedure
-      .input(z.object({ city: z.string().default("Milwaukee") }))
+      .input(z.object({
+        city: z.string().default("Milwaukee"),
+        lat: z.number().optional(),
+        lng: z.number().optional(),
+        radiusMiles: z.number().min(1).max(100).optional(),
+      }))
       .query(async ({ input }) => {
         const token = process.env.EVENTBRITE_TOKEN ?? "";
         if (!token) return [];
-        return getEventbriteEvents(input.city, token);
+        return getEventbriteEvents(input.city, token, {
+          lat: input.lat,
+          lng: input.lng,
+          radiusMiles: input.radiusMiles,
+        });
       }),
 
     toggleSponsored: protectedProcedure

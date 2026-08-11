@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useUserCity } from "@/hooks/useUserCity";
 import { toggleHomepageSection } from "@shared/homepageLayout";
 import { filterHomepageDiscovery, type HomepageDiscoveryDateRange, type HomepageDiscoverySort } from "@shared/homepageDiscovery";
+import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
 
 // ─── Module definitions ───────────────────────────────────────────────────────
 
@@ -118,6 +119,8 @@ function DiscoveryFilters({
   onCategoryChange,
   onSortChange,
   categories,
+  radiusMiles,
+  onRadiusChange,
 }: {
   dateRange: HomepageDiscoveryDateRange;
   category: string;
@@ -126,6 +129,8 @@ function DiscoveryFilters({
   onCategoryChange: (value: string) => void;
   onSortChange: (value: HomepageDiscoverySort) => void;
   categories: Array<{ value: string; label: string }>;
+  radiusMiles?: number;
+  onRadiusChange?: (value: number) => void;
 }) {
   const selectClass = "rounded-full border border-white/25 bg-white/15 px-2.5 py-1.5 text-xs text-white outline-none [&>option]:text-foreground";
   return (
@@ -142,6 +147,13 @@ function DiscoveryFilters({
         <option value="date">Sort: date</option>
         <option value="category">Sort: category</option>
       </select>
+      {radiusMiles !== undefined && onRadiusChange && (
+        <select aria-label="Homepage discovery radius" value={radiusMiles} onChange={(event) => onRadiusChange(Number(event.target.value))} className={selectClass}>
+          <option value={10}>Within 10 mi</option>
+          <option value={25}>Within 25 mi</option>
+          <option value={50}>Within 50 mi</option>
+        </select>
+      )}
     </div>
   );
 }
@@ -150,7 +162,16 @@ function ActivitiesModule({ navigate }: { navigate: (p: string) => void }) {
   const [dateRange, setDateRange] = useState<HomepageDiscoveryDateRange>("all");
   const [category, setCategory] = useState("all");
   const [sortBy, setSortBy] = useState<HomepageDiscoverySort>("date");
-  const { data: activities = [], isLoading } = trpc.activityBoard.getAll.useQuery({});
+  const [radiusMiles, setRadiusMiles] = useState(25);
+  const { detectedCity } = useUserCity();
+  const userLat = detectedCity?.lat;
+  const userLng = detectedCity?.lng;
+  const { data: activities = [], isLoading } = trpc.activityBoard.getAll.useQuery({
+    city: detectedCity?.city,
+    lat: userLat,
+    lng: userLng,
+    radiusMiles,
+  });
   const filtered = filterHomepageDiscovery(activities, { dateRange, category, sortBy }).slice(0, 2);
   const categories = [
     { value: "all", label: "All activities" },
@@ -171,7 +192,7 @@ function ActivitiesModule({ navigate }: { navigate: (p: string) => void }) {
         </div>
         <div className="text-5xl">🗺️</div>
       </div>
-      <DiscoveryFilters dateRange={dateRange} category={category} sortBy={sortBy} onDateChange={setDateRange} onCategoryChange={setCategory} onSortChange={setSortBy} categories={categories} />
+      <DiscoveryFilters dateRange={dateRange} category={category} sortBy={sortBy} onDateChange={setDateRange} onCategoryChange={setCategory} onSortChange={setSortBy} categories={categories} radiusMiles={userLat !== undefined && userLng !== undefined ? radiusMiles : undefined} onRadiusChange={setRadiusMiles} />
       <div className="mt-3 space-y-2">
         {isLoading && <p className="text-xs text-white/70">Finding activities near you…</p>}
         {!isLoading && filtered.map((activity: any) => (
@@ -180,7 +201,7 @@ function ActivitiesModule({ navigate }: { navigate: (p: string) => void }) {
               <span className="font-semibold text-sm truncate">{activity.title}</span>
               <span className="text-[11px] text-white/70 whitespace-nowrap">{activity.category ?? "Activity"}</span>
             </div>
-            <p className="text-xs text-white/70 mt-1">{activity.eventDate ? new Date(activity.eventDate).toLocaleDateString() : "Flexible date"}{activity.venueCity ? ` · ${activity.venueCity}` : ""}</p>
+            <p className="text-xs text-white/70 mt-1">{activity.eventDate ? new Date(activity.eventDate).toLocaleDateString() : "Flexible date"}{activity.venueCity ? ` · ${activity.venueCity}` : ""}{(activity as any).distanceMiles != null ? ` · ${formatMilesAway((activity as any).distanceMiles)}` : userLat !== undefined && userLng !== undefined && (activity as any).venueLat != null && (activity as any).venueLng != null ? ` · ${formatMilesAway(haversineDistanceMiles(userLat, userLng, Number((activity as any).venueLat), Number((activity as any).venueLng)))}` : ""}</p>
           </button>
         ))}
         {!isLoading && filtered.length === 0 && <p className="text-xs text-white/70">No activities match those filters.</p>}
@@ -314,11 +335,21 @@ function TripModule({ navigate }: { navigate: (p: string) => void }) {
 }
 
 function LocalEventsModule({ navigate }: { navigate: (p: string) => void }) {
-  const { city } = useUserCity();
+  const { city, detectedCity } = useUserCity();
   const [dateRange, setDateRange] = useState<HomepageDiscoveryDateRange>("all");
   const [category, setCategory] = useState("all");
   const [sortBy, setSortBy] = useState<HomepageDiscoverySort>("date");
-  const { data: events = [], isLoading } = trpc.events.list.useQuery({ city, limit: 30 });
+  const [radiusMiles, setRadiusMiles] = useState(25);
+  const userLat = detectedCity?.lat;
+  const userLng = detectedCity?.lng;
+  const hasGps = userLat !== undefined && userLng !== undefined;
+  const { data: events = [], isLoading } = trpc.events.list.useQuery({
+    city: hasGps ? undefined : city,
+    lat: hasGps ? userLat : undefined,
+    lng: hasGps ? userLng : undefined,
+    radiusMiles: hasGps ? radiusMiles : undefined,
+    limit: 30,
+  });
   const filtered = filterHomepageDiscovery(events, { dateRange, category, sortBy }).slice(0, 2);
   const categories = [
     { value: "all", label: "All events" },
@@ -342,7 +373,7 @@ function LocalEventsModule({ navigate }: { navigate: (p: string) => void }) {
         </div>
         <div className="text-5xl">🏙️</div>
       </div>
-      <DiscoveryFilters dateRange={dateRange} category={category} sortBy={sortBy} onDateChange={setDateRange} onCategoryChange={setCategory} onSortChange={setSortBy} categories={categories} />
+      <DiscoveryFilters dateRange={dateRange} category={category} sortBy={sortBy} onDateChange={setDateRange} onCategoryChange={setCategory} onSortChange={setSortBy} categories={categories} radiusMiles={hasGps ? radiusMiles : undefined} onRadiusChange={setRadiusMiles} />
       <div className="mt-3 space-y-2">
         {isLoading && <p className="text-xs text-white/70">Finding current events near you…</p>}
         {!isLoading && filtered.map((event: any) => (
@@ -351,7 +382,7 @@ function LocalEventsModule({ navigate }: { navigate: (p: string) => void }) {
               <span className="font-semibold text-sm truncate">{event.title}</span>
               <span className="text-[11px] text-white/70 whitespace-nowrap">{event.category ?? "Event"}</span>
             </div>
-            <p className="text-xs text-white/70 mt-1">{event.eventDate ? new Date(event.eventDate).toLocaleDateString() : "Date to be announced"}{event.venueName ? ` · ${event.venueName}` : ""}</p>
+            <p className="text-xs text-white/70 mt-1">{event.eventDate ? new Date(event.eventDate).toLocaleDateString() : "Date to be announced"}{event.venueName ? ` · ${event.venueName}` : ""}{hasGps && event.lat != null && event.lng != null ? ` · ${formatMilesAway(haversineDistanceMiles(userLat, userLng, Number(event.lat), Number(event.lng)))}` : ""}</p>
           </button>
         ))}
         {!isLoading && filtered.length === 0 && <p className="text-xs text-white/70">No events match those filters.</p>}

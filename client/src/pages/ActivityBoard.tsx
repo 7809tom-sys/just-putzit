@@ -11,6 +11,8 @@ import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, 
 import { MapView } from "@/components/Map";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
+import { useUserCity } from "@/hooks/useUserCity";
+import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
 
 const CATEGORIES = [
   { id: "all", label: "All Activities", emoji: "✨" },
@@ -113,18 +115,23 @@ export default function ActivityBoard() {
   const [showCollegeOnly, setShowCollegeOnly] = useState(false);
   const [showCommunityOnly, setShowCommunityOnly] = useState(false);
   const [showAllCities, setShowAllCities] = useState(false);
+  const [radiusMiles, setRadiusMiles] = useState(25);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitForm, setSubmitForm] = useState({ ...BLANK_FORM });
 
   const { data: profile } = trpc.profile.get.useQuery();
-  const userCity = profile?.city ?? undefined;
-  const userLat = profile?.latitude ? parseFloat(profile.latitude) : undefined;
-  const userLng = profile?.longitude ? parseFloat(profile.longitude) : undefined;
+  const { detectedCity } = useUserCity();
+  const userCity = detectedCity?.city ?? profile?.city ?? undefined;
+  const userLat = detectedCity?.lat ?? (profile?.latitude ? parseFloat(profile.latitude) : undefined);
+  const userLng = detectedCity?.lng ?? (profile?.longitude ? parseFloat(profile.longitude) : undefined);
 
   const { data: sallyRecs, isLoading: recsLoading } = trpc.activityBoard.getSallyRecommendations.useQuery({});
   const { data: activities, refetch } = trpc.activityBoard.getAll.useQuery({
     city: userCity,
     category: selectedCategory === "all" ? undefined : selectedCategory,
+    lat: userLat,
+    lng: userLng,
+    radiusMiles,
   });
 
   const effectiveCity = showAllCities ? undefined : (userCity ? userCity.split(",")[0].trim() : "Milwaukee");
@@ -136,7 +143,7 @@ export default function ActivityBoard() {
     city: useRadiusQuery ? undefined : effectiveCity,
     lat: useRadiusQuery ? userLat : undefined,
     lng: useRadiusQuery ? userLng : undefined,
-    radiusMiles: useRadiusQuery ? 90 : undefined,
+    radiusMiles: useRadiusQuery ? radiusMiles : undefined,
     category: communityCategory === "all" ? undefined : communityCategory,
     isFree: showFreeOnly ? true : undefined,
     limit: 150,
@@ -329,6 +336,19 @@ export default function ActivityBoard() {
           />
         </div>
 
+        {useRadiusQuery && (
+          <label className="mb-5 inline-flex items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-sm text-gray-700">
+            <MapPin className="h-4 w-4 text-primary" />
+            <span>Show within</span>
+            <select aria-label="Activity search radius" value={radiusMiles} onChange={(event) => setRadiusMiles(Number(event.target.value))} className="bg-transparent font-semibold text-gray-900 outline-none">
+              <option value={10}>10 miles</option>
+              <option value={25}>25 miles</option>
+              <option value={50}>50 miles</option>
+            </select>
+            <span>of your GPS location</span>
+          </label>
+        )}
+
         {/* Category Filter — Activities Tab */}
         {activeTab === "activities" && (
           <div className="flex gap-2 overflow-x-auto pb-3 mb-8" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
@@ -517,6 +537,11 @@ export default function ActivityBoard() {
                               </div>
                               {(activity as any).venueName && (
                                 <p className="text-sm font-medium text-primary mt-2 flex items-center gap-1">
+                                  {(activity as any).distanceMiles != null ? (
+                                    <span className="mr-1 text-xs font-semibold text-orange-600">{formatMilesAway((activity as any).distanceMiles)}</span>
+                                  ) : userLat !== undefined && userLng !== undefined && (activity as any).venueLat != null && (activity as any).venueLng != null ? (
+                                    <span className="mr-1 text-xs font-semibold text-orange-600">{formatMilesAway(haversineDistanceMiles(userLat, userLng, Number((activity as any).venueLat), Number((activity as any).venueLng)))}</span>
+                                  ) : null}
                                   <MapPin className="w-3.5 h-3.5" />
                                   {(activity as any).venueName}
                                   {(activity as any).venueCity && (
@@ -671,6 +696,12 @@ export default function ActivityBoard() {
                                     <span className="flex items-center gap-1">
                                       <MapPin className="w-3.5 h-3.5" />
                                       {event.venueName}
+                                    </span>
+                                  )}
+                                  {userLat !== undefined && userLng !== undefined && event.lat != null && event.lng != null && (
+                                    <span className="flex items-center gap-1 font-semibold text-orange-600">
+                                      <MapPin className="w-3.5 h-3.5" />
+                                      {formatMilesAway(haversineDistanceMiles(userLat, userLng, Number(event.lat), Number(event.lng)))}
                                     </span>
                                   )}
                                 </div>
