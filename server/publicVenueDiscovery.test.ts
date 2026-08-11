@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPublicVenueSearchPlan, normalizeDiscoveryCity, PUBLIC_ACTIVITY_CATEGORIES } from "./publicVenueDiscovery";
+import { buildPublicVenueSearchPlan, getCuratedPublicSeedsForCity, normalizeDiscoveryCity, PUBLIC_ACTIVITY_CATEGORIES } from "./publicVenueDiscovery";
 
 describe("public venue discovery", () => {
   it("covers every requested public recreation category", () => {
@@ -7,6 +7,17 @@ describe("public venue discovery", () => {
       "swimming_pool", "beach", "dirt_track", "basketball", "ymca", "public_gym",
       "golf", "disc_golf", "volleyball", "tennis",
     ]));
+  });
+
+  it("keeps Waukesha curated public recreation venues separate from Milwaukee", () => {
+    const waukesha = getCuratedPublicSeedsForCity("Waukesha, WI");
+    const milwaukee = getCuratedPublicSeedsForCity("Milwaukee, WI");
+
+    expect(waukesha.length).toBeGreaterThanOrEqual(4);
+    expect(waukesha.some((seed) => seed.venueName === "Buchner Park Community Pool")).toBe(true);
+    expect(waukesha.some((seed) => seed.venueName === "Minooka Park Beach")).toBe(true);
+    expect(waukesha.every((seed) => seed.city === "Waukesha" && seed.state === "WI")).toBe(true);
+    expect(milwaukee.some((seed) => seed.venueName === "Buchner Park Community Pool")).toBe(false);
   });
 
   it("builds a city-specific search plan for any US city", () => {

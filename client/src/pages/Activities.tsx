@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,8 @@ import { MapPin, Star, ExternalLink, RefreshCw, Navigation, Search } from "lucid
 import { toast } from "sonner";
 import { MapView } from "@/components/Map";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
+import { useUserCity } from "@/hooks/useUserCity";
+import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
 
 type Place = {
   name: string;
@@ -17,6 +19,7 @@ type Place = {
   lat: number;
   lng: number;
   openNow?: boolean;
+  distanceMiles?: number;
 };
 
 const ACTIVITY_TYPES = [
@@ -40,6 +43,12 @@ export default function Activities() {
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
 
   const { data: profile } = trpc.profile.get.useQuery();
+  const { detectedCity } = useUserCity();
+  const trustedLocation = detectedCity?.lat !== undefined && detectedCity?.lng !== undefined
+    ? { lat: detectedCity.lat, lng: detectedCity.lng }
+    : profile?.gpsVerifiedLat && profile?.gpsVerifiedLng
+      ? { lat: Number(profile.gpsVerifiedLat), lng: Number(profile.gpsVerifiedLng) }
+      : null;
   const updateLocation = trpc.profile.update.useMutation();
   const { data: featuredPartners = [] } = trpc.advertising.getFeaturedPartners.useQuery(
     { city: profile?.city || undefined },
@@ -73,6 +82,10 @@ export default function Activities() {
             lat: r.geometry?.location?.lat() || 0,
             lng: r.geometry?.location?.lng() || 0,
             openNow: r.opening_hours?.isOpen?.(),
+            distanceMiles: haversineDistanceMiles(location, {
+              lat: r.geometry?.location?.lat() || 0,
+              lng: r.geometry?.location?.lng() || 0,
+            }),
           }));
           setPlaces(mapped);
           // Add markers
@@ -93,8 +106,14 @@ export default function Activities() {
 
   const handleMapReady = (map: google.maps.Map) => {
     mapRef.current = map;
+    if (trustedLocation) {
+      setUserLocation(trustedLocation);
+      map.setCenter(trustedLocation);
+      map.setZoom(14);
+      searchNearby(map, trustedLocation, activeType);
+    }
     if (!navigator.geolocation) {
-      setLocationError("Geolocation not supported by your browser.");
+      if (!trustedLocation) setLocationError("Geolocation is not supported by your browser.");
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -113,10 +132,23 @@ export default function Activities() {
         searchNearby(map, loc, activeType);
       },
       () => {
+        if (trustedLocation) {
+          setLocationError(null);
+          return;
+        }
         setLocationError("Location access denied. Please allow location to see nearby activities.");
-      }
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
     );
   };
+
+  useEffect(() => {
+    if (!mapRef.current || userLocation || !trustedLocation) return;
+    setUserLocation(trustedLocation);
+    mapRef.current.setCenter(trustedLocation);
+    mapRef.current.setZoom(14);
+    searchNearby(mapRef.current, trustedLocation, activeType);
+  }, [trustedLocation?.lat, trustedLocation?.lng, userLocation, activeType]);
 
   const handleTypeChange = (type: string) => {
     setActiveType(type);
@@ -267,6 +299,7 @@ function PlaceCard({ place, typeLabel, isFeatured }: { place: Place; typeLabel: 
           <p className="font-bold text-sm truncate">{place.name}</p>
           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
             <MapPin className="w-3 h-3" /> {place.vicinity}
+            {place.distanceMiles !== undefined && <span className="ml-auto text-primary font-medium">{formatMilesAway(place.distanceMiles)}</span>}
           </p>
           {place.rating && (
             <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">

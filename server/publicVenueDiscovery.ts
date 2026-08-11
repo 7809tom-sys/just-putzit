@@ -31,6 +31,8 @@ type PublicVenueSeed = {
   website: string;
   emoji: string;
   accessNotes: string;
+  latitude?: string;
+  longitude?: string;
 };
 
 type DiscoverySearch = {
@@ -263,8 +265,88 @@ const MILWAUKEE_CURATED_SEEDS: PublicVenueSeed[] = [
   },
 ];
 
+const WAUKESHA_CURATED_SEEDS: PublicVenueSeed[] = [
+  {
+    venueName: "Buchner Park Community Pool",
+    category: "swimming_pool",
+    title: "Open swim at Buchner Park Community Pool",
+    description: "Meet for open swim, lap swim, aqua fitness, or a relaxed pool day at Waukesha’s public seasonal pool.",
+    address: "223 Oakland Avenue",
+    city: "Waukesha",
+    state: "WI",
+    website: "https://www.waukesha-wi.gov/government/departments/pools.php",
+    emoji: "🏊",
+    accessNotes: "Public seasonal pool with daily admission; open-swim hours and member-only lap/current-channel windows vary. Check the official schedule before visiting.",
+    latitude: "43.0197",
+    longitude: "-88.2364",
+  },
+  {
+    venueName: "Horeb Springs Aquatic Center",
+    category: "swimming_pool",
+    title: "Swim and slide at Horeb Springs Aquatic Center",
+    description: "Plan a public swim, family outing, lesson, or water-based meet-up at Waukesha’s Horeb Springs facility.",
+    address: "330 Spring Street",
+    city: "Waukesha",
+    state: "WI",
+    website: "https://www.waukesha-wi.gov/government/departments/pools.php",
+    emoji: "🌊",
+    accessNotes: "Public seasonal aquatic center with daily admission; slides, diving boards, family swim, and lesson times vary by schedule and fee. Confirm hours before going.",
+    latitude: "43.0150",
+    longitude: "-88.2287",
+  },
+  {
+    venueName: "Minooka Park Beach",
+    category: "beach",
+    title: "Beach day at Minooka Park",
+    description: "Meet for a public lake beach, walking, swimming in the designated area, or a relaxed outdoor day near Waukesha.",
+    address: "1927 E Sunset Dr",
+    city: "Waukesha",
+    state: "WI",
+    website: "https://www.waukeshacounty.gov/parks-and-land-use/parks-and-recreation/parks-and-trails/beaches/",
+    emoji: "🏖️",
+    accessNotes: "Seasonal county beach; swimming is at your own risk with no lifeguards. A county daily vehicle permit or annual membership is required, and water-quality advisories can change.",
+    latitude: "42.9744",
+    longitude: "-88.2547",
+  },
+  {
+    venueName: "Waukesha YMCA",
+    category: "ymca",
+    title: "Community fitness at Waukesha YMCA",
+    description: "Explore fitness, swim, group exercise, sports, aquatics, and community programs at the Waukesha YMCA.",
+    address: "320 E. Broadway",
+    city: "Waukesha",
+    state: "WI",
+    website: "https://www.gwcymca.org/locations/waukesha-ymca/",
+    emoji: "🤝",
+    accessNotes: "Membership, guest access, class registration, and program eligibility vary. Confirm current hours and access rules directly with the YMCA.",
+    latitude: "43.0078",
+    longitude: "-88.2278",
+  },
+  {
+    venueName: "Waukesha County Beaches",
+    category: "volleyball",
+    title: "Outdoor recreation at Waukesha County beaches",
+    description: "Use the county’s beach system for swimming, volleyball, shoreline walks, kayaking, and low-pressure outdoor meet-ups near Waukesha.",
+    address: "Waukesha County Parks",
+    city: "Waukesha",
+    state: "WI",
+    website: "https://www.waukeshacounty.gov/parks-and-land-use/parks-and-recreation/parks-and-trails/beaches/",
+    emoji: "🏐",
+    accessNotes: "County beaches and amenities vary by park and season. Check current beach status, water quality, permits, hours, and volleyball availability before making plans.",
+    latitude: "42.9744",
+    longitude: "-88.2547",
+  },
+];
+
 export function normalizeDiscoveryCity(city: string): string {
   return city.trim().replace(/,\s*[A-Z]{2}$/i, "");
+}
+
+export function getCuratedPublicSeedsForCity(city: string): PublicVenueSeed[] {
+  const normalizedCity = normalizeDiscoveryCity(city).toLowerCase();
+  if (normalizedCity === "milwaukee") return MILWAUKEE_CURATED_SEEDS;
+  if (normalizedCity === "waukesha") return WAUKESHA_CURATED_SEEDS;
+  return [];
 }
 
 export function buildPublicVenueSearchPlan(city: string, state?: string) {
@@ -294,6 +376,8 @@ async function findOrCreateVenue(seed: PublicVenueSeed): Promise<number | null> 
     address: seed.address,
     city: seed.city,
     website: seed.website,
+    latitude: seed.latitude,
+    longitude: seed.longitude,
     isPublicAccess: true,
     accessNotes: seed.accessNotes,
     referralFeePerVisit: 0,
@@ -427,9 +511,9 @@ export async function refreshPublicActivitiesForCity(city: string, state?: strin
   const normalizedCity = normalizeDiscoveryCity(city);
   if (normalizedCity.length < 2) return;
 
-  const isMilwaukee = normalizedCity.toLowerCase() === "milwaukee";
-  if (isMilwaukee) {
-    await Promise.all(MILWAUKEE_CURATED_SEEDS.map(upsertPublicActivity));
+  const curatedSeeds = getCuratedPublicSeedsForCity(normalizedCity);
+  if (curatedSeeds.length > 0) {
+    await Promise.all(curatedSeeds.map(upsertPublicActivity));
   }
 
   if (await wasRecentlyRefreshed(normalizedCity)) return;

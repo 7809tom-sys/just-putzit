@@ -12,7 +12,6 @@ import Profile from "./pages/Profile";
 import Matches from "./pages/Matches";
 import Chat from "./pages/Chat";
 import Games from "./pages/Games";
-import Activities from "./pages/Activities";
 import ActivityBoard from "./pages/ActivityBoard";
 import Community from "./pages/Community";
 import Safety from "./pages/Safety";
@@ -101,7 +100,7 @@ function Router() {
         <Route path="/matches" component={Matches} />
         <Route path="/chat/:matchId" component={Chat} />
         <Route path="/games/:matchId" component={Games} />
-        <Route path="/activities" component={Activities} />
+        <Route path="/activities" component={ActivityBoard} />
         <Route path="/activity-board" component={ActivityBoard} />
         <Route path="/community" component={Community} />
         <Route path="/concierge" component={Concierge} />
