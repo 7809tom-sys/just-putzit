@@ -900,3 +900,7 @@
 ## Family Select Toast Feedback
 - [x] Show a success toast when a valid Family Select gender option is selected
 - [x] Add regression coverage and verify the Family interaction
+
+## Family Invalid Selection Feedback
+- [x] Show an error toast when a child submission has no valid gender selection
+- [x] Add regression coverage and verify the Family validation flow

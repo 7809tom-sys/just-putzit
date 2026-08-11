@@ -17,3 +17,10 @@ export function getFamilyGenderSelectionToast(gender: FamilyChildGender) {
     description: "This preference is ready to save with the child’s family profile.",
   };
 }
+
+export function getFamilyInvalidGenderToast() {
+  return {
+    title: "Choose a gender selection",
+    description: "Select Boy, Girl, Non-binary, or Prefer not to say before adding the child.",
+  };
+}

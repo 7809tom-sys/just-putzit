@@ -10,7 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { MapPin, Plus, Trash2, Users, Calendar } from "lucide-react";
-import { getFamilyGenderSelectionToast, normalizeFamilyChildGender, type FamilyChildGender } from "@/lib/familySelection";
+import { getFamilyGenderSelectionToast, getFamilyInvalidGenderToast, normalizeFamilyChildGender, type FamilyChildGender } from "@/lib/familySelection";
 
 export default function Family() {
   const [familyName, setFamilyName] = useState("");
@@ -19,7 +19,7 @@ export default function Family() {
   const [interests, setInterests] = useState<string[]>([]);
   const [interestInput, setInterestInput] = useState("");
   const [childAge, setChildAge] = useState("");
-  const [childGender, setChildGender] = useState<FamilyChildGender>("prefer_not_to_say");
+  const [childGender, setChildGender] = useState<FamilyChildGender | "">("");
   const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [isAddChildOpen, setIsAddChildOpen] = useState(false);
   const [geoLocation, setGeoLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -50,7 +50,7 @@ export default function Family() {
       toast.success("Child added!");
       setIsAddChildOpen(false);
       setChildAge("");
-      setChildGender("prefer_not_to_say");
+      setChildGender("");
       refetchChildren();
     },
     onError: (error) => {
@@ -133,9 +133,15 @@ export default function Family() {
       toast.error("Please enter a valid child age (0-25)");
       return;
     }
+    const gender = normalizeFamilyChildGender(childGender);
+    if (!gender) {
+      const feedback = getFamilyInvalidGenderToast();
+      toast.error(feedback.title, { description: feedback.description });
+      return;
+    }
     addChildMutation.mutate({
       ageYears: parseInt(childAge),
-      gender: childGender,
+      gender,
     });
   };
 
@@ -330,7 +336,7 @@ export default function Family() {
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select a gender" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="boy">Boy</SelectItem>
