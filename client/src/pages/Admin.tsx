@@ -529,19 +529,24 @@ export default function Admin() {
               <p className="text-sm text-muted-foreground">Just Putzit — Safety & Trust Dashboard</p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 rounded-full"
-            onClick={() => {
-              refetchStats();
-              refetchReports();
-              refetchFlags();
-              toast.success("Refreshed");
-            }}
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/members">
+              <Button variant="outline" size="sm" className="gap-2 rounded-full"><Users className="w-3.5 h-3.5" /> Administrators</Button>
+            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 rounded-full"
+              onClick={() => {
+                refetchStats();
+                refetchReports();
+                refetchFlags();
+                toast.success("Refreshed");
+              }}
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Stats row */}

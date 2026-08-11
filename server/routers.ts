@@ -1,7 +1,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { sdk } from "./_core/sdk";
 import { invokeLLM } from "./_core/llm";
@@ -17,6 +17,7 @@ import { autoSeedCityEvents } from "./cityEventSeeder";
 import { crawlAllCities } from "./museumLibraryCrawler";
 import { getLatestInterviewLearnings } from "./profileLearning";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
+import { getAdminRoleChangeBlock } from "./adminRolePolicy";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -50,6 +51,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   getAllUsers,
+  setMemberAdministratorRole,
   getUserByOpenId,
   createReport,
   getReportsForAdmin,
@@ -1320,6 +1322,24 @@ Return JSON with questions array, each having optionA and optionB.`,
       if (ctx.user.role !== "admin") throw new Error("Forbidden");
       return getAllUsers();
     }),
+
+    setAdministratorRole: adminProcedure
+      .input(z.object({ userId: z.number().int().positive(), role: z.enum(["user", "admin"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const target = await getUserById(input.userId);
+        if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Member not found" });
+
+        const blockReason = getAdminRoleChangeBlock(
+          ctx.user.id,
+          { id: target.id, openId: target.openId, role: target.role },
+          input.role,
+          process.env.OWNER_OPEN_ID,
+        );
+        if (blockReason) throw new TRPCError({ code: "FORBIDDEN", message: blockReason });
+
+        const member = await setMemberAdministratorRole(input.userId, input.role);
+        return { success: true, member };
+      }),
 
     getStats: protectedProcedure.query(async ({ ctx }) => {
       if (ctx.user.role !== "admin") throw new Error("Forbidden");

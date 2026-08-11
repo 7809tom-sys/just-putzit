@@ -31,6 +31,7 @@ import Login from "@/pages/Login";
 import Verify from "@/pages/Verify";
 import Events from "@/pages/Events";
 import Notifications from "@/pages/Notifications";
+import AdminMembers from "@/pages/AdminMembers";
 import { APP_ROUTES } from "@/lib/routes";
 import GameLobby from "@/pages/GameLobby";
 import Entertainment from "@/pages/Entertainment";
@@ -141,6 +142,7 @@ function Router() {
         <Route path="/safety" component={Safety} />
         <Route path="/advertise" component={AdvertiseWithUs} />
         <Route path="/admin/advertising" component={AdminAdvertising} />
+        <Route path="/admin/members" component={AdminMembers} />
         <Route path="/admin" component={Admin} />
         <Route path="/privacy" component={Privacy} />
         <Route path="/404" component={NotFound} />

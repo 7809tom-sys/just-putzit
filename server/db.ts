@@ -129,6 +129,13 @@ export async function getAllUsers() {
   return db.select().from(users);
 }
 
+export async function setMemberAdministratorRole(userId: number, role: "user" | "admin") {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+  return getUserById(userId);
+}
+
 // ─── User Profiles ────────────────────────────────────────────────────────────
 
 export async function getOrCreateProfile(userId: number) {
