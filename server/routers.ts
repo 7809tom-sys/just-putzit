@@ -206,6 +206,10 @@ import {
   getInterestedCount,
   getUserEventInterests,
   getMatchesInterestedInSameEvents,
+  listSavedLocations,
+  createSavedLocation,
+  updateSavedLocation,
+  deleteSavedLocation,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, MatchGameQuestion as GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import { familyProfiles, communityEvents } from "../drizzle/schema";
@@ -280,6 +284,42 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "We could not find that city or ZIP code." });
         }
         return resolved;
+      }),
+    saved: protectedProcedure.query(async ({ ctx }) => {
+      return listSavedLocations(ctx.user.id);
+    }),
+    save: protectedProcedure
+      .input(z.object({
+        label: z.string().trim().min(1).max(80),
+        city: z.string().trim().min(1).max(100),
+        state: z.string().trim().min(1).max(32),
+        postalCode: z.string().trim().max(16).optional(),
+        latitude: z.string().trim().min(1).max(20),
+        longitude: z.string().trim().min(1).max(20),
+        isHome: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return createSavedLocation(ctx.user.id, input);
+      }),
+    rename: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), label: z.string().trim().min(1).max(80) }))
+      .mutation(async ({ ctx, input }) => {
+        const updated = await updateSavedLocation(ctx.user.id, input.id, { label: input.label });
+        if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Saved location not found." });
+        return updated;
+      }),
+    setHome: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const updated = await updateSavedLocation(ctx.user.id, input.id, { isHome: true });
+        if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Saved location not found." });
+        return updated;
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteSavedLocation(ctx.user.id, input.id);
+        return { success: true };
       }),
   }),
 

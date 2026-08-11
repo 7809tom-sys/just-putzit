@@ -1,6 +1,7 @@
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { selectCurrentVerifiedEvents } from "./eventRecommendations";
+import { normalizeSavedLocationDraft } from "./savedLocationPolicy";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -47,6 +48,7 @@ import {
   familyMatches,
   tripPlans,
   userHomepageLayout,
+  savedLocations,
   triviaQuestions,
   triviaRooms,
   triviaRoomPlayers,
@@ -2764,4 +2766,84 @@ export async function getMatchesInterestedInSameEvents(userId: number, eventId: 
         or(...interestedUserIds.map(id => eq(matches.user2Id, id)))
       )
     );
+}
+
+// ─── Saved travel locations ───────────────────────────────────────────────────
+
+export type SavedLocationInput = {
+  label: string;
+  city: string;
+  state: string;
+  postalCode?: string;
+  latitude: string;
+  longitude: string;
+  isHome?: boolean;
+};
+
+export async function listSavedLocations(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(savedLocations)
+    .where(eq(savedLocations.userId, userId))
+    .orderBy(desc(savedLocations.isHome), savedLocations.label);
+}
+
+export async function createSavedLocation(userId: number, input: SavedLocationInput) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await db
+    .select({ id: savedLocations.id })
+    .from(savedLocations)
+    .where(eq(savedLocations.userId, userId));
+  const normalized = normalizeSavedLocationDraft(input, existing.length === 0);
+  if (normalized.isHome) {
+    await db.update(savedLocations).set({ isHome: false }).where(eq(savedLocations.userId, userId));
+  }
+  await db.insert(savedLocations).values({
+    userId,
+    label: normalized.label,
+    city: normalized.city,
+    state: normalized.state,
+    postalCode: normalized.postalCode,
+    latitude: normalized.latitude,
+    longitude: normalized.longitude,
+    isHome: normalized.isHome,
+  });
+  const rows = await db
+    .select()
+    .from(savedLocations)
+    .where(eq(savedLocations.userId, userId))
+    .orderBy(desc(savedLocations.id));
+  return rows[0] ?? null;
+}
+
+export async function updateSavedLocation(userId: number, id: number, input: { label?: string; isHome?: boolean }) {
+  const db = await getDb();
+  if (!db) return null;
+  if (input.isHome) {
+    await db.update(savedLocations).set({ isHome: false }).where(eq(savedLocations.userId, userId));
+  }
+  const setValues: Record<string, unknown> = {};
+  if (input.label !== undefined) setValues.label = input.label.trim();
+  if (input.isHome !== undefined) setValues.isHome = input.isHome;
+  if (Object.keys(setValues).length > 0) {
+    await db
+      .update(savedLocations)
+      .set(setValues)
+      .where(and(eq(savedLocations.id, id), eq(savedLocations.userId, userId)));
+  }
+  const rows = await db
+    .select()
+    .from(savedLocations)
+    .where(and(eq(savedLocations.id, id), eq(savedLocations.userId, userId)));
+  return rows[0] ?? null;
+}
+
+export async function deleteSavedLocation(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) return false;
+  await db.delete(savedLocations).where(and(eq(savedLocations.id, id), eq(savedLocations.userId, userId)));
+  return true;
 }

@@ -22,6 +22,17 @@ export type DetectedCity = {
   displayName?: string;
 };
 
+export type SavedLocationSummary = {
+  id: number;
+  label: string;
+  city: string;
+  state: string;
+  postalCode?: string | null;
+  latitude: string;
+  longitude: string;
+  isHome: boolean;
+};
+
 const US_STATE_CODES = new Set([
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC",
 ]);
@@ -135,6 +146,20 @@ export function useUserCity() {
   const manualLocationQuery = trpc.location.resolve.useQuery(manualLocationInput, {
     enabled: !!user && manualSearch.trim().length >= 2,
     retry: false,
+  });
+  const savedLocationsQuery = trpc.location.saved.useQuery(undefined, {
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const trpcUtils = trpc.useUtils();
+  const saveLocationMutation = trpc.location.save.useMutation({
+    onSuccess: () => trpcUtils.location.saved.invalidate(),
+  });
+  const setHomeMutation = trpc.location.setHome.useMutation({
+    onSuccess: () => trpcUtils.location.saved.invalidate(),
+  });
+  const deleteLocationMutation = trpc.location.delete.useMutation({
+    onSuccess: () => trpcUtils.location.saved.invalidate(),
   });
 
   const detect = useCallback(async () => {
@@ -276,6 +301,49 @@ export function useUserCity() {
     }
   }, [user, detectedCity?.state, updateCityMutation]);
 
+  const selectSavedLocation = useCallback((location: SavedLocationSummary) => {
+    const next: DetectedCity = {
+      city: location.city,
+      state: location.state,
+      country: "US",
+      lat: Number(location.latitude),
+      lng: Number(location.longitude),
+      postalCode: location.postalCode ?? undefined,
+      displayName: `${location.city}, ${location.state}`,
+      source: "manual",
+    };
+    setManualOverride(next);
+    setDetectedCity(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(getManualLocationKey(user?.id), JSON.stringify(next));
+      window.dispatchEvent(new Event("justputzit:location-changed"));
+    }
+    if (user) {
+      updateCityMutation.mutate({ city: next.city, state: next.state, lat: String(next.lat), lng: String(next.lng) });
+    }
+  }, [user?.id, updateCityMutation]);
+
+  const saveCurrentLocation = useCallback((label?: string) => {
+    if (!user || !detectedCity?.lat || !detectedCity?.lng) return;
+    saveLocationMutation.mutate({
+      label: label?.trim() || detectedCity.city,
+      city: detectedCity.city,
+      state: detectedCity.state || "",
+      postalCode: detectedCity.postalCode,
+      latitude: String(detectedCity.lat),
+      longitude: String(detectedCity.lng),
+      isHome: false,
+    });
+  }, [user, detectedCity, saveLocationMutation]);
+
+  const setSavedLocationHome = useCallback((id: number) => {
+    setHomeMutation.mutate({ id });
+  }, [setHomeMutation]);
+
+  const deleteSavedLocation = useCallback((id: number) => {
+    deleteLocationMutation.mutate({ id });
+  }, [deleteLocationMutation]);
+
   return {
     city: detectedCity?.city ?? "Milwaukee",
     detectedCity,
@@ -286,5 +354,12 @@ export function useUserCity() {
     setCity,
     setManualLocation,
     clearManualLocation,
+    savedLocations: (savedLocationsQuery.data ?? []) as SavedLocationSummary[],
+    selectSavedLocation,
+    saveCurrentLocation,
+    setSavedLocationHome,
+    deleteSavedLocation,
+    isSavingLocation: saveLocationMutation.isPending,
+    isDeletingSavedLocation: deleteLocationMutation.isPending,
   };
 }

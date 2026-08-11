@@ -54,7 +54,7 @@ export default function Activities() {
   const trustedLocation = detectedCity?.lat !== undefined && detectedCity?.lng !== undefined
     ? { lat: detectedCity.lat, lng: detectedCity.lng }
     : profileLocationMatchesDetectedCity
-      ? { lat: Number(profile.gpsVerifiedLat), lng: Number(profile.gpsVerifiedLng) }
+      ? { lat: Number(profile?.gpsVerifiedLat), lng: Number(profile?.gpsVerifiedLng) }
       : null;
   const updateLocation = trpc.profile.update.useMutation();
   const { data: featuredPartners = [] } = trpc.advertising.getFeaturedPartners.useQuery(

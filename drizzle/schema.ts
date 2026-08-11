@@ -1333,3 +1333,21 @@ export const eventRecommendationFeedback = mysqlTable("event_recommendation_feed
 });
 
 export type EventRecommendationFeedback = typeof eventRecommendationFeedback.$inferSelect;
+
+// ─── Saved travel locations ───────────────────────────────────────────────────
+export const savedLocations = mysqlTable("saved_locations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  label: varchar("label", { length: 80 }).notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  state: varchar("state", { length: 32 }).notNull(),
+  postalCode: varchar("postalCode", { length: 16 }),
+  latitude: varchar("latitude", { length: 20 }).notNull(),
+  longitude: varchar("longitude", { length: 20 }).notNull(),
+  isHome: boolean("isHome").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SavedLocation = typeof savedLocations.$inferSelect;
+export type InsertSavedLocation = typeof savedLocations.$inferInsert;
