@@ -161,6 +161,9 @@ export function useUserCity() {
   const deleteLocationMutation = trpc.location.delete.useMutation({
     onSuccess: () => trpcUtils.location.saved.invalidate(),
   });
+  const renameLocationMutation = trpc.location.rename.useMutation({
+    onSuccess: () => trpcUtils.location.saved.invalidate(),
+  });
 
   const detect = useCallback(async () => {
     if (isDetecting) return;
@@ -344,6 +347,11 @@ export function useUserCity() {
     deleteLocationMutation.mutate({ id });
   }, [deleteLocationMutation]);
 
+  const renameSavedLocation = useCallback((id: number, label: string) => {
+    const nextLabel = label.trim();
+    if (nextLabel) renameLocationMutation.mutate({ id, label: nextLabel });
+  }, [renameLocationMutation]);
+
   return {
     city: detectedCity?.city ?? "Milwaukee",
     detectedCity,
@@ -359,6 +367,7 @@ export function useUserCity() {
     saveCurrentLocation,
     setSavedLocationHome,
     deleteSavedLocation,
+    renameSavedLocation,
     isSavingLocation: saveLocationMutation.isPending,
     isDeletingSavedLocation: deleteLocationMutation.isPending,
   };

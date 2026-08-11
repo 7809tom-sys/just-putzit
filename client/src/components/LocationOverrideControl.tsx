@@ -1,13 +1,15 @@
-import { MapPin, RotateCcw, Search, Loader2, Bookmark, Trash2, Home, Check } from "lucide-react";
+import { MapPin, RotateCcw, Search, Loader2, Bookmark, Trash2, Home, Check, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUserCity } from "@/hooks/useUserCity";
 import { useState, type FormEvent } from "react";
 
 export function LocationOverrideControl({ compact = false }: { compact?: boolean }) {
-  const { city, detectedCity, isDetecting, isResolvingManualLocation, manualLocationError, isManualOverride, setManualLocation, clearManualLocation, savedLocations, selectSavedLocation, saveCurrentLocation, setSavedLocationHome, deleteSavedLocation, isSavingLocation } = useUserCity();
+  const { city, detectedCity, isDetecting, isResolvingManualLocation, manualLocationError, isManualOverride, setManualLocation, clearManualLocation, savedLocations, selectSavedLocation, saveCurrentLocation, setSavedLocationHome, deleteSavedLocation, renameSavedLocation, isSavingLocation } = useUserCity();
   const [draft, setDraft] = useState("");
   const [saveLabel, setSaveLabel] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingLabel, setEditingLabel] = useState("");
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,21 +57,31 @@ export function LocationOverrideControl({ compact = false }: { compact?: boolean
           </p>
           <div className="flex flex-wrap gap-2">
             {savedLocations.map((location) => (
-              <div key={location.id} className="flex items-center gap-1 rounded-full border border-slate-200 bg-white pl-1.5 pr-1 text-xs shadow-sm">
-                <button type="button" className="flex min-h-8 items-center gap-1.5 px-1.5 text-left font-semibold text-slate-700 hover:text-orange-600" onClick={() => selectSavedLocation(location)}>
-                  {location.isHome ? <Home className="h-3 w-3 text-orange-500" aria-label="Home" /> : <MapPin className="h-3 w-3 text-slate-400" aria-hidden="true" />}
-                  <span>{location.label}</span>
-                  {location.isHome && <Check className="h-3 w-3 text-emerald-500" aria-hidden="true" />}
-                </button>
-                {!location.isHome && (
-                  <button type="button" className="rounded-full p-1 text-slate-400 hover:bg-orange-50 hover:text-orange-600" aria-label={`Set ${location.label} as home`} onClick={() => setSavedLocationHome(location.id)}>
-                    <Home className="h-3 w-3" aria-hidden="true" />
+              editingId === location.id ? (
+                <form key={location.id} onSubmit={(event) => { event.preventDefault(); renameSavedLocation(location.id, editingLabel); setEditingId(null); }} className="flex items-center gap-1 rounded-full border border-orange-200 bg-white p-1 text-xs shadow-sm">
+                  <Input autoFocus value={editingLabel} onChange={(event) => setEditingLabel(event.target.value)} aria-label={`Rename ${location.label}`} className="h-7 w-28 border-0 bg-transparent px-2 text-xs focus-visible:ring-0" />
+                  <Button type="submit" size="icon" variant="ghost" className="h-7 w-7 rounded-full text-emerald-600" aria-label="Save new location name"><Check className="h-3.5 w-3.5" aria-hidden="true" /></Button>
+                </form>
+              ) : (
+                <div key={location.id} className="flex items-center gap-1 rounded-full border border-slate-200 bg-white pl-1.5 pr-1 text-xs shadow-sm">
+                  <button type="button" className="flex min-h-8 items-center gap-1.5 px-1.5 text-left font-semibold text-slate-700 hover:text-orange-600" onClick={() => selectSavedLocation(location)}>
+                    {location.isHome ? <Home className="h-3 w-3 text-orange-500" aria-label="Home" /> : <MapPin className="h-3 w-3 text-slate-400" aria-hidden="true" />}
+                    <span>{location.label}</span>
+                    {location.isHome && <Check className="h-3 w-3 text-emerald-500" aria-hidden="true" />}
                   </button>
-                )}
-                <button type="button" className="rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label={`Delete ${location.label}`} onClick={() => deleteSavedLocation(location.id)}>
-                  <Trash2 className="h-3 w-3" aria-hidden="true" />
-                </button>
-              </div>
+                  <button type="button" className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label={`Rename ${location.label}`} onClick={() => { setEditingId(location.id); setEditingLabel(location.label); }}>
+                    <Pencil className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                  {!location.isHome && (
+                    <button type="button" className="rounded-full p-1 text-slate-400 hover:bg-orange-50 hover:text-orange-600" aria-label={`Set ${location.label} as home`} onClick={() => setSavedLocationHome(location.id)}>
+                      <Home className="h-3 w-3" aria-hidden="true" />
+                    </button>
+                  )}
+                  <button type="button" className="rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label={`Delete ${location.label}`} onClick={() => deleteSavedLocation(location.id)}>
+                    <Trash2 className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </div>
+              )
             ))}
           </div>
         </div>
