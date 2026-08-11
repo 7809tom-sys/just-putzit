@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { APP_ROUTES } from "@/lib/routes";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
@@ -142,7 +143,7 @@ export default function MobileBottomNav() {
                   <p className="text-xs text-muted-foreground truncate">{user?.email ?? ""}</p>
                 </div>
                 {unreadCount > 0 && (
-                  <Link href="/notifications" onClick={() => setMoreOpen(false)}>
+                  <Link href={APP_ROUTES.notifications} onClick={() => setMoreOpen(false)}>
                     <div className="relative">
                       <Bell className="w-5 h-5 text-muted-foreground" />
                       <Badge className="absolute -top-1 -right-1 w-4 h-4 p-0 flex items-center justify-center text-[9px] bg-primary text-primary-foreground">

@@ -30,6 +30,8 @@ import SignUp from "@/pages/SignUp";
 import Login from "@/pages/Login";
 import Verify from "@/pages/Verify";
 import Events from "@/pages/Events";
+import Notifications from "@/pages/Notifications";
+import { APP_ROUTES } from "@/lib/routes";
 import GameLobby from "@/pages/GameLobby";
 import Entertainment from "@/pages/Entertainment";
 import ShoutOut from "@/pages/ShoutOut";
@@ -132,6 +134,7 @@ function Router() {
         <Route path="/family" component={Family} />
         <Route path="/trip-planner" component={TripPlanner} />
         <Route path="/events" component={Events} />
+        <Route path={APP_ROUTES.notifications} component={Notifications} />
         <Route path="/game-lobby" component={GameLobby} />
         <Route path="/entertainment" component={Entertainment} />
         <Route path="/shout-out" component={ShoutOut} />

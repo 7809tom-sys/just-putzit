@@ -481,6 +481,7 @@
 - [x] Add voice-to-text mic button to profile edit page bio field
 - [x] Fix age and sex fields not saving on profile edit (confirmed columns exist, data saves correctly)
 - [x] Fix movie trailers not playing (added mute=1 and playsinline=1 for mobile autoplay)
+- [x] Fix mobile navigation link that opens the 404 Page Not Found screen
 
 
 ## Phase 26: Family Network & Trip Planner
