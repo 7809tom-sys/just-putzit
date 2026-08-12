@@ -23,6 +23,7 @@ import { createMarketplaceCheckoutSession, getMarketplacePaymentConfirmation } f
 import { deriveGameAchievements } from "./memberDashboard";
 import { getRescheduleRequestError } from "./bookingManagement";
 import { getBookingCheckInError } from "../shared/attendanceProof";
+import { getPartnerTrendRangeError, parsePartnerTrendDate } from "./partnerImpact";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -88,6 +89,7 @@ import {
   checkInBooking,
   getBookingsForVenue,
   getPartnerImpactForOwner,
+  getPartnerImpactTrendForOwner,
   genCode,
   createConciergeRequest,
   updateConciergeRequest,
@@ -1982,6 +1984,15 @@ Return JSON with questions array, each having optionA and optionB.`,
   // ─── Vendor Partner Portal ────────────────────────────────────────────────
   vendor: router({
     impactResults: protectedProcedure.query(async ({ ctx }) => getPartnerImpactForOwner(ctx.user.id)),
+    trend: protectedProcedure
+      .input(z.object({ start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
+      .query(async ({ ctx, input }) => {
+        const start = parsePartnerTrendDate(input.start);
+        const end = parsePartnerTrendDate(input.end);
+        const error = getPartnerTrendRangeError(start, end);
+        if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error });
+        return getPartnerImpactTrendForOwner(ctx.user.id, start, end);
+      }),
     myVenues: protectedProcedure.query(async ({ ctx }) => {
       const venues = await getVenuesByOwner(ctx.user.id);
       return Promise.all(venues.map(async (v) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ATTENDANCE_CHECK_IN_EARLY_WINDOW_MS, getBookingCheckInError } from "../shared/attendanceProof";
-import { buildPartnerImpactTrend, summarizePartnerImpact } from "./partnerImpact";
+import { buildPartnerImpactTrend, buildPartnerImpactTrendForRange, getPartnerTrendRangeError, parsePartnerTrendDate, summarizePartnerImpact } from "./partnerImpact";
 
 describe("attendance proof", () => {
   const now = new Date("2026-08-12T12:00:00.000Z");
@@ -37,5 +37,17 @@ describe("attendance proof", () => {
     expect(trend).toHaveLength(30);
     expect(trend.at(-1)).toMatchObject({ bookings: 1, attendance: 2 });
     expect(trend.at(-2)).toMatchObject({ bookings: 1, attendance: 0 });
+  });
+
+  it("validates custom ranges and returns an inclusive daily series", () => {
+    const start = parsePartnerTrendDate("2026-08-10");
+    const end = parsePartnerTrendDate("2026-08-12");
+    expect(getPartnerTrendRangeError(start, end, new Date("2026-08-12T14:00:00.000Z"))).toBeNull();
+    expect(getPartnerTrendRangeError(end, start, new Date("2026-08-12T14:00:00.000Z"))).toBe("The start date must come before the end date.");
+    expect(buildPartnerImpactTrendForRange([{ status: "confirmed", partySize: 1, totalPriceCents: 0, commissionCents: 0, createdAt: "2026-08-11T10:00:00.000Z" }], [], start, end)).toMatchObject([
+      { date: "2026-08-10", bookings: 0 },
+      { date: "2026-08-11", bookings: 1 },
+      { date: "2026-08-12", bookings: 0 },
+    ]);
   });
 });

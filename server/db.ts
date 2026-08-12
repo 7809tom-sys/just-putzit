@@ -2,7 +2,7 @@ import { and, desc, eq, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { selectCurrentVerifiedEvents } from "./eventRecommendations";
 import { normalizeSavedLocationDraft } from "./savedLocationPolicy";
-import { buildPartnerImpactTrend, summarizePartnerImpact } from "./partnerImpact";
+import { buildPartnerImpactTrend, buildPartnerImpactTrendForRange, summarizePartnerImpact } from "./partnerImpact";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -814,6 +814,21 @@ export async function getPartnerImpactForOwner(ownerUserId: number) {
     totals,
     trend: buildPartnerImpactTrend(resultsWithSources.flatMap((result) => result.venueBookings), resultsWithSources.flatMap((result) => result.rsvps)),
   };
+}
+
+export async function getPartnerImpactTrendForOwner(ownerUserId: number, start: Date, end: Date) {
+  const venues = await getVenuesByOwner(ownerUserId);
+  const sources = await Promise.all(venues.map(async (venue) => {
+    const [listings, venueBookings] = await Promise.all([getListingsByVenue(venue.id), getBookingsForVenue(venue.id)]);
+    const rsvpGroups = await Promise.all(listings.map((listing) => getRsvpsForActivity(listing.id)));
+    return { venueBookings, rsvps: rsvpGroups.flat() };
+  }));
+  return buildPartnerImpactTrendForRange(
+    sources.flatMap((source) => source.venueBookings),
+    sources.flatMap((source) => source.rsvps),
+    start,
+    end,
+  );
 }
 
 export async function updateVenuePartner(venueId: number, data: Partial<typeof venuePartners.$inferInsert>) {

@@ -994,3 +994,8 @@
 - [x] Aggregate privacy-safe daily booking and attendance signals for the last 30 days
 - [x] Add responsive 30-day booking and attendance charts to Partner Results
 - [x] Add trend regression coverage and visual verification
+
+## Partner Results Custom Date Range
+- [x] Add validated custom date-range aggregation for partner booking and attendance trends
+- [x] Add preset and custom date controls to Partner Results charts
+- [x] Add date-range regression coverage and responsive verification

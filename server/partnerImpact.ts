@@ -23,6 +23,23 @@ export type PartnerImpactTrendPoint = {
   attendance: number;
 };
 
+export const PARTNER_TREND_MAX_RANGE_DAYS = 366;
+
+export function parsePartnerTrendDate(value: string) {
+  return new Date(`${value}T00:00:00.000Z`);
+}
+
+export function getPartnerTrendRangeError(start: Date, end: Date, now = new Date()) {
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "Choose valid start and end dates.";
+  if (start.getTime() > end.getTime()) return "The start date must come before the end date.";
+  const latestAllowed = new Date(now);
+  latestAllowed.setHours(23, 59, 59, 999);
+  if (end.getTime() > latestAllowed.getTime()) return "Choose an end date that is today or earlier.";
+  const dayCount = Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  if (dayCount > PARTNER_TREND_MAX_RANGE_DAYS) return `Choose a range of ${PARTNER_TREND_MAX_RANGE_DAYS} days or less.`;
+  return null;
+}
+
 function toDayKey(value: Date | string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
@@ -62,6 +79,18 @@ export function buildPartnerImpactTrend(
     if (attendancePoint) attendancePoint.attendance += 1;
   });
   return Array.from(points.values());
+}
+
+export function buildPartnerImpactTrendForRange(
+  bookings: DatedImpactBooking[],
+  rsvps: ImpactRsvp[],
+  start: Date,
+  end: Date,
+) {
+  const inclusiveEnd = new Date(end);
+  inclusiveEnd.setHours(23, 59, 59, 999);
+  const days = Math.floor((inclusiveEnd.getTime() - start.getTime()) / 86_400_000) + 1;
+  return buildPartnerImpactTrend(bookings, rsvps, inclusiveEnd, days);
 }
 
 export function summarizePartnerImpact(bookings: ImpactBooking[], rsvps: ImpactRsvp[]) {
