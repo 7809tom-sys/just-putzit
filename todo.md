@@ -922,3 +922,7 @@
 ## Payment Confirmation Booking Loading Feedback
 - [x] Show an accessible loading state when View My Bookings is selected
 - [x] Add regression coverage and verify the confirmation navigation interaction
+
+## Bookings Skeleton Loading
+- [x] Add a card-shaped skeleton loading state for booking records
+- [x] Add regression coverage and verify the mobile bookings loading layout

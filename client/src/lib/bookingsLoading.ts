@@ -1,0 +1,1 @@
+export const BOOKINGS_SKELETON_CARD_COUNT = 3;

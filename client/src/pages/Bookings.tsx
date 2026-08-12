@@ -3,10 +3,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { MapPin, CalendarDays, Ticket, Users, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { BOOKINGS_SKELETON_CARD_COUNT } from "@/lib/bookingsLoading";
 
 function dollars(cents: number) {
   return cents === 0 ? "Free" : `$${(cents / 100).toFixed(0)}`;
@@ -18,6 +20,27 @@ const STATUS_STYLE: Record<string, string> = {
   completed: "bg-muted text-muted-foreground",
   cancelled: "bg-destructive/10 text-destructive",
 };
+
+export function BookingsListSkeleton() {
+  return (
+    <div className="space-y-3" role="status" aria-live="polite" aria-label="Loading bookings">
+      <span className="sr-only">Loading your bookings</span>
+      {Array.from({ length: BOOKINGS_SKELETON_CARD_COUNT }, (_, index) => (
+        <Card key={index} className="border-none shadow-sm">
+          <CardContent className="flex items-center gap-4 p-5">
+            <Skeleton className="h-14 w-14 shrink-0 rounded-xl" />
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="flex items-center gap-2"><Skeleton className="h-5 w-44 max-w-[60%]" /><Skeleton className="h-4 w-16 rounded-full" /></div>
+              <div className="flex flex-wrap gap-2"><Skeleton className="h-3 w-28" /><Skeleton className="h-3 w-16" /><Skeleton className="h-3 w-32" /></div>
+              <Skeleton className="h-3 w-40" />
+            </div>
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 export default function Bookings() {
   const { isAuthenticated, loading } = useAuth();
@@ -68,7 +91,7 @@ export default function Bookings() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-20"><Spinner /></div>
+          <BookingsListSkeleton />
         ) : bookings && bookings.length > 0 ? (
           <div className="space-y-3">
             {bookings.map(b => (
