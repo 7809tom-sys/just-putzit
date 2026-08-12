@@ -976,3 +976,7 @@
 ## Animated Calendar Download Toast
 - [x] Add a motion-safe animated .ics success toast with a visible dismissal progress bar
 - [x] Add regression coverage and verify the enhanced calendar download feedback
+
+## Toast Notification Stacking
+- [x] Configure multiple simultaneous toast notifications to stack without overlapping
+- [x] Add regression coverage for multi-alert toast behavior
