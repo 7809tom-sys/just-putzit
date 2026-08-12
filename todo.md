@@ -1028,3 +1028,8 @@
 - [x] Audit Waukesha location filtering and current library event visibility
 - [x] Add a direct Waukesha Public Library discovery entry and clearer local placement
 - [x] Verify the library is visible under Waukesha discovery views
+
+## Primary Waukesha Library Visibility
+- [x] Add Waukesha Public Library directly to the primary Home and Events discovery screens
+- [x] Keep the entry visible and readable on desktop and mobile
+- [x] Add regression coverage and verify the primary-screen placement

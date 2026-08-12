@@ -8,6 +8,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
+import { WaukeshaLibrarySpotlight } from "@/components/WaukeshaLibrarySpotlight";
 import { LocationOverrideControl } from "@/components/LocationOverrideControl";
 import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
@@ -758,6 +759,10 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
 
         <div className="mb-6">
           <NearbyNowModule navigate={navigate} />
+        </div>
+
+        <div className="mb-6">
+          <WaukeshaLibrarySpotlight onExplore={() => navigate("/entertainment")} />
         </div>
 
         {/* Identity completion prompt */}

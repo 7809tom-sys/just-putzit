@@ -26,6 +26,7 @@ import { Calendar,
 import { useUserCity } from "@/hooks/useUserCity";
 import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
 import { LocationOverrideControl } from "@/components/LocationOverrideControl";
+import { WaukeshaLibrarySpotlight } from "@/components/WaukeshaLibrarySpotlight";
 
 const CATEGORIES = [
   { value: "all", label: "All Events", icon: Star },
@@ -412,6 +413,10 @@ export default function Events() {
 
           <div className="mt-5 max-w-xl">
             <LocationOverrideControl compact />
+          </div>
+
+          <div className="mt-5">
+            <WaukeshaLibrarySpotlight dark onExplore={() => { window.location.href = "/entertainment"; }} />
           </div>
 
           {/* Stats strip */}
