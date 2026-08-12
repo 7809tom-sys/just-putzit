@@ -1003,3 +1003,8 @@
 ## Partner Trend Exact-Value Tooltips
 - [x] Add hover and keyboard-accessible exact-value tooltips to booking and attendance chart points
 - [x] Add interaction regression coverage and responsive verification
+
+## Partner Trend Range Summary Cards
+- [x] Calculate selected-range total bookings and average attendance from protected trend data
+- [x] Add responsive selected-range summary cards above partner charts
+- [x] Add summary calculation regression coverage and visual verification
