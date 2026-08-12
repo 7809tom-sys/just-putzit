@@ -931,3 +931,8 @@
 - [x] Create the Local Legend, Plan the Perfect Saturday, Three Things in Common, and Would You Join Me game collection
 - [x] Add safe public-event coordination handoffs from game outcomes
 - [x] Add game interaction regression coverage and responsive verification
+
+## Social Game Completion Celebration
+- [x] Add reduced-motion-aware confetti to completed social games
+- [x] Add a subtle opt-in browser success sound and regression coverage
+- [x] Verify the completed-game presentation on mobile

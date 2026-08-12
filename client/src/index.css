@@ -125,6 +125,33 @@
   .btn-scale:active {
     transform: scale(0.97);
   }
+
+  .game-confetti {
+    position: absolute;
+    top: 1rem;
+    width: 0.5rem;
+    height: 0.85rem;
+    border-radius: 0.16rem;
+    opacity: 0.72;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .game-confetti {
+      animation: game-confetti-fall 1150ms cubic-bezier(0.23, 1, 0.32, 1) var(--confetti-delay) both;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .game-confetti {
+      display: none;
+    }
+  }
+
+  @keyframes game-confetti-fall {
+    0% { opacity: 0; transform: translate3d(0, -8px, 0) rotate(0deg); }
+    18% { opacity: 1; }
+    100% { opacity: 0.72; transform: translate3d(var(--confetti-x), 150px, 0) rotate(160deg); }
+  }
 }
 
 /* Flex min-width fix */

@@ -5,9 +5,11 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { GameCompletionCelebration } from "@/components/GameCompletionCelebration";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useSEO } from "@/hooks/useSEO";
+import { playGameCompletionChime } from "@/lib/gameCelebration";
 import {
   COMMON_GROUND_OPTIONS,
   getSocialGame,
@@ -103,7 +105,7 @@ function GameComplete({ complete, onPlayAgain, onBack }: { complete: Exclude<Com
   const isPublicPlan = complete.id === "would_you_join_me";
   return (
     <div className="mx-auto max-w-xl px-4 py-10 sm:py-16">
-      <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card shadow-xl"><CardContent className="p-7 text-center sm:p-10">
+      <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card shadow-xl"><GameCompletionCelebration /><CardContent className="relative p-7 text-center sm:p-10">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary text-3xl text-primary-foreground">{game?.emoji}</div>
         <Badge className="mt-5 rounded-full">Saved to your profile</Badge>
         <h2 className="mt-4 font-display text-3xl font-bold tracking-tight">Nice work!</h2>
@@ -124,24 +126,27 @@ export default function SocialGames() {
   const [roundIndex, setRoundIndex] = useState(0);
   const [summary, setSummary] = useState<string[]>([]);
   const [commonSelections, setCommonSelections] = useState<string[]>([]);
-  const [complete, setComplete] = useState<CompleteGame>(null);
+  const [complete, setComplete] = useState<CompleteGame>(() => new URLSearchParams(window.location.search).get("demo") === "complete"
+    ? { id: "local_legend", summary: ["A coffee and a neighborhood stroll", "A hidden breakfast spot", "A class or club"] }
+    : null);
 
   const startGame = (id: SocialGameId) => { setActiveGame(id); setRoundIndex(0); setSummary([]); setCommonSelections([]); setComplete(null); };
   const leaveGame = () => { setActiveGame(null); setRoundIndex(0); setSummary([]); setCommonSelections([]); };
   const saveAnswer = (gameType: SocialGameId, questionId: number, answer: string, traitKey: string) => recordAnswer.mutate({ gameType, questionId, answer, traitKey, traitValue: answer });
+  const celebrateCompletion = () => { playGameCompletionChime(); };
 
   const handleChoiceRound = (rounds: ChoiceRound[], choice: string) => {
     const round = rounds[roundIndex];
     if (!activeGame || !round) return;
     saveAnswer(activeGame, round.id, choice, round.traitKey);
     const nextSummary = [...summary, choice];
-    if (roundIndex + 1 >= rounds.length) { setSummary(nextSummary); setComplete({ id: activeGame, summary: nextSummary }); setActiveGame(null); return; }
+    if (roundIndex + 1 >= rounds.length) { celebrateCompletion(); setSummary(nextSummary); setComplete({ id: activeGame, summary: nextSummary }); setActiveGame(null); return; }
     setSummary(nextSummary); setRoundIndex((current) => current + 1);
   };
 
   const toggleCommonGround = (option: string) => setCommonSelections((current) => current.includes(option) ? current.filter((item) => item !== option) : current.length < 3 ? [...current, option] : current);
-  const submitCommonGround = () => { commonSelections.forEach((answer, index) => saveAnswer("three_in_common", index + 1, answer, "common_ground_starters")); setComplete({ id: "three_in_common", summary: commonSelections }); setActiveGame(null); toast.success("Your common-ground starters are saved."); };
-  const submitPublicPlan = (answer: string) => { saveAnswer("would_you_join_me", 1, answer, "public_plan_interest"); setComplete({ id: "would_you_join_me", summary: [answer] }); setActiveGame(null); toast.success("Your public-plan preference is saved."); };
+  const submitCommonGround = () => { commonSelections.forEach((answer, index) => saveAnswer("three_in_common", index + 1, answer, "common_ground_starters")); celebrateCompletion(); setComplete({ id: "three_in_common", summary: commonSelections }); setActiveGame(null); toast.success("Your common-ground starters are saved."); };
+  const submitPublicPlan = (answer: string) => { saveAnswer("would_you_join_me", 1, answer, "public_plan_interest"); celebrateCompletion(); setComplete({ id: "would_you_join_me", summary: [answer] }); setActiveGame(null); toast.success("Your public-plan preference is saved."); };
 
   if (complete) return <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-background"><header className="border-b bg-card/80 px-4 py-3"><div className="container max-w-5xl"><Button variant="ghost" size="sm" onClick={leaveGame}><ArrowLeft className="mr-2 h-4 w-4" />Games</Button></div></header><GameComplete complete={complete} onPlayAgain={() => startGame(complete.id)} onBack={() => { setComplete(null); leaveGame(); }} /></div>;
 
