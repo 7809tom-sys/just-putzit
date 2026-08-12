@@ -1023,3 +1023,8 @@
 - [x] Audit the current Entertainment page and local listing sources
 - [x] Refresh current official entertainment events for the Waukesha and Milwaukee area
 - [x] Verify the refreshed Entertainment discovery experience
+
+## Waukesha Library Visibility Fix
+- [x] Audit Waukesha location filtering and current library event visibility
+- [x] Add a direct Waukesha Public Library discovery entry and clearer local placement
+- [x] Verify the library is visible under Waukesha discovery views

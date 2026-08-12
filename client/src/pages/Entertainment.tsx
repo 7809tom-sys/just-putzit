@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useUserCity } from "@/hooks/useUserCity";
-import { filterCurrentEntertainment, officialEntertainmentCalendars, type EntertainmentListing } from "@/lib/entertainmentDiscovery";
+import { filterCurrentEntertainment, filterVenueListings, officialEntertainmentCalendars, type EntertainmentListing } from "@/lib/entertainmentDiscovery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +18,10 @@ function formatEventDate(date: Date) {
 export default function Entertainment() {
   const { city } = useUserCity();
   const { data: listings, isLoading } = trpc.events.list.useQuery({ city, limit: 100 });
+  const { data: waukeshaListings, isLoading: isLoadingWaukeshaLibrary } = trpc.events.list.useQuery({ city: "Waukesha", limit: 100 });
   const trackClick = trpc.entertainment.trackEntertainmentClick.useMutation();
   const currentEntertainment = useMemo(() => filterCurrentEntertainment((listings ?? []) as EntertainmentListing[]), [listings]);
+  const waukeshaLibraryPrograms = useMemo(() => filterVenueListings((waukeshaListings ?? []) as EntertainmentListing[], "Waukesha Public Library"), [waukeshaListings]);
 
   const openOfficialListing = (listing: EntertainmentListing) => {
     if (!listing.externalUrl) return;
@@ -49,7 +51,11 @@ export default function Entertainment() {
               <div><p className="font-semibold">Upcoming entertainment in {city}</p><p className="text-sm text-muted-foreground">Use the official source for final time, ticket, and accessibility details.</p></div>
               <Badge variant="secondary" className="rounded-full px-3 py-1">Live local feed</Badge>
             </div>
-            {isLoading ? <div className="space-y-3">{[1, 2, 3].map((key) => <Skeleton key={key} className="h-32 rounded-2xl" />)}</div> : currentEntertainment.length ? <div className="grid gap-4 md:grid-cols-2">{currentEntertainment.map((event) => <Card key={event.id} className="overflow-hidden border-border/80 shadow-sm transition-shadow hover:shadow-md"><CardContent className="p-5"><div className="mb-3 flex items-start justify-between gap-3"><Badge variant="secondary" className="capitalize">{event.category}</Badge><span className="text-xs font-medium text-orange-600">{event.isFree ? "Free" : "Tickets / details"}</span></div><h2 className="font-display text-xl font-bold leading-tight">{event.title}</h2><div className="mt-3 space-y-1.5 text-sm text-muted-foreground"><p className="flex gap-2"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />{formatEventDate(event.eventDate)}</p><p className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />{event.venueName ?? "Local venue"} · {event.city}</p></div><div className="mt-5 flex gap-2"><Button asChild variant="outline" className="rounded-full"><Link href="/events">See in Events</Link></Button>{event.externalUrl && <Button onClick={() => openOfficialListing(event)} className="rounded-full bg-orange-500 text-white hover:bg-orange-600"><ExternalLink className="mr-1.5 h-4 w-4" /> Official details</Button>}</div></CardContent></Card>)}</div> : <div className="rounded-2xl border border-dashed border-border p-8 text-center"><Music className="mx-auto mb-3 h-7 w-7 text-orange-500" /><h2 className="font-display text-xl font-bold">More entertainment is being refreshed for {city}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Browse the trusted venue calendars below or check the broader local event feed.</p><Button asChild className="mt-4 rounded-full"><Link href="/events">Browse all local events</Link></Button></div>}
+            {isLoading ? <div className="space-y-3">{[1, 2, 3].map((key) => <Skeleton key={key} className="h-32 rounded-2xl" />)}</div> : currentEntertainment.length ? <div className="grid gap-4 md:grid-cols-2">{currentEntertainment.map((event) => <CurrentEventCard key={event.id} event={event} onOpen={openOfficialListing} />)}</div> : <div className="rounded-2xl border border-dashed border-border p-8 text-center"><Music className="mx-auto mb-3 h-7 w-7 text-orange-500" /><h2 className="font-display text-xl font-bold">More entertainment is being refreshed for {city}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Browse the trusted venue calendars below or check the broader local event feed.</p><Button asChild className="mt-4 rounded-full"><Link href="/events">Browse all local events</Link></Button></div>}
+            <section aria-labelledby="waukesha-library-programs" className="rounded-3xl border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Featured Waukesha venue</p><h2 id="waukesha-library-programs" className="font-display text-2xl font-bold">Waukesha Public Library programs</h2><p className="mt-1 text-sm text-muted-foreground">Free, current library events—shown here even when you are browsing another nearby city.</p></div><Button variant="outline" className="rounded-full border-sky-200 bg-white" onClick={() => window.open("https://waukesha.librarycalendar.com/events/upcoming", "_blank", "noopener,noreferrer")}>Library calendar <ExternalLink className="ml-1.5 h-4 w-4" /></Button></div>
+              {isLoadingWaukeshaLibrary ? <div className="grid gap-3 md:grid-cols-2"><Skeleton className="h-28 rounded-2xl" /><Skeleton className="h-28 rounded-2xl" /></div> : waukeshaLibraryPrograms.length ? <div className="grid gap-3 md:grid-cols-2">{waukeshaLibraryPrograms.map((event) => <CurrentEventCard key={event.id} event={event} onOpen={openOfficialListing} compact />)}</div> : <p className="rounded-2xl bg-white/80 p-4 text-sm text-muted-foreground">The official library calendar is available above while its current programs load.</p>}
+            </section>
           </TabsContent>
 
           <TabsContent value="calendars" className="grid gap-4 md:grid-cols-2">{officialEntertainmentCalendars.map((calendar) => <Card key={calendar.title} className="border-border/80 shadow-sm"><CardContent className="p-5"><Theater className="mb-4 h-6 w-6 text-orange-500" /><h2 className="font-display text-xl font-bold">{calendar.title}</h2><p className="mt-2 min-h-12 text-sm text-muted-foreground">{calendar.detail}</p><Button className="mt-5 rounded-full" variant="outline" onClick={() => window.open(calendar.href, "_blank", "noopener,noreferrer")}>{calendar.label}<ExternalLink className="ml-1.5 h-4 w-4" /></Button></CardContent></Card>)}</TabsContent>
@@ -59,4 +65,8 @@ export default function Entertainment() {
       </div>
     </div>
   );
+}
+
+function CurrentEventCard({ event, onOpen, compact = false }: { event: EntertainmentListing; onOpen: (event: EntertainmentListing) => void; compact?: boolean }) {
+  return <Card className="overflow-hidden border-border/80 shadow-sm transition-shadow hover:shadow-md"><CardContent className={compact ? "p-4" : "p-5"}><div className="mb-3 flex items-start justify-between gap-3"><Badge variant="secondary" className="capitalize">{event.category}</Badge><span className="text-xs font-medium text-orange-600">{event.isFree ? "Free" : "Tickets / details"}</span></div><h2 className={compact ? "font-display text-lg font-bold leading-tight" : "font-display text-xl font-bold leading-tight"}>{event.title}</h2><div className="mt-3 space-y-1.5 text-sm text-muted-foreground"><p className="flex gap-2"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />{formatEventDate(event.eventDate)}</p><p className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />{event.venueName ?? "Local venue"} · {event.city}</p></div><div className="mt-5 flex gap-2"><Button asChild variant="outline" className="rounded-full"><Link href="/events">See in Events</Link></Button>{event.externalUrl && <Button onClick={() => onOpen(event)} className="rounded-full bg-orange-500 text-white hover:bg-orange-600"><ExternalLink className="mr-1.5 h-4 w-4" /> Official details</Button>}</div></CardContent></Card>;
 }
