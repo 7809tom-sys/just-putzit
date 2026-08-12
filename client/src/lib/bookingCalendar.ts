@@ -15,7 +15,7 @@ export type BookingCalendarEvent = {
   uid: string;
 };
 
-export const BOOKING_CALENDAR_PROVIDERS_TOOLTIP = "Google, Outlook, or Apple Calendar";
+export const BOOKING_CALENDAR_PROVIDERS_TOOLTIP = "Google, Outlook, Apple Calendar, or download a standard .ics file for other calendars";
 
 function formatGoogleDate(date: Date) {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");

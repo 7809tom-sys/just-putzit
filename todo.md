@@ -964,3 +964,7 @@
 ## Booking Calendar Provider Guidance
 - [x] Add an accessible provider tooltip and hover affordance to Add to Calendar
 - [x] Add regression coverage and verify the calendar control presentation
+
+## Universal Calendar File Guidance
+- [x] Make the .ics download fallback explicit for other calendar providers
+- [x] Add regression coverage and verify the calendar guidance text

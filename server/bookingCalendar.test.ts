@@ -31,5 +31,6 @@ describe("confirmed booking calendar export", () => {
     expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain("Google");
     expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain("Outlook");
     expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain("Apple");
+    expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain(".ics");
   });
 });
