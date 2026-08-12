@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import Onboarding from "./pages/Onboarding";
 import Interview from "./pages/Interview";
 import Profile from "./pages/Profile";
+import ProfileDashboard from "./pages/ProfileDashboard";
 import Matches from "./pages/Matches";
 import Chat from "./pages/Chat";
 import Games from "./pages/Games";
@@ -99,6 +100,7 @@ function Router() {
         <Route path="/onboarding" component={Onboarding} />
         <Route path="/interview" component={Interview} />
         <Route path="/profile" component={Profile} />
+        <Route path="/my-dashboard" component={ProfileDashboard} />
         <Route path="/matches" component={Matches} />
         <Route path="/chat/:matchId" component={Chat} />
         <Route path="/games/:matchId" component={Games} />

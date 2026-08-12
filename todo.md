@@ -941,3 +941,8 @@
 - [x] Add native social sharing and clipboard fallback to completed game cards
 - [x] Add privacy-conscious share copy and regression coverage
 - [x] Verify the share action in the mobile completion layout
+
+## Member Profile Dashboard
+- [x] Add a protected member dashboard summary for upcoming bookings and game achievements
+- [x] Build a responsive member dashboard with booking and achievement states
+- [x] Add dashboard navigation, regression coverage, and mobile verification

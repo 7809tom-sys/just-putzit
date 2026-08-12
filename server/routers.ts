@@ -20,6 +20,7 @@ import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
 import { isValidLocationQuery, resolveLocationQuery } from "./locationResolver";
 import { createMarketplaceCheckoutSession, getMarketplacePaymentConfirmation } from "./stripeCheckout";
+import { deriveGameAchievements } from "./memberDashboard";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -777,6 +778,46 @@ Rules:
 
         return { success: true, traits: mergedTraits };
       }),
+  }),
+
+  // ─── Member dashboard ─────────────────────────────────────────────────────
+  dashboard: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const [profile, bookings, wyrAnswerCount, challenges] = await Promise.all([
+        getProfileByUserId(ctx.user.id),
+        getBookingsForUser(ctx.user.id),
+        getWyrAnswerCount(ctx.user.id),
+        getWyrChallengesForUser(ctx.user.id),
+      ]);
+      const enrichedBookings = await Promise.all(bookings.map(async (booking) => {
+        const [activity, venue] = await Promise.all([getActivityById(booking.activityId), getVenueById(booking.venueId)]);
+        return { ...booking, activity, venue };
+      }));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const upcomingBookings = enrichedBookings
+        .filter((booking) => {
+          if (booking.status !== "confirmed" && booking.status !== "checked_in") return false;
+          const scheduledAt = booking.scheduledFor ?? booking.activity?.eventDate;
+          return !scheduledAt || scheduledAt >= today;
+        })
+        .sort((a, b) => {
+          const aTime = (a.scheduledFor ?? a.activity?.eventDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+          const bTime = (b.scheduledFor ?? b.activity?.eventDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+          return aTime - bTime;
+        });
+      const achievements = deriveGameAchievements(
+        profile?.traits as Record<string, unknown> | undefined,
+        wyrAnswerCount,
+        challenges.filter((challenge) => challenge.status === "completed").length,
+      );
+      return {
+        member: { displayName: profile?.displayName ?? ctx.user.name ?? null, city: profile?.city ?? null },
+        upcomingBookings: upcomingBookings.slice(0, 3),
+        upcomingBookingCount: upcomingBookings.length,
+        achievements,
+      };
+    }),
   }),
 
   // ─── Matchmaking ──────────────────────────────────────────────────────────

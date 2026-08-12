@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap, MapPin, Calendar, Popcorn, Megaphone, Trophy, Dumbbell, ChevronDown } from "lucide-react";
+import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutDashboard, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap, MapPin, Calendar, Popcorn, Megaphone, Trophy, Dumbbell, ChevronDown } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { useUserCity } from "@/hooks/useUserCity";
@@ -162,6 +162,12 @@ export default function Navbar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem asChild>
+                <Link href="/my-dashboard">
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  My Dashboard
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/profile">
                   <User className="w-4 h-4 mr-2" />
