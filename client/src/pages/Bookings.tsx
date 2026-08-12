@@ -10,6 +10,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { BOOKINGS_SKELETON_CARD_COUNT } from "@/lib/bookingsLoading";
 import { getBookingStatusPresentation } from "@/lib/bookingStatus";
+import { BookingCalendarMenu } from "@/components/BookingCalendarMenu";
 
 function dollars(cents: number) {
   return cents === 0 ? "Free" : `$${(cents / 100).toFixed(0)}`;
@@ -116,6 +117,15 @@ export default function Bookings() {
                       Confirmation <span className="font-mono font-semibold">{b.confirmationCode}</span> · {dollars(b.totalPriceCents)}
                     </p>
                   </div>
+                  {b.status === "confirmed" && (
+                    <BookingCalendarMenu booking={{
+                      title: b.activity?.title ?? "Just Putzit booking",
+                      start: b.scheduledFor ?? b.activity?.eventDate,
+                      durationMinutes: b.activity?.durationMinutes,
+                      location: [b.venue?.name, b.venue?.address, b.venue?.city].filter(Boolean).join(", "),
+                      confirmationCode: b.confirmationCode,
+                    }} />
+                  )}
                   {b.status === "confirmed" && (
                     <Button
                       variant="ghost" size="sm"

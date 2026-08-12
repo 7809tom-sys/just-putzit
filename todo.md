@@ -955,3 +955,8 @@
 ## Dashboard Booking Status Badges
 - [x] Add clear confirmed, pending-reschedule, and cancelled badge treatment to booking cards
 - [x] Add badge-state regression coverage and mobile verification
+
+## Confirmed Booking Calendar Export
+- [x] Add a calendar export action for confirmed booking cards
+- [x] Build reliable booking calendar event details and regression coverage
+- [x] Verify calendar controls in the mobile booking layout
