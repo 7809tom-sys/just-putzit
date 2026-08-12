@@ -81,12 +81,6 @@ export default function Marketplace() {
   useEffect(() => {
     const paymentStatus = new URLSearchParams(window.location.search).get("payment");
     if (!paymentStatus) return;
-    if (paymentStatus === "success") {
-      toast.success("Payment submitted", {
-        description: "We’ll confirm your booking as soon as the secure payment is verified.",
-      });
-      utils.marketplace.myBookings.invalidate();
-    }
     if (paymentStatus === "cancelled") {
       toast.info("Checkout cancelled", { description: "No card was charged. You can try again whenever you’re ready." });
     }

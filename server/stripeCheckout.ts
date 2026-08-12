@@ -19,6 +19,11 @@ type CheckoutRequest = {
   scheduledFor?: string;
 };
 
+type CheckoutSessionIdentity = {
+  clientReferenceId?: string | null;
+  metadataUserId?: string | null;
+};
+
 function getStripe() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   return secretKey ? new Stripe(secretKey) : null;
@@ -33,6 +38,11 @@ function getRequestOrigin(req: Request) {
 
 function getPaymentIntentId(session: Stripe.Checkout.Session) {
   return typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
+}
+
+export function canAccessMarketplaceCheckoutSession(session: CheckoutSessionIdentity, userId: number) {
+  const id = userId.toString();
+  return session.clientReferenceId === id && session.metadataUserId === id;
 }
 
 export async function createMarketplaceCheckoutSession(user: CheckoutUser, request: CheckoutRequest, req: Request) {
@@ -71,7 +81,7 @@ export async function createMarketplaceCheckoutSession(user: CheckoutUser, reque
     metadata,
     payment_intent_data: { metadata },
     allow_promotion_codes: true,
-    success_url: `${origin}/marketplace?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+    success_url: `${origin}/payment-confirmation?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/marketplace?payment=cancelled`,
   });
 
@@ -121,6 +131,29 @@ async function fulfillMarketplaceCheckout(session: Stripe.Checkout.Session) {
     booking?.id,
   );
   return booking;
+}
+
+export async function getMarketplacePaymentConfirmation(userId: number, sessionId: string) {
+  const stripe = getStripe();
+  if (!stripe) throw new Error("Secure payment setup is not available yet. Please try again shortly.");
+
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (!canAccessMarketplaceCheckoutSession({
+    clientReferenceId: session.client_reference_id,
+    metadataUserId: session.metadata?.user_id,
+  }, userId)) {
+    throw new Error("This payment confirmation does not belong to your account.");
+  }
+
+  if (session.payment_status !== "paid") {
+    return { status: "processing" as const, booking: null, activity: null, venue: null };
+  }
+
+  const booking = await fulfillMarketplaceCheckout(session);
+  if (!booking) throw new Error("Your payment was received, but we could not retrieve the booking yet.");
+  const activity = await getActivityById(booking.activityId);
+  const venue = await getVenueById(booking.venueId);
+  return { status: "confirmed" as const, booking, activity, venue };
 }
 
 export function registerStripeWebhook(app: Express) {

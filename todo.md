@@ -909,3 +909,8 @@
 - [x] Enable a supported secure payment provider for credit-card checkout
 - [x] Connect paid marketplace and service checkout actions to the payment provider
 - [x] Add payment success, cancellation, and error handling with regression coverage
+
+## Stripe Booking Confirmation
+- [x] Create a secure payment confirmation page with completed booking details
+- [x] Route Stripe Checkout success to the custom confirmation page
+- [x] Repair the package lock mismatch and verify the production build

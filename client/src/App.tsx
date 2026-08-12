@@ -18,6 +18,7 @@ import Safety from "./pages/Safety";
 import Admin from "./pages/Admin";
 import Concierge from "./pages/Concierge";
 import Marketplace from "./pages/Marketplace";
+import PaymentConfirmation from "./pages/PaymentConfirmation";
 import Bookings from "./pages/Bookings";
 import Vendor from "./pages/Vendor";
 import Couples from "./pages/Couples";
@@ -105,6 +106,7 @@ function Router() {
         <Route path="/community" component={Community} />
         <Route path="/concierge" component={Concierge} />
         <Route path="/marketplace" component={Marketplace} />
+        <Route path="/payment-confirmation" component={PaymentConfirmation} />
         <Route path="/bookings" component={Bookings} />
         <Route path="/vendor" component={Vendor} />
         <Route path="/couples" component={Couples} />

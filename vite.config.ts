@@ -163,6 +163,7 @@ const plugins = [
     manifest: false, // We use our own manifest.json in public/
     workbox: {
       globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       navigateFallback: "/index.html",
       navigateFallbackDenylist: [/^\/api\//],
       runtimeCaching: [

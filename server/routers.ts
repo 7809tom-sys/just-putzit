@@ -19,7 +19,7 @@ import { getLatestInterviewLearnings } from "./profileLearning";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
 import { isValidLocationQuery, resolveLocationQuery } from "./locationResolver";
-import { createMarketplaceCheckoutSession } from "./stripeCheckout";
+import { createMarketplaceCheckoutSession, getMarketplacePaymentConfirmation } from "./stripeCheckout";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -1769,6 +1769,19 @@ Return JSON with questions array, each having optionA and optionB.`,
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: error instanceof Error ? error.message : "Unable to start secure checkout.",
+          });
+        }
+      }),
+
+    getPaymentConfirmation: protectedProcedure
+      .input(z.object({ sessionId: z.string().min(10).max(255) }))
+      .query(async ({ ctx, input }) => {
+        try {
+          return await getMarketplacePaymentConfirmation(ctx.user.id, input.sessionId);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Unable to retrieve payment confirmation.",
           });
         }
       }),
