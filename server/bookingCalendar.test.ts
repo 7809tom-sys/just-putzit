@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBookingCalendarEvent, getBookingIcs, getGoogleCalendarUrl, getOutlookCalendarUrl } from "../client/src/lib/bookingCalendar";
+import { BOOKING_CALENDAR_PROVIDERS_TOOLTIP, buildBookingCalendarEvent, getBookingIcs, getGoogleCalendarUrl, getOutlookCalendarUrl } from "../client/src/lib/bookingCalendar";
 
 describe("confirmed booking calendar export", () => {
   const event = buildBookingCalendarEvent({
@@ -25,5 +25,11 @@ describe("confirmed booking calendar export", () => {
 
   it("does not create a calendar action without a valid scheduled time", () => {
     expect(buildBookingCalendarEvent({ title: "No date", start: null })).toBeNull();
+  });
+
+  it("names every supported calendar provider in the action guidance", () => {
+    expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain("Google");
+    expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain("Outlook");
+    expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain("Apple");
   });
 });

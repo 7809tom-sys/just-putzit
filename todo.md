@@ -960,3 +960,7 @@
 - [x] Add a calendar export action for confirmed booking cards
 - [x] Build reliable booking calendar event details and regression coverage
 - [x] Verify calendar controls in the mobile booking layout
+
+## Booking Calendar Provider Guidance
+- [x] Add an accessible provider tooltip and hover affordance to Add to Calendar
+- [x] Add regression coverage and verify the calendar control presentation
