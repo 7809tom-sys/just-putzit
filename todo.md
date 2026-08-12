@@ -1008,3 +1008,8 @@
 - [x] Calculate selected-range total bookings and average attendance from protected trend data
 - [x] Add responsive selected-range summary cards above partner charts
 - [x] Add summary calculation regression coverage and visual verification
+
+## Waukesha Public Library Refresh
+- [x] Audit the current Waukesha Public Library venue and event listings
+- [x] Refresh current library public events from official sources
+- [x] Verify the updated library listings on discovery views

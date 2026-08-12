@@ -58,6 +58,20 @@ function parseDate(raw: string | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+export function parseWaukeshaCalendarDate(month: string, day: string, year: string, time?: string) {
+  const monthIndex = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].indexOf(month.trim().slice(0, 3).toLowerCase());
+  const numericDay = Number(day);
+  const numericYear = Number(year);
+  if (monthIndex < 0 || !Number.isInteger(numericDay) || !Number.isInteger(numericYear)) return null;
+  const match = time?.match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);
+  let hour = match ? Number(match[1]) : 0;
+  const minute = match ? Number(match[2]) : 0;
+  if (match?.[3].toLowerCase() === "pm" && hour < 12) hour += 12;
+  if (match?.[3].toLowerCase() === "am" && hour === 12) hour = 0;
+  const date = new Date(numericYear, monthIndex, numericDay, hour, minute, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 /** Guess a category from title/description keywords */
 function guessCategory(text: string): string {
   const t = text.toLowerCase();
@@ -145,26 +159,36 @@ export async function scrapeMilwaukeeLibrary(): Promise<ScrapedEvent[]> {
 
 // ─── Waukesha Public Library ─────────────────────────────────────────────────
 export async function scrapeWaukeshaLibrary(): Promise<ScrapedEvent[]> {
-  const url = "https://waukesha.librarycalendar.com/events/list";
-  const html = await fetchHtml(url);
-  if (!html) return [];
-
-  const $ = cheerio.load(html);
+  const url = "https://waukesha.librarycalendar.com/events/upcoming";
+  const pages = await Promise.all([0, 1, 2].map((page) => fetchHtml(page === 0 ? url : `${url}?page=${page}`)));
   const events: ScrapedEvent[] = [];
+  const seenUrls = new Set<string>();
 
-  $(".views-row, .event-item, article, li.event, .event-row").each((_, el) => {
-    const title = $(el).find("h2, h3, .title, a").first().text().trim();
+  for (const html of pages) {
+    if (!html) continue;
+    const $ = cheerio.load(html);
+    $("article.event-card.event-card--sparse").each((_, el) => {
+    // The calendar also exposes room reservations. Public library programs carry
+    // an official age-group indicator; only those should appear in discovery.
+    if ($(el).find(".lc-event__color-indicator").length === 0) return;
+    const title = $(el).find(".lc-event__title a, h2, h3, .title, a").first().text().trim();
     if (!title || title.length < 3) return;
 
-    const dateText = $(el).find("time, .date, .event-date, .field-name-field-date").first().text().trim();
-    const description = $(el).find("p, .description, .body").first().text().trim().slice(0, 300) || null;
-    const link = $(el).find("a").first().attr("href");
+    const dateIcon = $(el).find(".lc-date-icon").first();
+    const month = dateIcon.find(".lc-date-icon__item--month").text().trim();
+    const day = dateIcon.find(".lc-date-icon__item--day").text().trim();
+    const year = dateIcon.find(".lc-date-icon__item--year").text().trim();
+    const time = $(el).find(".lc-event-info-item--time").first().text().trim();
+    const description = null;
+    const link = $(el).find(".lc-event__title a, a").first().attr("href");
     const fullUrl = link ? (link.startsWith("http") ? link : `https://waukesha.librarycalendar.com${link}`) : url;
+    if (seenUrls.has(fullUrl)) return;
+    seenUrls.add(fullUrl);
 
     events.push({
       title,
       description,
-      eventDate: parseDate(dateText),
+      eventDate: parseWaukeshaCalendarDate(month, day, year, time),
       endDate: null,
       venueName: "Waukesha Public Library",
       venueAddress: "321 Wisconsin Ave, Waukesha, WI 53186",
@@ -175,7 +199,8 @@ export async function scrapeWaukeshaLibrary(): Promise<ScrapedEvent[]> {
       isFree: true,
       isOnCampus: false,
     });
-  });
+    });
+  }
 
   return events.slice(0, 30);
 }

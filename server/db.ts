@@ -2365,7 +2365,22 @@ export async function upsertScrapedEvents(events: Array<{
       )
       .limit(1);
 
-    if (existing.length > 0) continue;
+    if (existing.length > 0) {
+      await db.update(communityEvents).set({
+        description: ev.description?.slice(0, 1000) ?? null,
+        category,
+        endDate: ev.endDate ?? undefined,
+        venueName: ev.venueName?.slice(0, 255) ?? null,
+        address: ev.venueAddress ?? null,
+        city,
+        state,
+        isFree: ev.isFree,
+        externalUrl: ev.sourceUrl,
+        isOnCampus: ev.isOnCampus,
+        isActive: true,
+      }).where(eq(communityEvents.id, existing[0].id));
+      continue;
+    }
 
     await db.insert(communityEvents).values({
       title: ev.title.slice(0, 255),
