@@ -936,3 +936,8 @@
 - [x] Add reduced-motion-aware confetti to completed social games
 - [x] Add a subtle opt-in browser success sound and regression coverage
 - [x] Verify the completed-game presentation on mobile
+
+## Social Game Results Sharing
+- [x] Add native social sharing and clipboard fallback to completed game cards
+- [x] Add privacy-conscious share copy and regression coverage
+- [x] Verify the share action in the mobile completion layout

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, CalendarDays, Check, ChevronRight, Compass, MapPin, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, ChevronRight, Compass, MapPin, Share2, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useSEO } from "@/hooks/useSEO";
 import { playGameCompletionChime } from "@/lib/gameCelebration";
+import { shareGameResult } from "@/lib/gameResultShare";
 import {
   COMMON_GROUND_OPTIONS,
   getSocialGame,
@@ -103,6 +104,16 @@ function WouldYouJoinMeGame({ onChoice }: { onChoice: (choice: string) => void }
 function GameComplete({ complete, onPlayAgain, onBack }: { complete: Exclude<CompleteGame, null>; onPlayAgain: () => void; onBack: () => void }) {
   const game = getSocialGame(complete.id);
   const isPublicPlan = complete.id === "would_you_join_me";
+  const [isSharing, setIsSharing] = useState(false);
+  const handleShare = async () => {
+    if (!game) return;
+    setIsSharing(true);
+    const outcome = await shareGameResult(game.title);
+    setIsSharing(false);
+    if (outcome === "shared") toast.success("Your game result is ready to share.");
+    if (outcome === "copied") toast.success("A share message was copied to your clipboard.");
+    if (outcome === "unavailable") toast.error("Sharing is not available on this browser.");
+  };
   return (
     <div className="mx-auto max-w-xl px-4 py-10 sm:py-16">
       <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card shadow-xl"><GameCompletionCelebration /><CardContent className="relative p-7 text-center sm:p-10">
@@ -112,7 +123,7 @@ function GameComplete({ complete, onPlayAgain, onBack }: { complete: Exclude<Com
         <p className="mt-3 text-sm text-muted-foreground">Sally learned a little more about the kind of community time that feels natural to you.</p>
         <div className="mt-6 rounded-2xl border bg-card p-4 text-left"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your picks</p><div className="mt-3 flex flex-wrap gap-2">{complete.summary.map((item) => <Badge key={item} variant="secondary" className="rounded-full px-3 py-1.5">{item}</Badge>)}</div></div>
         {isPublicPlan ? <div className="mt-6 rounded-2xl bg-sky-50 p-5 text-left"><div className="flex gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-sky-700" /><div><h3 className="font-semibold text-sky-950">Ready when you are</h3><p className="mt-1 text-sm leading-relaxed text-sky-900">Browse public activities near you. Start with a public place and only take the next step when everyone is comfortable.</p></div></div><Button className="mt-4 w-full rounded-full" asChild><a href="/events"><Compass className="mr-2 h-4 w-4" />Browse public events</a></Button></div> : <div className="mt-6 rounded-2xl bg-primary/5 p-4 text-left text-sm text-muted-foreground"><Users className="mr-2 inline h-4 w-4 text-primary" />These preferences can help turn a future conversation into an easy local plan.</div>}
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row"><Button className="flex-1 rounded-full" onClick={onPlayAgain}>Play another</Button><Button variant="outline" className="flex-1 rounded-full bg-card" onClick={onBack}>Back to games</Button></div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3"><Button className="rounded-full" onClick={onPlayAgain}>Play another</Button><Button variant="outline" className="rounded-full bg-card" onClick={handleShare} disabled={isSharing}>{isSharing ? "Preparing…" : <><Share2 className="mr-2 h-4 w-4" />Share result</>}</Button><Button variant="outline" className="rounded-full bg-card" onClick={onBack}>Back to games</Button></div>
       </CardContent></Card>
     </div>
   );
