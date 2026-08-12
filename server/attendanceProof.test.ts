@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ATTENDANCE_CHECK_IN_EARLY_WINDOW_MS, getBookingCheckInError } from "../shared/attendanceProof";
-import { summarizePartnerImpact } from "./partnerImpact";
+import { buildPartnerImpactTrend, summarizePartnerImpact } from "./partnerImpact";
 
 describe("attendance proof", () => {
   const now = new Date("2026-08-12T12:00:00.000Z");
@@ -25,5 +25,17 @@ describe("attendance proof", () => {
       { status: "maybe", checkedIn: false },
       { status: "not_going", checkedIn: false },
     ])).toMatchObject({ bookingCount: 2, bookedSeats: 5, attendanceSignals: 1, rsvpIntent: 2, rsvpCheckIns: 1, grossBookingValueCents: 10000, platformCommissionCents: 1200 });
+  });
+
+  it("builds a complete 30-day aggregate trend without exposing member details", () => {
+    const trend = buildPartnerImpactTrend([
+      { status: "confirmed", partySize: 2, totalPriceCents: 4000, commissionCents: 480, createdAt: "2026-08-11T10:00:00.000Z" },
+      { status: "checked_in", partySize: 2, totalPriceCents: 4000, commissionCents: 480, createdAt: "2026-08-12T10:00:00.000Z", checkedInAt: "2026-08-12T12:00:00.000Z" },
+      { status: "cancelled", partySize: 2, totalPriceCents: 4000, commissionCents: 480, createdAt: "2026-08-12T10:00:00.000Z" },
+    ], [{ status: "going", checkedIn: true, checkedInAt: "2026-08-12T13:00:00.000Z" }], new Date("2026-08-12T15:00:00.000Z"));
+
+    expect(trend).toHaveLength(30);
+    expect(trend.at(-1)).toMatchObject({ bookings: 1, attendance: 2 });
+    expect(trend.at(-2)).toMatchObject({ bookings: 1, attendance: 0 });
   });
 });

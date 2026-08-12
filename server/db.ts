@@ -2,7 +2,7 @@ import { and, desc, eq, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { selectCurrentVerifiedEvents } from "./eventRecommendations";
 import { normalizeSavedLocationDraft } from "./savedLocationPolicy";
-import { summarizePartnerImpact } from "./partnerImpact";
+import { buildPartnerImpactTrend, summarizePartnerImpact } from "./partnerImpact";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -789,14 +789,15 @@ export async function getVenuesByOwner(ownerUserId: number) {
 
 export async function getPartnerImpactForOwner(ownerUserId: number) {
   const venues = await getVenuesByOwner(ownerUserId);
-  const results = await Promise.all(venues.map(async (venue) => {
+  const resultsWithSources = await Promise.all(venues.map(async (venue) => {
     const [listings, venueBookings] = await Promise.all([
       getListingsByVenue(venue.id),
       getBookingsForVenue(venue.id),
     ]);
     const rsvpGroups = await Promise.all(listings.map((listing) => getRsvpsForActivity(listing.id)));
-    return { ...venue, metrics: summarizePartnerImpact(venueBookings, rsvpGroups.flat()) };
+    return { venue, metrics: summarizePartnerImpact(venueBookings, rsvpGroups.flat()), venueBookings, rsvps: rsvpGroups.flat() };
   }));
+  const results = resultsWithSources.map(({ venue, metrics }) => ({ ...venue, metrics }));
 
   const totals = results.reduce((aggregate, venue) => ({
     bookingCount: aggregate.bookingCount + venue.metrics.bookingCount,
@@ -808,7 +809,11 @@ export async function getPartnerImpactForOwner(ownerUserId: number) {
     platformCommissionCents: aggregate.platformCommissionCents + venue.metrics.platformCommissionCents,
   }), { bookingCount: 0, bookedSeats: 0, attendanceSignals: 0, rsvpIntent: 0, rsvpCheckIns: 0, grossBookingValueCents: 0, platformCommissionCents: 0 });
 
-  return { venues: results, totals };
+  return {
+    venues: results,
+    totals,
+    trend: buildPartnerImpactTrend(resultsWithSources.flatMap((result) => result.venueBookings), resultsWithSources.flatMap((result) => result.rsvps)),
+  };
 }
 
 export async function updateVenuePartner(venueId: number, data: Partial<typeof venuePartners.$inferInsert>) {

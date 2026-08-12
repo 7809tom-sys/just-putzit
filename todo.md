@@ -989,3 +989,8 @@
 - [x] Add privacy-conscious member attendance check-ins for completed bookings
 - [x] Build protected partner-facing results metrics for bookings and check-ins
 - [x] Add member and partner UI, regression coverage, and responsive verification
+
+## Partner Results 30-Day Trends
+- [x] Aggregate privacy-safe daily booking and attendance signals for the last 30 days
+- [x] Add responsive 30-day booking and attendance charts to Partner Results
+- [x] Add trend regression coverage and visual verification
