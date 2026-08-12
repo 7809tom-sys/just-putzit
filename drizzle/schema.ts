@@ -379,6 +379,9 @@ export const bookings = mysqlTable("bookings", {
   confirmationCode: varchar("confirmationCode", { length: 20 }).notNull(),
   scheduledFor: timestamp("scheduledFor"),
   notes: text("notes"),
+  // Stripe identifiers only; card details remain exclusively with Stripe.
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }).unique(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
   checkedInAt: timestamp("checkedInAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

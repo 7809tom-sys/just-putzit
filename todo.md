@@ -904,3 +904,8 @@
 ## Family Invalid Selection Feedback
 - [x] Show an error toast when a child submission has no valid gender selection
 - [x] Add regression coverage and verify the Family validation flow
+
+## Secure Credit-Card Processing
+- [x] Enable a supported secure payment provider for credit-card checkout
+- [x] Connect paid marketplace and service checkout actions to the payment provider
+- [x] Add payment success, cancellation, and error handling with regression coverage

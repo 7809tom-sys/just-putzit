@@ -694,6 +694,15 @@ export async function getBookingById(bookingId: number) {
   return result[0] ?? null;
 }
 
+export async function getBookingByStripeCheckoutSessionId(stripeCheckoutSessionId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(bookings)
+    .where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId))
+    .limit(1);
+  return result[0] ?? null;
+}
+
 export async function cancelBooking(bookingId: number, userId: number) {
   const db = await getDb();
   if (!db) return;

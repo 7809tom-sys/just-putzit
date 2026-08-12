@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -67,8 +67,42 @@ export default function Marketplace() {
     onError: () => toast.error("Couldn't complete the booking. Try again."),
   });
 
+  const checkoutMutation = trpc.marketplace.createCheckout.useMutation({
+    onSuccess: ({ checkoutUrl }) => {
+      toast.success("Opening secure card checkout", {
+        description: "Complete payment safely in the Stripe checkout window.",
+      });
+      window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+      setSelected(null);
+    },
+    onError: (error) => toast.error(error.message || "Unable to start secure checkout. Please try again."),
+  });
+
+  useEffect(() => {
+    const paymentStatus = new URLSearchParams(window.location.search).get("payment");
+    if (!paymentStatus) return;
+    if (paymentStatus === "success") {
+      toast.success("Payment submitted", {
+        description: "We’ll confirm your booking as soon as the secure payment is verified.",
+      });
+      utils.marketplace.myBookings.invalidate();
+    }
+    if (paymentStatus === "cancelled") {
+      toast.info("Checkout cancelled", { description: "No card was charged. You can try again whenever you’re ready." });
+    }
+    window.history.replaceState({}, "", "/marketplace");
+  }, [utils.marketplace.myBookings]);
+
   const handleBook = () => {
     if (!selected) return;
+    if (selected.priceCents > 0) {
+      checkoutMutation.mutate({
+        activityId: selected.id,
+        partySize,
+        scheduledFor: scheduledFor || undefined,
+      });
+      return;
+    }
     bookMutation.mutate({
       activityId: selected.id,
       partySize,
@@ -241,11 +275,13 @@ export default function Marketplace() {
                     <span className="font-medium text-green-600">$0.00</span>
                   </div>
                   <div className="flex items-center justify-between pt-1.5 border-t">
-                    <span className="font-semibold">You pay the venue</span>
+                    <span className="font-semibold">{selected.priceCents > 0 ? "Pay securely by card" : "You pay the venue"}</span>
                     <span className="font-display font-bold">{dollars(selected.priceCents * partySize)}</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground pt-1 flex items-center gap-1">
-                    <Star className="w-3 h-3" /> Just Putzit is always free — the venue handles payment on arrival.
+                    <Star className="w-3 h-3" /> {selected.priceCents > 0
+                      ? "Secure card payments are processed by Stripe. Just Putzit never stores card details."
+                      : "Just Putzit is always free — no card is required for this RSVP."}
                   </p>
                 </div>
               </div>
@@ -253,9 +289,9 @@ export default function Marketplace() {
                 <Button variant="outline" className="rounded-full bg-card" onClick={() => setSelected(null)}>
                   Cancel
                 </Button>
-                <Button className="rounded-full gap-2" onClick={handleBook} disabled={bookMutation.isPending}>
-                  {bookMutation.isPending ? <Spinner className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                  Confirm booking
+                <Button className="rounded-full gap-2" onClick={handleBook} disabled={bookMutation.isPending || checkoutMutation.isPending}>
+                  {bookMutation.isPending || checkoutMutation.isPending ? <Spinner className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                  {selected.priceCents > 0 ? "Continue to secure checkout" : "Confirm RSVP"}
                 </Button>
               </DialogFooter>
             </>

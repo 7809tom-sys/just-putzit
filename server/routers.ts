@@ -19,6 +19,7 @@ import { getLatestInterviewLearnings } from "./profileLearning";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
 import { isValidLocationQuery, resolveLocationQuery } from "./locationResolver";
+import { createMarketplaceCheckoutSession } from "./stripeCheckout";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -1753,6 +1754,23 @@ Return JSON with questions array, each having optionA and optionB.`,
           `You're all set for ${listing.title}. Show up and have fun!`, booking?.id
         );
         return booking;
+      }),
+
+    createCheckout: protectedProcedure
+      .input(z.object({
+        activityId: z.number(),
+        partySize: z.number().min(1).max(20),
+        scheduledFor: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await createMarketplaceCheckoutSession(ctx.user, input, ctx.req);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Unable to start secure checkout.",
+          });
+        }
       }),
 
     myBookings: protectedProcedure.query(async ({ ctx }) => {
