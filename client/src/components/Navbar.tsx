@@ -1,10 +1,11 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutDashboard, LayoutGrid, Ticket, Sparkles, Store, Scale, Swords, GraduationCap, MapPin, Calendar, Popcorn, Megaphone, Trophy, Dumbbell, ChevronDown } from "lucide-react";
+import { Bell, Heart, Home, MessageCircle, Users, Shield, User, LayoutDashboard, Ticket, Store, Scale, Swords, GraduationCap, MapPin, Calendar, Popcorn, Megaphone, Trophy, ChevronDown, Menu } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { useUserCity } from "@/hooks/useUserCity";
 import { Button } from "@/components/ui/button";
+import { isMoreHeaderRoute, moreHeaderNavigation, primaryHeaderNavigation } from "@/lib/headerNavigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,19 +34,6 @@ export default function Navbar() {
   // Don't show navbar on auth/onboarding pages or when not logged in
   if (shouldHide) return null;
 
-  const navItems = [
-    { href: "/matches", icon: Heart, label: "Matches" },
-    { href: "/marketplace", icon: Ticket, label: "Marketplace" },
-    { href: "/concierge", icon: Sparkles, label: "Concierge" },
-    { href: "/activity-board", icon: LayoutGrid, label: "Activities" },
-    { href: "/gym-buddy", icon: Dumbbell, label: "Gym Buddy" },
-    { href: "/community", icon: Users, label: "Community" },
-    { href: "/entertainment", icon: Popcorn, label: "Entertainment" },
-    { href: "/sports", icon: Trophy, label: "Sports" },
-    { href: "/shout-out", icon: Megaphone, label: "Shout Out" },
-    { href: "/campus", icon: GraduationCap, label: "Campus" },
-  ];
-
   const handleMarkAllRead = async () => {
     await markAllRead.mutateAsync();
     utils.notifications.getAll.invalidate();
@@ -53,49 +41,59 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-border shadow-sm">
-      <div className="container flex items-center justify-between h-20">
+      <div className="container flex h-16 min-w-0 items-center gap-2 sm:gap-3">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 no-underline">
+        <Link href="/" className="flex shrink-0 items-center no-underline">
           <img
             src="/manus-storage/justputzit-logo-transparent_2e545ffa.png"
             alt="Just Putzit"
-            className="h-14 w-auto object-contain"
-            style={{ maxWidth: 170 }}
+            className="h-10 w-auto object-contain sm:h-11"
+            style={{ maxWidth: 136 }}
           />
         </Link>
 
-        {/* Nav links */}
-        <div className="flex items-center gap-0.5">
+        {/* Primary desktop navigation — secondary destinations collapse into More. */}
+        <div className="hidden min-w-0 items-center gap-0.5 md:flex">
           <Link href="/">
             <Button
               variant="ghost"
               size="sm"
-              className={`gap-2 rounded-full ${location === "/" ? "text-primary font-semibold bg-primary/5" : "text-muted-foreground"}`}
+              className={`h-9 gap-1.5 rounded-full px-2 lg:px-2.5 ${location === "/" ? "text-primary font-semibold bg-primary/5" : "text-muted-foreground"}`}
             >
               <Home className="w-4 h-4" />
-              <span className="hidden sm:inline">Home</span>
+              <span className="hidden 2xl:inline">Home</span>
             </Button>
           </Link>
-          {navItems.map(item => (
+          {primaryHeaderNavigation.map(item => (
             <Link key={item.href} href={item.href}>
               <Button
                 variant="ghost"
                 size="sm"
-                className={`gap-2 rounded-full ${location.startsWith(item.href) ? "text-primary font-semibold bg-primary/5" : "text-muted-foreground"}`}
+                className={`h-9 gap-1.5 rounded-full px-2 lg:px-2.5 ${location.startsWith(item.href) ? "text-primary font-semibold bg-primary/5" : "text-muted-foreground"}`}
               >
                 <item.icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{item.label}</span>
+                <span className="hidden 2xl:inline">{item.label}</span>
               </Button>
             </Link>
           ))}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className={`h-9 gap-1.5 rounded-full px-2 lg:px-2.5 ${isMoreHeaderRoute(location) ? "text-primary font-semibold bg-primary/5" : "text-muted-foreground"}`} aria-label="More navigation options">
+                <Menu className="h-4 w-4" /><span className="hidden 2xl:inline">More</span><ChevronDown className="hidden h-3.5 w-3.5 2xl:inline" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              {moreHeaderNavigation.map((item) => <DropdownMenuItem key={item.href} asChild><Link href={item.href}><item.icon className="mr-2 h-4 w-4" />{item.label}</Link></DropdownMenuItem>)}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Right side: notifications + user */}
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="relative rounded-full">
+              <Button variant="ghost" size="sm" className="relative h-9 w-9 rounded-full p-0">
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-primary text-primary-foreground">
@@ -131,7 +129,7 @@ export default function Navbar() {
           {/* City badge */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1 rounded-full text-xs text-muted-foreground hidden sm:flex">
+              <Button variant="ghost" size="sm" className="hidden h-9 gap-1 rounded-full text-xs text-muted-foreground xl:flex">
                 <MapPin className="w-3.5 h-3.5 text-orange-500" />
                 <span className="max-w-[80px] truncate">{detectedCity}</span>
                 <ChevronDown className="w-3 h-3" />
@@ -154,11 +152,11 @@ export default function Navbar() {
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 rounded-full">
+              <Button variant="ghost" size="sm" className="h-9 gap-2 rounded-full px-1.5 sm:px-2">
                 <div className="w-7 h-7 rounded-full gradient-sally flex items-center justify-center text-white text-xs font-bold">
                   {user?.name?.[0]?.toUpperCase() ?? "U"}
                 </div>
-                <span className="hidden sm:inline text-sm font-medium">{user?.name?.split(" ")[0]}</span>
+                <span className="hidden xl:inline text-sm font-medium">{user?.name?.split(" ")[0]}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">

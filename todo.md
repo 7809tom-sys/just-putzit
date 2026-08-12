@@ -1013,3 +1013,8 @@
 - [x] Audit the current Waukesha Public Library venue and event listings
 - [x] Refresh current library public events from official sources
 - [x] Verify the updated library listings on discovery views
+
+## Header Overlap Repair
+- [x] Fix overlapping desktop header navigation and account controls
+- [x] Preserve a readable mobile header and navigation access
+- [x] Add regression coverage and verify header layouts at responsive breakpoints
