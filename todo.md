@@ -972,3 +972,7 @@
 ## Calendar File Download Feedback
 - [x] Show a specific success toast after the standard .ics file download starts
 - [x] Add regression coverage for calendar file download feedback
+
+## Animated Calendar Download Toast
+- [x] Add a motion-safe animated .ics success toast with a visible dismissal progress bar
+- [x] Add regression coverage and verify the enhanced calendar download feedback

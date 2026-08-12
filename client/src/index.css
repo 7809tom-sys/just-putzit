@@ -179,6 +179,21 @@
 }
 
 /* Animations */
+@keyframes calendar-toast-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+.animate-calendar-toast-progress {
+  animation: calendar-toast-progress 5s linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-calendar-toast-progress {
+    animation: none;
+  }
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-8px); }
