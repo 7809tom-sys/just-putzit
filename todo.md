@@ -946,3 +946,8 @@
 - [x] Add a protected member dashboard summary for upcoming bookings and game achievements
 - [x] Build a responsive member dashboard with booking and achievement states
 - [x] Add dashboard navigation, regression coverage, and mobile verification
+
+## Dashboard Booking Management
+- [x] Add dashboard cancellation control with confirmation and data refresh
+- [x] Add a clear reschedule-request handoff for upcoming bookings
+- [x] Add regression coverage and verify booking controls on mobile

@@ -382,6 +382,10 @@ export const bookings = mysqlTable("bookings", {
   // Stripe identifiers only; card details remain exclusively with Stripe.
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }).unique(),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+  // A member’s requested alternative time remains a request until the venue confirms it.
+  rescheduleRequestedFor: timestamp("rescheduleRequestedFor"),
+  rescheduleRequestNote: text("rescheduleRequestNote"),
+  rescheduleRequestedAt: timestamp("rescheduleRequestedAt"),
   checkedInAt: timestamp("checkedInAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

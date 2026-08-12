@@ -710,6 +710,21 @@ export async function cancelBooking(bookingId: number, userId: number) {
     .where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId)));
 }
 
+export async function requestBookingReschedule(
+  bookingId: number,
+  userId: number,
+  requestedFor: Date,
+  note?: string,
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(bookings).set({
+    rescheduleRequestedFor: requestedFor,
+    rescheduleRequestNote: note?.trim() || null,
+    rescheduleRequestedAt: new Date(),
+  }).where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId), eq(bookings.status, "confirmed")));
+}
+
 export async function getBookingsForVenue(venueId: number) {
   const db = await getDb();
   if (!db) return [];

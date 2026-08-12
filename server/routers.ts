@@ -21,6 +21,7 @@ import { getAdminRoleChangeBlock } from "./adminRolePolicy";
 import { isValidLocationQuery, resolveLocationQuery } from "./locationResolver";
 import { createMarketplaceCheckoutSession, getMarketplacePaymentConfirmation } from "./stripeCheckout";
 import { deriveGameAchievements } from "./memberDashboard";
+import { getRescheduleRequestError } from "./bookingManagement";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -82,6 +83,7 @@ import {
   getBookingsForUser,
   getBookingById,
   cancelBooking,
+  requestBookingReschedule,
   getBookingsForVenue,
   genCode,
   createConciergeRequest,
@@ -1840,6 +1842,21 @@ Return JSON with questions array, each having optionA and optionB.`,
       .input(z.object({ bookingId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         await cancelBooking(input.bookingId, ctx.user.id);
+        return { success: true };
+      }),
+
+    requestReschedule: protectedProcedure
+      .input(z.object({
+        bookingId: z.number(),
+        requestedFor: z.date(),
+        note: z.string().trim().max(400).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const booking = await getBookingById(input.bookingId);
+        if (!booking || booking.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        const error = getRescheduleRequestError(booking.status, input.requestedFor);
+        if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error });
+        await requestBookingReschedule(input.bookingId, ctx.user.id, input.requestedFor, input.note);
         return { success: true };
       }),
   }),
