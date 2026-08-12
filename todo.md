@@ -914,3 +914,7 @@
 - [x] Create a secure payment confirmation page with completed booking details
 - [x] Route Stripe Checkout success to the custom confirmation page
 - [x] Repair the package lock mismatch and verify the production build
+
+## Payment Confirmation Navigation
+- [x] Add prominent View My Bookings and Return to Home actions to the payment confirmation page
+- [x] Verify responsive confirmation navigation and regression checks

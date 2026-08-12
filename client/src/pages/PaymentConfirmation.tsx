@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
-import { CalendarDays, CheckCircle2, MapPin, ReceiptText, ShieldCheck, Ticket, Users } from "lucide-react";
+import { PAYMENT_CONFIRMATION_NAVIGATION } from "@/lib/paymentConfirmationNavigation";
+import { CalendarDays, CheckCircle2, House, MapPin, ReceiptText, ShieldCheck, Ticket, Users } from "lucide-react";
 
 function dollars(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -100,8 +101,8 @@ export default function PaymentConfirmation() {
           </Card>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button className="rounded-full" asChild><a href="/bookings"><Ticket className="mr-2 h-4 w-4" />View my bookings</a></Button>
-            <Button variant="outline" className="rounded-full bg-card" asChild><a href="/marketplace">Browse more activities</a></Button>
+            <Button className="rounded-full" asChild><a href={PAYMENT_CONFIRMATION_NAVIGATION.bookings.href}><Ticket className="mr-2 h-4 w-4" />{PAYMENT_CONFIRMATION_NAVIGATION.bookings.label}</a></Button>
+            <Button variant="outline" className="rounded-full bg-card" asChild><a href={PAYMENT_CONFIRMATION_NAVIGATION.home.href}><House className="mr-2 h-4 w-4" />{PAYMENT_CONFIRMATION_NAVIGATION.home.label}</a></Button>
           </div>
         </section>
       </main>
