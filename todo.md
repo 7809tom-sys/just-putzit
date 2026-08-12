@@ -999,3 +999,7 @@
 - [x] Add validated custom date-range aggregation for partner booking and attendance trends
 - [x] Add preset and custom date controls to Partner Results charts
 - [x] Add date-range regression coverage and responsive verification
+
+## Partner Trend Exact-Value Tooltips
+- [x] Add hover and keyboard-accessible exact-value tooltips to booking and attendance chart points
+- [x] Add interaction regression coverage and responsive verification
