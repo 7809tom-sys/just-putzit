@@ -22,6 +22,7 @@ import { isValidLocationQuery, resolveLocationQuery } from "./locationResolver";
 import { createMarketplaceCheckoutSession, getMarketplacePaymentConfirmation } from "./stripeCheckout";
 import { deriveGameAchievements } from "./memberDashboard";
 import { getRescheduleRequestError } from "./bookingManagement";
+import { getBookingCheckInError } from "../shared/attendanceProof";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -84,7 +85,9 @@ import {
   getBookingById,
   cancelBooking,
   requestBookingReschedule,
+  checkInBooking,
   getBookingsForVenue,
+  getPartnerImpactForOwner,
   genCode,
   createConciergeRequest,
   updateConciergeRequest,
@@ -1859,6 +1862,18 @@ Return JSON with questions array, each having optionA and optionB.`,
         await requestBookingReschedule(input.bookingId, ctx.user.id, input.requestedFor, input.note);
         return { success: true };
       }),
+
+    checkInBooking: protectedProcedure
+      .input(z.object({ bookingId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const booking = await getBookingById(input.bookingId);
+        if (!booking || booking.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        const activity = await getActivityById(booking.activityId);
+        const error = getBookingCheckInError(booking.status, booking.scheduledFor ?? activity?.eventDate);
+        if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error });
+        await checkInBooking(input.bookingId, ctx.user.id);
+        return { success: true };
+      }),
   }),
 
   // ─── Sally Date Concierge ─────────────────────────────────────────────────
@@ -1966,6 +1981,7 @@ Return JSON with questions array, each having optionA and optionB.`,
 
   // ─── Vendor Partner Portal ────────────────────────────────────────────────
   vendor: router({
+    impactResults: protectedProcedure.query(async ({ ctx }) => getPartnerImpactForOwner(ctx.user.id)),
     myVenues: protectedProcedure.query(async ({ ctx }) => {
       const venues = await getVenuesByOwner(ctx.user.id);
       return Promise.all(venues.map(async (v) => {

@@ -2,6 +2,7 @@ import { and, desc, eq, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { selectCurrentVerifiedEvents } from "./eventRecommendations";
 import { normalizeSavedLocationDraft } from "./savedLocationPolicy";
+import { summarizePartnerImpact } from "./partnerImpact";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -725,6 +726,13 @@ export async function requestBookingReschedule(
   }).where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId), eq(bookings.status, "confirmed")));
 }
 
+export async function checkInBooking(bookingId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(bookings).set({ status: "checked_in", checkedInAt: new Date() })
+    .where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId), eq(bookings.status, "confirmed")));
+}
+
 export async function getBookingsForVenue(venueId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -777,6 +785,30 @@ export async function getVenuesByOwner(ownerUserId: number) {
   return db.select().from(venuePartners)
     .where(eq(venuePartners.ownerUserId, ownerUserId))
     .orderBy(desc(venuePartners.createdAt));
+}
+
+export async function getPartnerImpactForOwner(ownerUserId: number) {
+  const venues = await getVenuesByOwner(ownerUserId);
+  const results = await Promise.all(venues.map(async (venue) => {
+    const [listings, venueBookings] = await Promise.all([
+      getListingsByVenue(venue.id),
+      getBookingsForVenue(venue.id),
+    ]);
+    const rsvpGroups = await Promise.all(listings.map((listing) => getRsvpsForActivity(listing.id)));
+    return { ...venue, metrics: summarizePartnerImpact(venueBookings, rsvpGroups.flat()) };
+  }));
+
+  const totals = results.reduce((aggregate, venue) => ({
+    bookingCount: aggregate.bookingCount + venue.metrics.bookingCount,
+    bookedSeats: aggregate.bookedSeats + venue.metrics.bookedSeats,
+    attendanceSignals: aggregate.attendanceSignals + venue.metrics.attendanceSignals,
+    rsvpIntent: aggregate.rsvpIntent + venue.metrics.rsvpIntent,
+    rsvpCheckIns: aggregate.rsvpCheckIns + venue.metrics.rsvpCheckIns,
+    grossBookingValueCents: aggregate.grossBookingValueCents + venue.metrics.grossBookingValueCents,
+    platformCommissionCents: aggregate.platformCommissionCents + venue.metrics.platformCommissionCents,
+  }), { bookingCount: 0, bookedSeats: 0, attendanceSignals: 0, rsvpIntent: 0, rsvpCheckIns: 0, grossBookingValueCents: 0, platformCommissionCents: 0 });
+
+  return { venues: results, totals };
 }
 
 export async function updateVenuePartner(venueId: number, data: Partial<typeof venuePartners.$inferInsert>) {

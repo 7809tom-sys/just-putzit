@@ -11,6 +11,7 @@ import { getLoginUrl } from "@/const";
 import { BOOKINGS_SKELETON_CARD_COUNT } from "@/lib/bookingsLoading";
 import { getBookingStatusPresentation } from "@/lib/bookingStatus";
 import { BookingCalendarMenu } from "@/components/BookingCalendarMenu";
+import { BookingAttendanceCheckIn } from "@/components/BookingAttendanceCheckIn";
 
 function dollars(cents: number) {
   return cents === 0 ? "Free" : `$${(cents / 100).toFixed(0)}`;
@@ -125,6 +126,9 @@ export default function Bookings() {
                       location: [b.venue?.name, b.venue?.address, b.venue?.city].filter(Boolean).join(", "),
                       confirmationCode: b.confirmationCode,
                     }} />
+                  )}
+                  {(b.status === "confirmed" || b.status === "checked_in") && (
+                    <BookingAttendanceCheckIn bookingId={b.id} status={b.status} scheduledFor={b.scheduledFor ?? b.activity?.eventDate} compact />
                   )}
                   {b.status === "confirmed" && (
                     <Button

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Store, Plus, TrendingUp, Ticket, DollarSign, Users, Building2, Play, Eye, ToggleLeft, ToggleRight } from "lucide-react";
+import { Store, Plus, TrendingUp, Ticket, DollarSign, Users, Building2, Play, Eye, ToggleLeft, ToggleRight, BarChart3 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -148,7 +148,7 @@ export default function Vendor() {
             </div>
           </div>
 
-          <Dialog open={venueOpen} onOpenChange={setVenueOpen}>
+          <div className="flex flex-wrap gap-2"><Button variant="outline" className="rounded-full bg-card gap-2" asChild><a href="/partner-results"><BarChart3 className="w-4 h-4" /> Partner results</a></Button><Dialog open={venueOpen} onOpenChange={setVenueOpen}>
             <DialogTrigger asChild>
               <Button className="rounded-full gap-2"><Plus className="w-4 h-4" /> Register venue</Button>
             </DialogTrigger>
@@ -213,7 +213,7 @@ export default function Vendor() {
                 </Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog></div>
         </div>
 
         {/* Stats */}

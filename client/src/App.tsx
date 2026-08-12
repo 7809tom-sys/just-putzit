@@ -22,6 +22,7 @@ import Marketplace from "./pages/Marketplace";
 import PaymentConfirmation from "./pages/PaymentConfirmation";
 import Bookings from "./pages/Bookings";
 import Vendor from "./pages/Vendor";
+import PartnerResults from "./pages/PartnerResults";
 import Couples from "./pages/Couples";
 import WouldYouRather from "@/pages/WouldYouRather";
 import WyrChallenge from "@/pages/WyrChallenge";
@@ -112,6 +113,7 @@ function Router() {
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
         <Route path="/bookings" component={Bookings} />
         <Route path="/vendor" component={Vendor} />
+        <Route path="/partner-results" component={PartnerResults} />
         <Route path="/couples" component={Couples} />
         <Route path="/would-you-rather" component={WouldYouRather} />
         <Route path="/wyr-challenge" component={WyrChallenge} />
