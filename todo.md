@@ -968,3 +968,7 @@
 ## Universal Calendar File Guidance
 - [x] Make the .ics download fallback explicit for other calendar providers
 - [x] Add regression coverage and verify the calendar guidance text
+
+## Calendar File Download Feedback
+- [x] Show a specific success toast after the standard .ics file download starts
+- [x] Add regression coverage for calendar file download feedback

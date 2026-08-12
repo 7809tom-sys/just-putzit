@@ -16,6 +16,8 @@ export type BookingCalendarEvent = {
 };
 
 export const BOOKING_CALENDAR_PROVIDERS_TOOLTIP = "Google, Outlook, Apple Calendar, or download a standard .ics file for other calendars";
+export const BOOKING_ICS_DOWNLOAD_SUCCESS = "Calendar file downloaded";
+export const BOOKING_ICS_DOWNLOAD_DESCRIPTION = "Open the .ics file to add this booking to your calendar.";
 
 function formatGoogleDate(date: Date) {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");

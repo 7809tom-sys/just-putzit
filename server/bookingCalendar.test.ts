@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOOKING_CALENDAR_PROVIDERS_TOOLTIP, buildBookingCalendarEvent, getBookingIcs, getGoogleCalendarUrl, getOutlookCalendarUrl } from "../client/src/lib/bookingCalendar";
+import { BOOKING_CALENDAR_PROVIDERS_TOOLTIP, BOOKING_ICS_DOWNLOAD_DESCRIPTION, BOOKING_ICS_DOWNLOAD_SUCCESS, buildBookingCalendarEvent, getBookingIcs, getGoogleCalendarUrl, getOutlookCalendarUrl } from "../client/src/lib/bookingCalendar";
 
 describe("confirmed booking calendar export", () => {
   const event = buildBookingCalendarEvent({
@@ -32,5 +32,10 @@ describe("confirmed booking calendar export", () => {
     expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain("Outlook");
     expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain("Apple");
     expect(BOOKING_CALENDAR_PROVIDERS_TOOLTIP).toContain(".ics");
+  });
+
+  it("gives members clear feedback after the standard file download starts", () => {
+    expect(BOOKING_ICS_DOWNLOAD_SUCCESS).toContain("downloaded");
+    expect(BOOKING_ICS_DOWNLOAD_DESCRIPTION).toContain(".ics");
   });
 });
