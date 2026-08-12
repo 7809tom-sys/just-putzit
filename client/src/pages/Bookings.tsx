@@ -9,17 +9,11 @@ import { MapPin, CalendarDays, Ticket, Users, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { BOOKINGS_SKELETON_CARD_COUNT } from "@/lib/bookingsLoading";
+import { getBookingStatusPresentation } from "@/lib/bookingStatus";
 
 function dollars(cents: number) {
   return cents === 0 ? "Free" : `$${(cents / 100).toFixed(0)}`;
 }
-
-const STATUS_STYLE: Record<string, string> = {
-  confirmed: "bg-primary text-primary-foreground",
-  checked_in: "bg-green-600 text-white",
-  completed: "bg-muted text-muted-foreground",
-  cancelled: "bg-destructive/10 text-destructive",
-};
 
 export function BookingsListSkeleton() {
   return (
@@ -94,7 +88,9 @@ export default function Bookings() {
           <BookingsListSkeleton />
         ) : bookings && bookings.length > 0 ? (
           <div className="space-y-3">
-            {bookings.map(b => (
+            {bookings.map(b => {
+              const bookingStatus = getBookingStatusPresentation(b);
+              return (
               <Card key={b.id} className="border-none shadow-sm">
                 <CardContent className="p-5 flex items-center gap-4">
                   <div className="w-14 h-14 rounded-xl gradient-sally flex items-center justify-center text-2xl shrink-0">
@@ -103,8 +99,8 @@ export default function Bookings() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold truncate">{b.activity?.title ?? "Activity"}</h3>
-                      <Badge className={`rounded-full text-[10px] capitalize ${STATUS_STYLE[b.status] ?? ""}`}>
-                        {b.status.replace("_", " ")}
+                      <Badge variant="outline" className={`rounded-full border text-[10px] ${bookingStatus.className}`}>
+                        {bookingStatus.label}
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground mt-1">
@@ -131,7 +127,7 @@ export default function Bookings() {
                   )}
                 </CardContent>
               </Card>
-            ))}
+            ); })}
           </div>
         ) : (
           <Card className="border-dashed border-2 bg-muted/30">

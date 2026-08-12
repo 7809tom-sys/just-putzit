@@ -951,3 +951,7 @@
 - [x] Add dashboard cancellation control with confirmation and data refresh
 - [x] Add a clear reschedule-request handoff for upcoming bookings
 - [x] Add regression coverage and verify booking controls on mobile
+
+## Dashboard Booking Status Badges
+- [x] Add clear confirmed, pending-reschedule, and cancelled badge treatment to booking cards
+- [x] Add badge-state regression coverage and mobile verification
