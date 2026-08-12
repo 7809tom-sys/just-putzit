@@ -6,6 +6,7 @@ describe("payment confirmation navigation", () => {
     expect(PAYMENT_CONFIRMATION_NAVIGATION.bookings).toEqual({
       href: "/bookings",
       label: "View My Bookings",
+      loadingLabel: "Loading bookings…",
     });
     expect(PAYMENT_CONFIRMATION_NAVIGATION.home).toEqual({
       href: "/",

@@ -16,10 +16,19 @@ function dollars(cents: number) {
 export default function PaymentConfirmation() {
   const { isAuthenticated, loading } = useAuth();
   const [sessionId] = useState(() => new URLSearchParams(window.location.search).get("session_id") || "");
+  const [isOpeningBookings, setIsOpeningBookings] = useState(false);
   const confirmation = trpc.marketplace.getPaymentConfirmation.useQuery(
     { sessionId },
     { enabled: isAuthenticated && sessionId.length >= 10, refetchInterval: (query) => query.state.data?.status === "processing" ? 1500 : false }
   );
+
+  const handleViewBookings = () => {
+    if (isOpeningBookings) return;
+    setIsOpeningBookings(true);
+    window.requestAnimationFrame(() => {
+      window.location.assign(PAYMENT_CONFIRMATION_NAVIGATION.bookings.href);
+    });
+  };
 
   if (loading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Spinner /></div>;
@@ -101,7 +110,10 @@ export default function PaymentConfirmation() {
           </Card>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button className="rounded-full" asChild><a href={PAYMENT_CONFIRMATION_NAVIGATION.bookings.href}><Ticket className="mr-2 h-4 w-4" />{PAYMENT_CONFIRMATION_NAVIGATION.bookings.label}</a></Button>
+            <Button className="rounded-full" onClick={handleViewBookings} disabled={isOpeningBookings} aria-busy={isOpeningBookings}>
+              {isOpeningBookings ? <Spinner className="mr-2 h-4 w-4" /> : <Ticket className="mr-2 h-4 w-4" />}
+              {isOpeningBookings ? PAYMENT_CONFIRMATION_NAVIGATION.bookings.loadingLabel : PAYMENT_CONFIRMATION_NAVIGATION.bookings.label}
+            </Button>
             <Button variant="outline" className="rounded-full bg-card" asChild><a href={PAYMENT_CONFIRMATION_NAVIGATION.home.href}><House className="mr-2 h-4 w-4" />{PAYMENT_CONFIRMATION_NAVIGATION.home.label}</a></Button>
           </div>
         </section>

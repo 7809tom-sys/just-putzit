@@ -918,3 +918,7 @@
 ## Payment Confirmation Navigation
 - [x] Add prominent View My Bookings and Return to Home actions to the payment confirmation page
 - [x] Verify responsive confirmation navigation and regression checks
+
+## Payment Confirmation Booking Loading Feedback
+- [x] Show an accessible loading state when View My Bookings is selected
+- [x] Add regression coverage and verify the confirmation navigation interaction
