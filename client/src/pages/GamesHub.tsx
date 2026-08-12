@@ -14,6 +14,20 @@ import {
 
 const GAMES = [
   {
+    id: "social_games",
+    title: "Community Game Night",
+    description: "Four quick games that uncover shared local interests and lead to safe public plans.",
+    emoji: "🫶",
+    color: "from-teal-500 to-emerald-500",
+    badge: "New",
+    badgeColor: "bg-teal-100 text-teal-700",
+    route: "/social-games",
+    players: "At your pace",
+    time: "2–4 min",
+    premium: false,
+    traits: ["local_style", "weekend_rhythm", "community_connection"],
+  },
+  {
     id: "trivia",
     title: "Trivia Challenge",
     description: "1–8 players compete across 6 categories with real-time chat",
@@ -411,6 +425,10 @@ export default function GamesHub() {
   const [gameDone, setGameDone] = useState(false);
 
   const handleGameSelect = (game: typeof GAMES[0]) => {
+    if (game.id === "social_games") {
+      navigate("/social-games");
+      return;
+    }
     if (game.id === "trivia") {
       navigate("/trivia");
       return;

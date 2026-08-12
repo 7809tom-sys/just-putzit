@@ -43,6 +43,7 @@ import CityLanding from "@/pages/CityLanding";
 import EventDetail from "@/pages/EventDetail";
 import TriviaGame from "@/pages/TriviaGame";
 import GamesHub from "@/pages/GamesHub";
+import SocialGames from "@/pages/SocialGames";
 import Family from "@/pages/Family";
 import TripPlanner from "@/pages/TripPlanner";
 import Jeopardy from "@/pages/Jeopardy";
@@ -126,6 +127,7 @@ function Router() {
         <Route path="/bullgerdash/:matchId" component={Bullgerdash} />
         <Route path="/games-hub" component={GamesHub} />
         <Route path="/games-hub/:gameId" component={GamesHub} />
+        <Route path="/social-games" component={SocialGames} />
         <Route path="/sports" component={Sports} />
         <Route path="/sports/live-scores" component={LiveScores} />
         <Route path="/gym-buddy" component={GymBuddy} />

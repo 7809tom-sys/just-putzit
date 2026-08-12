@@ -926,3 +926,8 @@
 ## Bookings Skeleton Loading
 - [x] Add a card-shaped skeleton loading state for booking records
 - [x] Add regression coverage and verify the mobile bookings loading layout
+
+## Playable Social Games
+- [x] Create the Local Legend, Plan the Perfect Saturday, Three Things in Common, and Would You Join Me game collection
+- [x] Add safe public-event coordination handoffs from game outcomes
+- [x] Add game interaction regression coverage and responsive verification
