@@ -1063,3 +1063,7 @@
 - [x] Add safe public pickup activity creation and opt-in nearby participation notifications
 - [x] Include bowling singles mixer and pickup basketball formats with public-venue safeguards
 - [x] Add regression coverage and responsive verification for personalized activity coordination
+
+## Pickup Notification Follow-Through
+- [x] Link pickup activity alerts directly to the public pickup coordination screen
+- [x] Verify pickup notification call-to-action behavior

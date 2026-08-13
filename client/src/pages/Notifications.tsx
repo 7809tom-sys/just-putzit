@@ -2,6 +2,7 @@ import { Bell, CheckCheck } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { getNotificationActionLabel, getNotificationDestination } from "@/lib/notificationDestination";
 
 export default function Notifications() {
   const utils = trpc.useUtils();
@@ -46,7 +47,10 @@ export default function Notifications() {
           </div>
         ) : (
           <div className="space-y-3">
-            {notifications.map((notification) => (
+            {notifications.map((notification) => {
+              const destination = getNotificationDestination(notification.type);
+              const actionLabel = getNotificationActionLabel(notification.type);
+              return (
               <article key={notification.id} className={`rounded-2xl border p-4 shadow-sm ${notification.isRead ? "border-border bg-white" : "border-primary/25 bg-primary/5"}`}>
                 <div className="flex gap-3">
                   <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${notification.isRead ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}`}>
@@ -56,10 +60,16 @@ export default function Notifications() {
                     <h2 className="font-semibold text-foreground">{notification.title}</h2>
                     <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{notification.body}</p>
                     {!notification.isRead && <span className="mt-2 inline-flex text-xs font-semibold text-primary">New</span>}
+                    {destination && actionLabel && (
+                      <Link href={destination}>
+                        <Button size="sm" variant="outline" className="mt-3 rounded-full">{actionLabel}</Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
