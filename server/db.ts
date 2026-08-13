@@ -2912,11 +2912,15 @@ export async function savePickupAlertPreference(userId: number, input: { enabled
 export async function getMemberPreferredPickupCategories(userId: number): Promise<string[]> {
   const db = await getDb();
   if (!db) return [];
-  const [eventSignals, alertPreference] = await Promise.all([
+  const [eventSignals, activitySignals, alertPreference] = await Promise.all([
     db.select({ category: communityEvents.category, status: eventInterests.status })
       .from(eventInterests)
       .innerJoin(communityEvents, eq(eventInterests.eventId, communityEvents.id))
       .where(eq(eventInterests.userId, userId)),
+    db.select({ category: activityListings.category, status: activityRsvps.status, checkedIn: activityRsvps.checkedIn })
+      .from(activityRsvps)
+      .innerJoin(activityListings, eq(activityRsvps.activityId, activityListings.id))
+      .where(eq(activityRsvps.userId, userId)),
     getPickupAlertPreference(userId),
   ]);
   const categories = new Set<string>(alertPreference?.categories ?? []);
@@ -2925,6 +2929,12 @@ export async function getMemberPreferredPickupCategories(userId: number): Promis
       categories.add(signal.category);
       if (signal.category === "sports") categories.add("basketball");
       if (signal.category === "community") categories.add("bowling");
+    }
+  }
+  for (const signal of activitySignals) {
+    if (signal.status === "going" || signal.status === "maybe" || signal.checkedIn) {
+      categories.add(signal.category);
+      if (signal.category === "sports") categories.add("basketball");
     }
   }
   return Array.from(categories);
