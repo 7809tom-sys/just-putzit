@@ -19,12 +19,13 @@ import { getLatestInterviewLearnings } from "./profileLearning";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
 import { isValidLocationQuery, resolveLocationQuery } from "./locationResolver";
-import { createMarketplaceCheckoutSession, getMarketplacePaymentConfirmation } from "./stripeCheckout";
+import { createMarketplaceCheckoutSession, createSponsoredPlacementCheckoutSession, getMarketplacePaymentConfirmation } from "./stripeCheckout";
 import { deriveGameAchievements } from "./memberDashboard";
 import { getRescheduleRequestError } from "./bookingManagement";
 import { getBookingCheckInError } from "../shared/attendanceProof";
 import { getPartnerTrendRangeError, parsePartnerTrendDate } from "./partnerImpact";
 import { getPickupSafetyError, PICKUP_ACTIVITY_TYPES, pickupTemplate, selectSimilarActivities } from "../shared/pickupActivityPolicy";
+import { getSponsoredPlacementEligibility, getSponsoredPlacementPackage, type SponsoredPlacementPackage } from "../shared/sponsoredPlacementPolicy";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -73,6 +74,9 @@ import {
   createVenuePartner,
   getActivityListings,
   getActivityById,
+  getSponsoredPlacementEligibleListing,
+  getSponsoredPlacementsForActivities,
+  createSponsoredPlacement,
   createActivityListing,
   rsvpToActivity,
   getRsvpsForActivity,
@@ -2116,6 +2120,40 @@ Return JSON with questions array, each having optionA and optionB.`,
           accessNotes: input.accessNotes,
           isRecurring: !!input.recurringSchedule,
         });
+      }),
+
+    startSponsoredPlacementCheckout: protectedProcedure
+      .input(z.object({
+        activityId: z.number().int().positive(),
+        packageCode: z.enum(["week", "month"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const eligible = await getSponsoredPlacementEligibleListing(input.activityId, ctx.user.id);
+        if (!eligible) throw new TRPCError({ code: "FORBIDDEN", message: "You can only promote activities owned by your business." });
+        const policyError = getSponsoredPlacementEligibility({
+          listingIsActive: eligible.listing.isActive,
+          listingIsPublicAccess: eligible.listing.isPublicAccess,
+          venueIsPublicAccess: eligible.venue.isPublicAccess,
+        });
+        if (policyError) throw new TRPCError({ code: "BAD_REQUEST", message: policyError });
+        const existing = await getSponsoredPlacementsForActivities([eligible.listing.id]);
+        if (existing.some((placement) => placement.status === "active" && placement.endsAt && placement.endsAt > new Date())) {
+          throw new TRPCError({ code: "CONFLICT", message: "This activity already has an active sponsored placement." });
+        }
+        const packageDetails = getSponsoredPlacementPackage(input.packageCode as SponsoredPlacementPackage);
+        const placement = await createSponsoredPlacement({
+          activityId: eligible.listing.id,
+          venueId: eligible.venue.id,
+          purchaserUserId: ctx.user.id,
+          packageCode: input.packageCode,
+          amountCents: packageDetails.amountCents,
+        });
+        if (!placement) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to prepare the sponsored placement." });
+        return createSponsoredPlacementCheckoutSession(ctx.user, {
+          placementId: placement.id,
+          activityTitle: eligible.listing.title,
+          packageCode: input.packageCode,
+        }, ctx.req);
       }),
 
     venueBookings: protectedProcedure

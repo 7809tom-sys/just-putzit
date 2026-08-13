@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Store, Plus, TrendingUp, Ticket, DollarSign, Users, Building2, Play, Eye, ToggleLeft, ToggleRight, BarChart3 } from "lucide-react";
+import { Store, Plus, TrendingUp, Ticket, DollarSign, Users, Building2, Play, Eye, ToggleLeft, ToggleRight, BarChart3, Megaphone } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -80,6 +80,9 @@ export default function Vendor() {
   const [lEmoji, setLEmoji] = useState("🎉");
   const [lDesc, setLDesc] = useState("");
   const [lSchedule, setLSchedule] = useState("");
+  const [sponsorOpen, setSponsorOpen] = useState(false);
+  const [sponsoredListing, setSponsoredListing] = useState<any>(null);
+  const [sponsorPackage, setSponsorPackage] = useState<"week" | "month">("week");
 
   const registerMutation = trpc.vendor.registerVenue.useMutation({
     onSuccess: () => {
@@ -99,6 +102,15 @@ export default function Vendor() {
       utils.vendor.myVenues.invalidate();
     },
     onError: (e) => toast.error(e.message || "Couldn't add listing."),
+  });
+  const sponsorMutation = trpc.vendor.startSponsoredPlacementCheckout.useMutation({
+    onSuccess: ({ checkoutUrl }) => {
+      toast.success("Opening secure promotion checkout in a new tab.");
+      window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+      setSponsorOpen(false);
+      utils.vendor.myVenues.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
   });
 
   if (loading) {
@@ -257,12 +269,22 @@ export default function Vendor() {
                       {v.listings.map(l => (
                         <div key={l.id} className="rounded-lg border border-border p-3 flex items-center gap-3">
                           <div className="text-2xl">{l.imageEmoji}</div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="font-medium text-sm truncate">{l.title}</p>
                             <p className="text-xs text-muted-foreground">
                               {l.priceCents === 0 ? "Free" : dollars(l.priceCents)} · {l.totalReferrals} visits
                             </p>
+                            {l.isSponsored && <Badge className="mt-1 bg-amber-100 text-amber-800 hover:bg-amber-100">Sponsored placement active</Badge>}
                           </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0 rounded-full gap-1.5 text-xs"
+                            disabled={l.isSponsored || !l.isActive}
+                            onClick={() => { setSponsoredListing(l); setSponsorPackage("week"); setSponsorOpen(true); }}
+                          >
+                            <Megaphone className="h-3.5 w-3.5" /> {l.isSponsored ? "Live" : "Promote"}
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -284,6 +306,36 @@ export default function Vendor() {
           </Card>
         )}
       </div>
+
+      <Dialog open={sponsorOpen} onOpenChange={setSponsorOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Promote this activity</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="font-semibold">{sponsoredListing?.title}</p>
+              <p className="mt-1 text-xs">Your activity will be shown near the top of relevant local recommendations with a clear <strong>Sponsored</strong> label. It remains subject to venue rules, accurate listing information, and community safety standards.</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {([
+                { id: "week", label: "7 days", price: "$99", detail: "Try a focused local placement" },
+                { id: "month", label: "30 days", price: "$249", detail: "Keep your activity visible longer" },
+              ] as const).map((option) => (
+                <button key={option.id} type="button" onClick={() => setSponsorPackage(option.id)} className={`rounded-xl border p-3 text-left transition-colors ${sponsorPackage === option.id ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
+                  <span className="block text-sm font-semibold text-gray-900">{option.label} · {option.price}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{option.detail}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Payment is handled securely by Stripe. We do not sell member profiles or use private interview responses for advertising.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-full bg-card" onClick={() => setSponsorOpen(false)}>Cancel</Button>
+            <Button className="rounded-full gap-2" disabled={!sponsoredListing || sponsorMutation.isPending} onClick={() => sponsoredListing && sponsorMutation.mutate({ activityId: sponsoredListing.id, packageCode: sponsorPackage })}>
+              <Megaphone className="h-4 w-4" /> {sponsorMutation.isPending ? "Opening checkout…" : "Continue to secure checkout"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ─── Login Ads Section ─── */}
       {venues && venues.length > 0 && (

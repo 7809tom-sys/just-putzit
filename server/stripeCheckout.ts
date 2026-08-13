@@ -6,10 +6,14 @@ import {
   genCode,
   getActivityById,
   getBookingByStripeCheckoutSessionId,
+  attachSponsoredPlacementCheckoutSession,
+  activateSponsoredPlacementFromCheckout,
+  getSponsoredPlacementById,
   getVenueById,
   recordReferralVisit,
 } from "./db";
-import { getMarketplaceCheckoutLineItems } from "./products";
+import { getMarketplaceCheckoutLineItems, getSponsoredPlacementCheckoutLineItems } from "./products";
+import { getSponsoredPlacementPackage, type SponsoredPlacementPackage } from "../shared/sponsoredPlacementPolicy";
 
 type CheckoutUser = { id: number; email?: string | null; name?: string | null };
 
@@ -89,6 +93,43 @@ export async function createMarketplaceCheckoutSession(user: CheckoutUser, reque
   return { checkoutUrl: session.url };
 }
 
+export async function createSponsoredPlacementCheckoutSession(user: CheckoutUser, request: {
+  placementId: number;
+  activityTitle: string;
+  packageCode: SponsoredPlacementPackage;
+}, req: Request) {
+  const stripe = getStripe();
+  if (!stripe) throw new Error("Secure payment setup is not available yet. Please try again shortly.");
+  const packageDetails = getSponsoredPlacementPackage(request.packageCode);
+  const origin = getRequestOrigin(req);
+  const metadata = {
+    checkout_type: "sponsored_placement",
+    user_id: user.id.toString(),
+    placement_id: request.placementId.toString(),
+    package_code: request.packageCode,
+    customer_email: user.email || "",
+    customer_name: user.name || "",
+  };
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: getSponsoredPlacementCheckoutLineItems({
+      title: `${packageDetails.label}: ${request.activityTitle}`,
+      description: `${packageDetails.description} The listing will remain clearly labeled Sponsored.`,
+      amountCents: packageDetails.amountCents,
+    }),
+    customer_email: user.email || undefined,
+    client_reference_id: user.id.toString(),
+    metadata,
+    payment_intent_data: { metadata },
+    allow_promotion_codes: true,
+    success_url: `${origin}/vendor?promotion=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/vendor?promotion=cancelled`,
+  });
+  if (!session.url) throw new Error("Unable to start secure promotion checkout. Please try again.");
+  await attachSponsoredPlacementCheckoutSession(request.placementId, user.id, session.id);
+  return { checkoutUrl: session.url };
+}
+
 async function fulfillMarketplaceCheckout(session: Stripe.Checkout.Session) {
   const metadata = session.metadata ?? {};
   const userId = Number(metadata.user_id);
@@ -131,6 +172,28 @@ async function fulfillMarketplaceCheckout(session: Stripe.Checkout.Session) {
     booking?.id,
   );
   return booking;
+}
+
+async function fulfillSponsoredPlacementCheckout(session: Stripe.Checkout.Session) {
+  const metadata = session.metadata ?? {};
+  const placementId = Number(metadata.placement_id);
+  const userId = Number(metadata.user_id);
+  if (!Number.isInteger(placementId) || !Number.isInteger(userId)) {
+    throw new Error(`Stripe Checkout ${session.id} is missing sponsored placement metadata`);
+  }
+  const placement = await getSponsoredPlacementById(placementId);
+  if (!placement || placement.purchaserUserId !== userId) throw new Error("Sponsored placement ownership verification failed");
+  if (placement.status === "active") return placement;
+  const packageDetails = getSponsoredPlacementPackage(placement.packageCode);
+  const startsAt = new Date();
+  const endsAt = new Date(startsAt.getTime() + packageDetails.durationDays * 24 * 60 * 60 * 1000);
+  return activateSponsoredPlacementFromCheckout({
+    placementId,
+    sessionId: session.id,
+    paymentIntentId: getPaymentIntentId(session),
+    startsAt,
+    endsAt,
+  });
 }
 
 export async function getMarketplacePaymentConfirmation(userId: number, sessionId: string) {
@@ -179,7 +242,12 @@ export function registerStripeWebhook(app: Express) {
 
     try {
       if (event.type === "checkout.session.completed") {
-        await fulfillMarketplaceCheckout(event.data.object as Stripe.Checkout.Session);
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.checkout_type === "sponsored_placement") {
+          await fulfillSponsoredPlacementCheckout(session);
+        } else {
+          await fulfillMarketplaceCheckout(session);
+        }
       }
       console.log(`[Stripe] Processed ${event.type} (${event.id})`);
       return res.json({ received: true });

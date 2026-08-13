@@ -1072,3 +1072,9 @@
 - [x] Add distance, time, and activity-category filtering to personalized recommendations
 - [x] Add stable sorting and empty-result states for recommendation filters
 - [x] Add regression coverage and responsive verification for recommendation filtering
+
+## Transparent Sponsored Event Placement
+- [x] Define eligible business event sponsorship packages and clear disclosure rules
+- [x] Add secure sponsored placement records, business ownership checks, and payment states
+- [x] Build vendor promotion controls and labeled sponsored recommendation placement
+- [x] Add regression coverage and verify desktop and mobile sponsored discovery layouts

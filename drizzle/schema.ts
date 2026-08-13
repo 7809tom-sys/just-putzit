@@ -306,6 +306,25 @@ export const activityListings = mysqlTable("activity_listings", {
 export type ActivityListing = typeof activityListings.$inferSelect;
 export type InsertActivityListing = typeof activityListings.$inferInsert;
 
+// ─── Sponsored Activity Placements ────────────────────────────────────────────
+// Paid business placements are always clearly disclosed in discovery and only activate after verified Checkout payment.
+export const sponsoredPlacements = mysqlTable("sponsored_placements", {
+  id: int("id").autoincrement().primaryKey(),
+  activityId: int("activity_id").notNull(),
+  venueId: int("venue_id").notNull(),
+  purchaserUserId: int("purchaser_user_id").notNull(),
+  packageCode: mysqlEnum("package_code", ["week", "month"]).notNull(),
+  amountCents: int("amount_cents").notNull(),
+  status: mysqlEnum("status", ["checkout_pending", "active", "expired", "cancelled"]).notNull().default("checkout_pending"),
+  startsAt: timestamp("starts_at"),
+  endsAt: timestamp("ends_at"),
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id", { length: 255 }).unique(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type SponsoredPlacement = typeof sponsoredPlacements.$inferSelect;
+
 // ─── Public Activity Discovery Refreshes ──────────────────────────────────────
 export const cityActivityRefreshes = mysqlTable("city_activity_refreshes", {
   id: int("id").autoincrement().primaryKey(),

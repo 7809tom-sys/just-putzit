@@ -18,3 +18,14 @@ export function getMarketplaceCheckoutLineItems(product: MarketplaceCheckoutProd
     quantity: product.partySize,
   }];
 }
+
+export function getSponsoredPlacementCheckoutLineItems(product: { title: string; description: string; amountCents: number }) {
+  return [{
+    price_data: {
+      currency: "usd",
+      product_data: { name: product.title, description: product.description },
+      unit_amount: product.amountCents,
+    },
+    quantity: 1,
+  }];
+}

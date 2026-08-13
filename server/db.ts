@@ -1,4 +1,4 @@
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { selectCurrentVerifiedEvents } from "./eventRecommendations";
 import { normalizeSavedLocationDraft } from "./savedLocationPolicy";
@@ -18,6 +18,7 @@ import {
   adminFlags,
   venuePartners,
   activityListings,
+  sponsoredPlacements,
   activityRsvps,
   communityGroups,
   communityGroupMembers,
@@ -560,7 +561,11 @@ export async function getActivityListings(
     .orderBy(desc(activityListings.isSponsored), desc(activityListings.createdAt))
     .limit(200);
 
-  let filtered = rows;
+  const sponsoredActivityIds = new Set(await getActiveSponsoredActivityIds());
+  let filtered = rows.map((row) => ({
+    ...row,
+    isSponsored: row.isSponsored || sponsoredActivityIds.has(row.id),
+  }));
 
   // GPS is authoritative when available; city is the fallback for users without coordinates.
   if (geo?.lat !== undefined && geo.lng !== undefined) {
@@ -583,12 +588,15 @@ export async function getActivityListings(
     filtered = filtered.filter(r => r.category === category);
   }
 
-  return filtered.slice(0, 80).map((row) => ({
-    ...row,
-    distanceMiles: geo?.lat !== undefined && geo.lng !== undefined && row.venueLat !== null && row.venueLng !== null
-      ? haversineDistanceKm(geo.lat, geo.lng, Number(row.venueLat), Number(row.venueLng)) / 1.60934
-      : null,
-  }));
+  return filtered
+    .sort((left, right) => Number(right.isSponsored) - Number(left.isSponsored) || Number(right.createdAt) - Number(left.createdAt))
+    .slice(0, 80)
+    .map((row) => ({
+      ...row,
+      distanceMiles: geo?.lat !== undefined && geo.lng !== undefined && row.venueLat !== null && row.venueLng !== null
+        ? haversineDistanceKm(geo.lat, geo.lng, Number(row.venueLat), Number(row.venueLng)) / 1.60934
+        : null,
+    }));
 }
 
 export async function getActivityById(activityId: number) {
@@ -844,9 +852,16 @@ export async function updateVenuePartner(venueId: number, data: Partial<typeof v
 export async function getListingsByVenue(venueId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(activityListings)
+  const listings = await db.select().from(activityListings)
     .where(eq(activityListings.venueId, venueId))
     .orderBy(desc(activityListings.createdAt));
+  const placements = await getSponsoredPlacementsForActivities(listings.map((listing) => listing.id));
+  const placementByActivity = new Map(placements.map((placement) => [placement.activityId, placement]));
+  return listings.map((listing) => ({
+    ...listing,
+    sponsorPlacement: placementByActivity.get(listing.id) ?? null,
+    isSponsored: listing.isSponsored || placementByActivity.get(listing.id)?.status === "active",
+  }));
 }
 
 export async function getListingsForOwner(ownerUserId: number) {
@@ -863,6 +878,84 @@ export async function updateActivityListing(id: number, data: Partial<typeof act
   const db = await getDb();
   if (!db) return;
   await db.update(activityListings).set(data).where(eq(activityListings.id, id));
+}
+
+// ─── Paid Sponsored Placement ─────────────────────────────────────────────────
+
+export async function getSponsoredPlacementEligibleListing(activityId: number, ownerUserId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({ listing: activityListings, venue: venuePartners })
+    .from(activityListings)
+    .innerJoin(venuePartners, eq(activityListings.venueId, venuePartners.id))
+    .where(and(eq(activityListings.id, activityId), eq(venuePartners.ownerUserId, ownerUserId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createSponsoredPlacement(data: {
+  activityId: number;
+  venueId: number;
+  purchaserUserId: number;
+  packageCode: "week" | "month";
+  amountCents: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  await db.insert(sponsoredPlacements).values({ ...data, status: "checkout_pending" });
+  const rows = await db.select().from(sponsoredPlacements)
+    .where(and(eq(sponsoredPlacements.activityId, data.activityId), eq(sponsoredPlacements.purchaserUserId, data.purchaserUserId)))
+    .orderBy(desc(sponsoredPlacements.createdAt)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function attachSponsoredPlacementCheckoutSession(placementId: number, purchaserUserId: number, sessionId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  await db.update(sponsoredPlacements)
+    .set({ stripeCheckoutSessionId: sessionId })
+    .where(and(eq(sponsoredPlacements.id, placementId), eq(sponsoredPlacements.purchaserUserId, purchaserUserId), eq(sponsoredPlacements.status, "checkout_pending")));
+}
+
+export async function activateSponsoredPlacementFromCheckout(input: { placementId: number; sessionId: string; paymentIntentId?: string | null; startsAt: Date; endsAt: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  const existing = await db.select().from(sponsoredPlacements).where(eq(sponsoredPlacements.id, input.placementId)).limit(1);
+  if (!existing[0]) throw new Error("Sponsored placement not found");
+  if (existing[0].status === "active") return existing[0];
+  await db.update(sponsoredPlacements).set({
+    status: "active",
+    startsAt: input.startsAt,
+    endsAt: input.endsAt,
+    stripeCheckoutSessionId: input.sessionId,
+    stripePaymentIntentId: input.paymentIntentId ?? null,
+  }).where(eq(sponsoredPlacements.id, input.placementId));
+  const active = await db.select().from(sponsoredPlacements).where(eq(sponsoredPlacements.id, input.placementId)).limit(1);
+  return active[0] ?? null;
+}
+
+export async function getSponsoredPlacementById(placementId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(sponsoredPlacements).where(eq(sponsoredPlacements.id, placementId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getActiveSponsoredActivityIds() {
+  const db = await getDb();
+  if (!db) return [] as number[];
+  const rows = await db.select({ activityId: sponsoredPlacements.activityId }).from(sponsoredPlacements)
+    .where(and(eq(sponsoredPlacements.status, "active"), gt(sponsoredPlacements.endsAt, new Date())));
+  return rows.map((row) => row.activityId);
+}
+
+export async function getSponsoredPlacementsForActivities(activityIds: number[]) {
+  const db = await getDb();
+  if (!db || activityIds.length === 0) return [];
+  return db.select().from(sponsoredPlacements)
+    .where(inArray(sponsoredPlacements.activityId, activityIds))
+    .orderBy(desc(sponsoredPlacements.createdAt));
 }
 
 // ─── Couples Network ────────────────────────────────────────────────────────────

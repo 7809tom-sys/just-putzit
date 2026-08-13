@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy } from "lucide-react";
+import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy, Megaphone } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
@@ -526,7 +526,7 @@ export default function ActivityBoard() {
               </div>
               {filteredRememberedActivities.slice(0, 4).map((activity: any) => (
                 <div key={activity.id} className="rounded-xl border border-emerald-100 bg-white p-4">
-                  <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-gray-900">{activity.title}</h3><p className="mt-1 text-sm text-gray-600">{activity.venueName ?? "Local public venue"}{activity.venueCity ? ` · ${activity.venueCity}` : ""}</p>{activity.distanceMiles !== undefined && <p className="mt-1 text-xs font-medium text-emerald-700">{formatMilesAway(activity.distanceMiles)} away</p>}</div><Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">{activity.category}</Badge></div>
+                  <div className="flex items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold text-gray-900">{activity.title}</h3>{activity.isSponsored && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 gap-1"><Megaphone className="h-3 w-3" /> Sponsored</Badge>}</div><p className="mt-1 text-sm text-gray-600">{activity.venueName ?? "Local public venue"}{activity.venueCity ? ` · ${activity.venueCity}` : ""}</p>{activity.distanceMiles !== undefined && <p className="mt-1 text-xs font-medium text-emerald-700">{formatMilesAway(activity.distanceMiles)} away</p>}</div><Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">{activity.category}</Badge></div>
                 </div>
               ))}
               {filteredRememberedActivities.length === 0 && (
@@ -673,6 +673,7 @@ export default function ActivityBoard() {
                               <div className="flex items-center gap-2 mb-2">
                                 <span className="text-2xl">{categoryEmoji[activity.category] ?? "✨"}</span>
                                 <h3 className="font-bold text-gray-900 text-lg">{activity.title}</h3>
+                                {activity.isSponsored && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 gap-1"><Megaphone className="h-3 w-3" /> Sponsored</Badge>}
                               </div>
                               {activity.description && (
                                 <p className="text-gray-600 text-sm mb-3">{activity.description}</p>
