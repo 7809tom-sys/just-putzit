@@ -1067,3 +1067,8 @@
 ## Pickup Notification Follow-Through
 - [x] Link pickup activity alerts directly to the public pickup coordination screen
 - [x] Verify pickup notification call-to-action behavior
+
+## Personalized Recommendation Filtering
+- [x] Add distance, time, and activity-category filtering to personalized recommendations
+- [x] Add stable sorting and empty-result states for recommendation filters
+- [x] Add regression coverage and responsive verification for recommendation filtering

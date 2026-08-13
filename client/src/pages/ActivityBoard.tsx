@@ -14,6 +14,7 @@ import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 import { LocationOverrideControl } from "@/components/LocationOverrideControl";
 import { useUserCity } from "@/hooks/useUserCity";
 import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
+import { filterPersonalizedRecommendations, getRecommendationCategories, type RecommendationSort, type RecommendationTimeWindow } from "@/lib/personalizedRecommendationFilters";
 
 const CATEGORIES = [
   { id: "all", label: "All Activities", emoji: "✨" },
@@ -120,6 +121,9 @@ export default function ActivityBoard() {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitForm, setSubmitForm] = useState({ ...BLANK_FORM });
   const [showPickupDialog, setShowPickupDialog] = useState(false);
+  const [recommendationSort, setRecommendationSort] = useState<RecommendationSort>("relevance");
+  const [recommendationTimeWindow, setRecommendationTimeWindow] = useState<RecommendationTimeWindow>("any");
+  const [recommendationCategory, setRecommendationCategory] = useState("all");
   const [pickupForm, setPickupForm] = useState({
     activityType: "basketball" as "basketball" | "bowling_singles" | "other",
     title: "Pickup basketball — 3:00–5:00 PM",
@@ -285,6 +289,16 @@ export default function ActivityBoard() {
     a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (a.description ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   ) ?? [];
+
+  const rememberedRecommendationCategories = getRecommendationCategories((rememberedActivities?.activities ?? []) as any[]);
+  const filteredRememberedActivities = filterPersonalizedRecommendations({
+    activities: (rememberedActivities?.activities ?? []) as any[],
+    category: recommendationCategory,
+    timeWindow: recommendationTimeWindow,
+    sortBy: recommendationSort,
+    userLat,
+    userLng,
+  });
 
   const filteredCommunity = (communityEvents ?? []).filter((e: typeof communityEvents extends (infer T)[] | undefined ? T : never) => {
     const matchesSearch = searchQuery === "" ||
@@ -485,11 +499,39 @@ export default function ActivityBoard() {
               </div>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {(rememberedActivities?.activities ?? []).slice(0, 4).map((activity: any) => (
+              <div className="rounded-xl border border-emerald-100 bg-white/80 p-3 md:col-span-2">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <label className="text-xs font-semibold text-gray-600">Sort
+                    <select value={recommendationSort} onChange={(event) => setRecommendationSort(event.target.value as RecommendationSort)} className="mt-1 h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-800">
+                      <option value="relevance">Best match</option>
+                      <option value="distance">Closest first</option>
+                      <option value="time">Soonest first</option>
+                    </select>
+                  </label>
+                  <label className="text-xs font-semibold text-gray-600">Time
+                    <select value={recommendationTimeWindow} onChange={(event) => setRecommendationTimeWindow(event.target.value as RecommendationTimeWindow)} className="mt-1 h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-800">
+                      <option value="any">Any time</option>
+                      <option value="today">Today</option>
+                      <option value="next_7_days">Next 7 days</option>
+                      <option value="upcoming">Upcoming</option>
+                    </select>
+                  </label>
+                  <label className="text-xs font-semibold text-gray-600">Activity
+                    <select value={recommendationCategory} onChange={(event) => setRecommendationCategory(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-800">
+                      <option value="all">All activities</option>
+                      {rememberedRecommendationCategories.map((category) => <option key={category} value={category}>{category.replaceAll("_", " ")}</option>)}
+                    </select>
+                  </label>
+                </div>
+              </div>
+              {filteredRememberedActivities.slice(0, 4).map((activity: any) => (
                 <div key={activity.id} className="rounded-xl border border-emerald-100 bg-white p-4">
-                  <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-gray-900">{activity.title}</h3><p className="mt-1 text-sm text-gray-600">{activity.venueName ?? "Local public venue"}{activity.venueCity ? ` · ${activity.venueCity}` : ""}</p></div><Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">{activity.category}</Badge></div>
+                  <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-gray-900">{activity.title}</h3><p className="mt-1 text-sm text-gray-600">{activity.venueName ?? "Local public venue"}{activity.venueCity ? ` · ${activity.venueCity}` : ""}</p>{activity.distanceMiles !== undefined && <p className="mt-1 text-xs font-medium text-emerald-700">{formatMilesAway(activity.distanceMiles)} away</p>}</div><Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">{activity.category}</Badge></div>
                 </div>
               ))}
+              {filteredRememberedActivities.length === 0 && (
+                <div className="rounded-xl border border-dashed border-emerald-200 bg-white/70 p-4 text-sm text-gray-600 md:col-span-2">No saved-interest recommendations match these filters yet. Try a broader time window or a different activity category.</div>
+              )}
             </div>
           </section>
         )}
