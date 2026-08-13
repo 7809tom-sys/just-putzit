@@ -1033,3 +1033,8 @@
 - [x] Add Waukesha Public Library directly to the primary Home and Events discovery screens
 - [x] Keep the entry visible and readable on desktop and mobile
 - [x] Add regression coverage and verify the primary-screen placement
+
+## Investor Deck and Five-Year Forecast
+- [x] Define cautious, realistic, and optimistic five-year operating assumptions from the monetization plan
+- [x] Build traceable three-case revenue and operating forecast outputs
+- [x] Create and review an investor-ready slide deck with forecast disclosures
