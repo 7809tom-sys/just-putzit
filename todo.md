@@ -1057,3 +1057,9 @@
 ## Free Member Profile Clarification
 - [x] Reframe the optimistic case so user profiles are free and business-funded revenue drives monetization
 - [x] Document business-partner, booking, promotion, and advertising assumptions without member subscription revenue
+
+## Personalized Pickup Activities and Mixers
+- [x] Learn activity preferences from member interest and attendance signals for similar-event recommendations
+- [x] Add safe public pickup activity creation and opt-in nearby participation notifications
+- [x] Include bowling singles mixer and pickup basketball formats with public-venue safeguards
+- [x] Add regression coverage and responsive verification for personalized activity coordination

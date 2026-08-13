@@ -24,6 +24,7 @@ import { deriveGameAchievements } from "./memberDashboard";
 import { getRescheduleRequestError } from "./bookingManagement";
 import { getBookingCheckInError } from "../shared/attendanceProof";
 import { getPartnerTrendRangeError, parsePartnerTrendDate } from "./partnerImpact";
+import { getPickupSafetyError, PICKUP_ACTIVITY_TYPES, pickupTemplate, selectSimilarActivities } from "../shared/pickupActivityPolicy";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -222,6 +223,13 @@ import {
   getTodaysPlan,
   saveTodaysPlan,
   clearTodaysPlan,
+  getPickupAlertPreference,
+  savePickupAlertPreference,
+  getPickupSessionsForMember,
+  createPickupSession,
+  joinPickupSession,
+  notifyNearbyPickupMembers,
+  getMemberPreferredPickupCategories,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, MatchGameQuestion as GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import { familyProfiles, communityEvents } from "../drizzle/schema";
@@ -1697,6 +1705,60 @@ Return JSON with questions array, each having optionA and optionB.`,
           activities: recommended.length > 0 ? recommended : allActivities.slice(0, 4),
         };
       }),
+    getPersonalized: protectedProcedure.query(async ({ ctx }) => {
+      const profile = await getProfileByUserId(ctx.user.id);
+      const [activities, preferredCategories] = await Promise.all([
+        getActivityListings(profile?.city ?? undefined),
+        getMemberPreferredPickupCategories(ctx.user.id),
+      ]);
+      return {
+        categories: preferredCategories,
+        activities: selectSimilarActivities(activities, preferredCategories),
+      };
+    }),
+  }),
+
+  pickupActivities: router({
+    list: protectedProcedure.input(z.object({ city: z.string().optional() })).query(async ({ ctx, input }) => {
+      const profile = await getProfileByUserId(ctx.user.id);
+      return getPickupSessionsForMember(ctx.user.id, input.city ?? profile?.city ?? undefined);
+    }),
+    alertPreference: protectedProcedure.query(async ({ ctx }) => getPickupAlertPreference(ctx.user.id)),
+    setAlertPreference: protectedProcedure
+      .input(z.object({
+        enabled: z.boolean(),
+        city: z.string().max(100).optional(),
+        categories: z.array(z.string().max(40)).max(12).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => savePickupAlertPreference(ctx.user.id, input)),
+    create: protectedProcedure
+      .input(z.object({
+        activityType: z.enum(PICKUP_ACTIVITY_TYPES),
+        title: z.string().trim().min(3).max(160),
+        description: z.string().trim().max(500).optional(),
+        city: z.string().trim().min(2).max(100),
+        state: z.string().trim().min(2).max(32),
+        venueName: z.string().trim().min(2).max(200),
+        venueAddress: z.string().trim().max(300).optional(),
+        startAt: z.string().datetime(),
+        endAt: z.string().datetime().optional(),
+        capacity: z.number().int().min(2).max(20),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const startAt = new Date(input.startAt);
+        const endAt = input.endAt ? new Date(input.endAt) : undefined;
+        const safetyError = getPickupSafetyError({ startAt, endAt, capacity: input.capacity, venueName: input.venueName, city: input.city });
+        if (safetyError) throw new TRPCError({ code: "BAD_REQUEST", message: safetyError });
+        const session = await createPickupSession({ ...input, hostUserId: ctx.user.id, startAt, endAt });
+        const notifiedCount = await notifyNearbyPickupMembers(session);
+        return { session, notifiedCount };
+      }),
+    join: protectedProcedure
+      .input(z.object({ sessionId: z.number().int() }))
+      .mutation(async ({ ctx, input }) => joinPickupSession(input.sessionId, ctx.user.id)),
+    template: protectedProcedure
+      .input(z.object({ activityType: z.enum(PICKUP_ACTIVITY_TYPES) }))
+      .query(({ input }) => pickupTemplate(input.activityType)),
   }),
 
   // ─── Community Groups ─────────────────────────────────────────────────────

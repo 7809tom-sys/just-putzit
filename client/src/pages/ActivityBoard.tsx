@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus } from "lucide-react";
+import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
@@ -119,6 +119,17 @@ export default function ActivityBoard() {
   const [radiusMiles, setRadiusMiles] = useState(25);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitForm, setSubmitForm] = useState({ ...BLANK_FORM });
+  const [showPickupDialog, setShowPickupDialog] = useState(false);
+  const [pickupForm, setPickupForm] = useState({
+    activityType: "basketball" as "basketball" | "bowling_singles" | "other",
+    title: "Pickup basketball — 3:00–5:00 PM",
+    description: "Open pickup basketball at a public gym. Confirm court access or guest rules before you go.",
+    venueName: "",
+    venueAddress: "",
+    startAt: "",
+    endAt: "",
+    capacity: 10,
+  });
 
   const { data: profile } = trpc.profile.get.useQuery();
   const { detectedCity } = useUserCity();
@@ -127,6 +138,7 @@ export default function ActivityBoard() {
   const userLng = detectedCity?.lng ?? (profile?.longitude ? parseFloat(profile.longitude) : undefined);
 
   const { data: sallyRecs, isLoading: recsLoading } = trpc.activityBoard.getSallyRecommendations.useQuery({});
+  const { data: rememberedActivities } = trpc.activityBoard.getPersonalized.useQuery();
   const { data: activities, refetch } = trpc.activityBoard.getAll.useQuery({
     city: userCity,
     category: selectedCategory === "all" ? undefined : selectedCategory,
@@ -134,6 +146,8 @@ export default function ActivityBoard() {
     lng: userLng,
     radiusMiles,
   });
+  const { data: pickupSessions, refetch: refetchPickups } = trpc.pickupActivities.list.useQuery({ city: userCity?.split(",")[0].trim() });
+  const { data: pickupAlerts } = trpc.pickupActivities.alertPreference.useQuery();
 
   const effectiveCity = showAllCities ? undefined : (userCity ? userCity.split(",")[0].trim() : "Milwaukee");
 
@@ -164,6 +178,24 @@ export default function ActivityBoard() {
   });
 
   const utils = trpc.useUtils();
+  const pickupAlertMutation = trpc.pickupActivities.setAlertPreference.useMutation({
+    onSuccess: () => utils.pickupActivities.alertPreference.invalidate(),
+  });
+  const pickupCreateMutation = trpc.pickupActivities.create.useMutation({
+    onSuccess: ({ notifiedCount }) => {
+      toast.success(notifiedCount > 0 ? `Public pickup posted — ${notifiedCount} nearby members were alerted.` : "Public pickup posted. It is now available to nearby members who opt in.");
+      setShowPickupDialog(false);
+      refetchPickups();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const pickupJoinMutation = trpc.pickupActivities.join.useMutation({
+    onSuccess: () => {
+      toast.success("You’re in! Meet at the public venue and confirm access before you go.");
+      refetchPickups();
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const submitMutation = trpc.events.create.useMutation({
     onSuccess: () => {
       toast.success("Event submitted! It's now live in the community feed. 🎉");
@@ -193,6 +225,31 @@ export default function ActivityBoard() {
       isFree: submitForm.isFree,
       priceCents: submitForm.isFree ? 0 : submitForm.priceCents,
       externalUrl: submitForm.externalUrl.trim() || undefined,
+    });
+  }
+
+  function applyPickupTemplate(type: "basketball" | "bowling_singles" | "other") {
+    const templates = {
+      basketball: { title: "Pickup basketball — 3:00–5:00 PM", description: "Open pickup basketball at a public gym. Confirm court access or guest rules before you go." },
+      bowling_singles: { title: "Bowling Singles Mixer", description: "A low-pressure public bowling mixer for singles. Confirm lane availability with the alley before you go." },
+      other: { title: "Public pickup activity", description: "A public-venue activity for nearby members." },
+    };
+    setPickupForm((current) => ({ ...current, activityType: type, ...templates[type] }));
+  }
+
+  function handleCreatePickup() {
+    if (!pickupForm.startAt) { toast.error("Choose a public start time."); return; }
+    if (!pickupForm.venueName.trim()) { toast.error("Name the public venue so members can decide safely."); return; }
+    pickupCreateMutation.mutate({
+      ...pickupForm,
+      title: pickupForm.title.trim(),
+      description: pickupForm.description.trim() || undefined,
+      city: userCity?.split(",")[0].trim() || "Milwaukee",
+      state: detectedCity?.state || profile?.state || "WI",
+      venueName: pickupForm.venueName.trim(),
+      venueAddress: pickupForm.venueAddress.trim() || undefined,
+      startAt: new Date(pickupForm.startAt).toISOString(),
+      endAt: pickupForm.endAt ? new Date(pickupForm.endAt).toISOString() : undefined,
     });
   }
 
@@ -295,6 +352,11 @@ export default function ActivityBoard() {
               Submit Event
             </Button>
           )}
+          {user && activeTab === "activities" && (
+            <Button onClick={() => setShowPickupDialog(true)} className="flex-shrink-0 bg-primary hover:bg-primary/90 text-white rounded-full gap-2">
+              <Plus className="w-4 h-4" /> Plan a public pickup
+            </Button>
+          )}
         </div>
 
         <div className="mb-6 max-w-xl">
@@ -372,6 +434,64 @@ export default function ActivityBoard() {
               </button>
             ))}
           </div>
+        )}
+
+        {activeTab === "activities" && (
+          <section className="mb-8 rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/8 via-white to-amber-50 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Pick-up moments near you</p>
+                <h2 className="mt-1 font-display text-2xl font-bold text-gray-900">People who like what you like</h2>
+                <p className="mt-1 max-w-2xl text-sm text-gray-600">We use your saved, going, and attended activity signals to surface similar public activities. No private profile data is shared.</p>
+              </div>
+              <Button variant={pickupAlerts?.enabled ? "outline" : "default"} onClick={() => pickupAlertMutation.mutate({ enabled: !pickupAlerts?.enabled, city: userCity?.split(",")[0].trim(), categories: ["basketball", "bowling", "sports", "community"] })} className="rounded-full gap-2">
+                <BellRing className="h-4 w-4" /> {pickupAlerts?.enabled ? "Pickup alerts on" : "Get pickup alerts"}
+              </Button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {(pickupSessions ?? []).slice(0, 4).map((session: any) => (
+                <div key={session.id} className="rounded-xl border border-gray-100 bg-white/90 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2"><span className="text-xl">{session.activityType === "basketball" ? "🏀" : session.activityType === "bowling_singles" ? "🎳" : "✨"}</span><h3 className="font-semibold text-gray-900">{session.title}</h3></div>
+                      {session.recommended && <Badge className="mt-2 bg-primary/10 text-primary hover:bg-primary/10">Matches your activity interests</Badge>}
+                      <p className="mt-2 text-sm text-gray-600">{new Date(session.startAt).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · {session.venueName}</p>
+                      <p className="mt-1 text-xs text-gray-500">{session.participantCount}/{session.capacity} opt-in participants · public venue</p>
+                    </div>
+                    <Button size="sm" disabled={session.joined || pickupJoinMutation.isPending} onClick={() => pickupJoinMutation.mutate({ sessionId: session.id })} className="rounded-full">
+                      {session.joined ? "Joined" : "I’m in"}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {(pickupSessions?.length ?? 0) === 0 && (
+                <div className="rounded-xl border border-dashed border-primary/25 bg-white/70 p-4 text-sm text-gray-600 md:col-span-2">
+                  No public pickup activities are posted nearby yet. Be the first to plan basketball, a bowling singles mixer, or another safe public activity.
+                </div>
+              )}
+            </div>
+            <div className="mt-4 flex items-start gap-2 text-xs text-gray-500"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> Public venues only. Just Putzit does not show participant rosters or private locations; confirm access, venue rules, and reservations before you go.</div>
+          </section>
+        )}
+
+        {activeTab === "activities" && (rememberedActivities?.activities?.length ?? 0) > 0 && (
+          <section className="mb-8 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5">
+            <div className="flex items-start gap-3">
+              <Trophy className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Your activity memory</p>
+                <h2 className="mt-1 font-display text-xl font-bold text-gray-900">Similar activities based on what you like</h2>
+                <p className="mt-1 text-sm text-gray-600">We remember your saved, going, and attended community interests to prioritize similar public options nearby.</p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {(rememberedActivities?.activities ?? []).slice(0, 4).map((activity: any) => (
+                <div key={activity.id} className="rounded-xl border border-emerald-100 bg-white p-4">
+                  <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-gray-900">{activity.title}</h3><p className="mt-1 text-sm text-gray-600">{activity.venueName ?? "Local public venue"}{activity.venueCity ? ` · ${activity.venueCity}` : ""}</p></div><Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">{activity.category}</Badge></div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Category + Filter Row — Community Tab */}
@@ -994,6 +1114,61 @@ export default function ActivityBoard() {
             >
               {submitMutation.isPending ? "Submitting..." : "Submit Event 🎉"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPickupDialog} onOpenChange={setShowPickupDialog}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Plan a safe public pickup</DialogTitle>
+            <p className="text-sm text-gray-500">Post basketball, a bowling singles mixer, or another activity at a named public venue. Nearby alerts go only to members who opted in.</p>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-3 gap-2">
+              {(["basketball", "bowling_singles", "other"] as const).map((type) => (
+                <Button key={type} type="button" variant={pickupForm.activityType === type ? "default" : "outline"} className="h-auto whitespace-normal rounded-xl py-3 text-xs" onClick={() => applyPickupTemplate(type)}>
+                  {type === "basketball" ? "🏀 Pickup basketball" : type === "bowling_singles" ? "🎳 Singles mixer" : "✨ Other"}
+                </Button>
+              ))}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <Input value={pickupForm.title} onChange={(event) => setPickupForm((form) => ({ ...form, title: event.target.value }))} placeholder="Pickup title" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">What should people know?</label>
+              <Textarea value={pickupForm.description} onChange={(event) => setPickupForm((form) => ({ ...form, description: event.target.value }))} placeholder="Access, gear, cost, or lane/court information" rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Named public venue <span className="text-red-500">*</span></label>
+                <Input value={pickupForm.venueName} onChange={(event) => setPickupForm((form) => ({ ...form, venueName: event.target.value }))} placeholder="Public gym or bowling alley" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Public address</label>
+                <Input value={pickupForm.venueAddress} onChange={(event) => setPickupForm((form) => ({ ...form, venueAddress: event.target.value }))} placeholder="Optional" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start <span className="text-red-500">*</span></label>
+                <Input type="datetime-local" value={pickupForm.startAt} onChange={(event) => setPickupForm((form) => ({ ...form, startAt: event.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End</label>
+                <Input type="datetime-local" value={pickupForm.endAt} onChange={(event) => setPickupForm((form) => ({ ...form, endAt: event.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Maximum people</label>
+              <Input type="number" min={2} max={20} value={pickupForm.capacity} onChange={(event) => setPickupForm((form) => ({ ...form, capacity: Number(event.target.value) || 2 }))} />
+            </div>
+            <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900"><Trophy className="mr-1 inline h-3.5 w-3.5" /> Use a public venue only. Confirm court, lane, guest, or reservation rules with the venue before you go. Participant rosters are not shown.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowPickupDialog(false)} className="rounded-full">Cancel</Button>
+            <Button onClick={handleCreatePickup} disabled={pickupCreateMutation.isPending} className="rounded-full">{pickupCreateMutation.isPending ? "Posting…" : "Post public pickup"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

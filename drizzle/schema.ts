@@ -191,7 +191,7 @@ export type GameSession = typeof gameSessions.$inferSelect;
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["new_match", "game_ready", "new_message", "interview_reminder"]).notNull(),
+  type: mysqlEnum("type", ["new_match", "game_ready", "new_message", "interview_reminder", "pickup_invite"]).notNull(),
   title: varchar("title", { length: 200 }).notNull(),
   body: text("body").notNull(),
   isRead: boolean("isRead").notNull().default(false),
@@ -1340,6 +1340,50 @@ export const eventRecommendationFeedback = mysqlTable("event_recommendation_feed
 });
 
 export type EventRecommendationFeedback = typeof eventRecommendationFeedback.$inferSelect;
+
+// ─── Personalized pickup coordination ─────────────────────────────────────────
+// Members opt in before receiving nearby public pickup alerts. Categories are a
+// lightweight local preference signal and never expose a member list to others.
+export const pickupAlertPreferences = mysqlTable("pickup_alert_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().unique(),
+  enabled: boolean("enabled").notNull().default(false),
+  city: varchar("city", { length: 100 }),
+  categories: json("categories").$type<string[]>().notNull().$default(() => []),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type PickupAlertPreference = typeof pickupAlertPreferences.$inferSelect;
+
+// Pickup sessions are public-venue coordination posts; never use them for private
+// addresses or member-to-member location sharing.
+export const pickupSessions = mysqlTable("pickup_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  hostUserId: int("host_user_id").notNull(),
+  activityType: varchar("activity_type", { length: 40 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  description: text("description"),
+  city: varchar("city", { length: 100 }).notNull(),
+  state: varchar("state", { length: 32 }).notNull(),
+  venueName: varchar("venue_name", { length: 200 }).notNull(),
+  venueAddress: varchar("venue_address", { length: 300 }),
+  startAt: timestamp("start_at").notNull(),
+  endAt: timestamp("end_at"),
+  capacity: int("capacity").notNull().default(10),
+  status: mysqlEnum("status", ["open", "full", "cancelled", "completed"]).notNull().default("open"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type PickupSession = typeof pickupSessions.$inferSelect;
+
+export const pickupParticipants = mysqlTable("pickup_participants", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("session_id").notNull(),
+  userId: int("user_id").notNull(),
+  status: mysqlEnum("status", ["joined", "maybe", "declined"]).notNull().default("joined"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type PickupParticipant = typeof pickupParticipants.$inferSelect;
 
 // ─── Saved travel locations ───────────────────────────────────────────────────
 export const savedLocations = mysqlTable("saved_locations", {

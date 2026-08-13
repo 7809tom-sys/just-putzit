@@ -34,6 +34,9 @@ import {
   eventRsvps,
   eventInterests,
   eventRecommendationFeedback,
+  pickupAlertPreferences,
+  pickupSessions,
+  pickupParticipants,
   passkeyCredentials,
   loginAds,
   profilePhotos,
@@ -71,6 +74,7 @@ import {
   type ConciergePlanItem,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { PICKUP_ALERT_CATEGORY, type PickupActivityType, isPickupPreferenceMatch } from "../shared/pickupActivityPolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -351,7 +355,7 @@ export async function getGameSessionsForMatch(matchId: number) {
 
 export async function createNotification(
   userId: number,
-  type: "new_match" | "game_ready" | "new_message" | "interview_reminder",
+  type: "new_match" | "game_ready" | "new_message" | "interview_reminder" | "pickup_invite",
   title: string,
   body: string,
   relatedId?: number
@@ -2880,6 +2884,139 @@ export async function getMatchesInterestedInSameEvents(userId: number, eventId: 
         or(...interestedUserIds.map(id => eq(matches.user2Id, id)))
       )
     );
+}
+
+// ─── Personalized public pickup activities ─────────────────────────────────────
+export async function getPickupAlertPreference(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(pickupAlertPreferences).where(eq(pickupAlertPreferences.userId, userId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function savePickupAlertPreference(userId: number, input: { enabled: boolean; city?: string | null; categories?: string[] }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const values = {
+    userId,
+    enabled: input.enabled,
+    city: input.city?.trim() || null,
+    categories: input.categories ?? [],
+  };
+  await db.insert(pickupAlertPreferences).values(values).onDuplicateKeyUpdate({
+    set: { enabled: values.enabled, city: values.city, categories: values.categories },
+  });
+  return getPickupAlertPreference(userId);
+}
+
+export async function getMemberPreferredPickupCategories(userId: number): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const [eventSignals, alertPreference] = await Promise.all([
+    db.select({ category: communityEvents.category, status: eventInterests.status })
+      .from(eventInterests)
+      .innerJoin(communityEvents, eq(eventInterests.eventId, communityEvents.id))
+      .where(eq(eventInterests.userId, userId)),
+    getPickupAlertPreference(userId),
+  ]);
+  const categories = new Set<string>(alertPreference?.categories ?? []);
+  for (const signal of eventSignals) {
+    if (signal.status === "attended" || signal.status === "going" || signal.status === "interested") {
+      categories.add(signal.category);
+      if (signal.category === "sports") categories.add("basketball");
+      if (signal.category === "community") categories.add("bowling");
+    }
+  }
+  return Array.from(categories);
+}
+
+export async function createPickupSession(data: {
+  hostUserId: number;
+  activityType: PickupActivityType;
+  title: string;
+  description?: string;
+  city: string;
+  state: string;
+  venueName: string;
+  venueAddress?: string;
+  startAt: Date;
+  endAt?: Date;
+  capacity: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.insert(pickupSessions).values({ ...data, status: "open" });
+  const created = await db.select().from(pickupSessions).where(eq(pickupSessions.hostUserId, data.hostUserId)).orderBy(desc(pickupSessions.createdAt)).limit(1);
+  const session = created[0];
+  if (!session) throw new Error("Pickup session could not be created");
+  await db.insert(pickupParticipants).values({ sessionId: session.id, userId: data.hostUserId, status: "joined" });
+  return session;
+}
+
+export async function getPickupSessionsForMember(userId: number, city?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const [rows, preferredCategories] = await Promise.all([
+    db.select().from(pickupSessions).where(eq(pickupSessions.status, "open")).orderBy(pickupSessions.startAt).limit(100),
+    getMemberPreferredPickupCategories(userId),
+  ]);
+  const eligible = rows.filter((session) => session.startAt > new Date() && (!city || session.city.toLowerCase() === city.toLowerCase()));
+  const participantRows = await db.select().from(pickupParticipants);
+  return eligible
+    .map((session) => {
+      const participants = participantRows.filter((entry) => entry.sessionId === session.id && entry.status !== "declined");
+      return {
+        ...session,
+        participantCount: participants.length,
+        joined: participants.some((entry) => entry.userId === userId && entry.status === "joined"),
+        recommended: isPickupPreferenceMatch(session.activityType as PickupActivityType, preferredCategories),
+      };
+    })
+    .sort((a, b) => Number(b.recommended) - Number(a.recommended) || a.startAt.getTime() - b.startAt.getTime());
+}
+
+export async function joinPickupSession(sessionId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const session = (await db.select().from(pickupSessions).where(eq(pickupSessions.id, sessionId)).limit(1))[0];
+  if (!session || session.status !== "open" || session.startAt <= new Date()) throw new Error("This pickup activity is no longer open.");
+  const participants = await db.select().from(pickupParticipants).where(eq(pickupParticipants.sessionId, sessionId));
+  const existing = participants.find((entry) => entry.userId === userId);
+  if (!existing && participants.filter((entry) => entry.status === "joined").length >= session.capacity) throw new Error("This pickup activity is full.");
+  if (existing) {
+    await db.update(pickupParticipants).set({ status: "joined" }).where(eq(pickupParticipants.id, existing.id));
+  } else {
+    await db.insert(pickupParticipants).values({ sessionId, userId, status: "joined" });
+  }
+  const preference = await getPickupAlertPreference(userId);
+  await savePickupAlertPreference(userId, {
+    enabled: preference?.enabled ?? false,
+    city: preference?.city ?? session.city,
+    categories: Array.from(new Set([...(preference?.categories ?? []), PICKUP_ALERT_CATEGORY[session.activityType as PickupActivityType]])),
+  });
+  return { success: true };
+}
+
+export async function notifyNearbyPickupMembers(session: typeof pickupSessions.$inferSelect) {
+  const db = await getDb();
+  if (!db) return 0;
+  const candidates = await db
+    .select({ preference: pickupAlertPreferences, profile: userProfiles })
+    .from(pickupAlertPreferences)
+    .leftJoin(userProfiles, eq(pickupAlertPreferences.userId, userProfiles.userId));
+  const recipients = candidates.filter(({ preference, profile }) =>
+    preference.enabled && preference.userId !== session.hostUserId &&
+    (!preference.city || preference.city.toLowerCase() === session.city.toLowerCase() || profile?.city?.toLowerCase() === session.city.toLowerCase()) &&
+    isPickupPreferenceMatch(session.activityType as PickupActivityType, preference.categories ?? []),
+  );
+  await Promise.all(recipients.map(({ preference }) => createNotification(
+    preference.userId,
+    "pickup_invite",
+    `Nearby ${session.activityType === "bowling_singles" ? "bowling singles mixer" : "pickup activity"}`,
+    `${session.title} · ${session.venueName} · ${session.startAt.toLocaleString()}. Public venue—opt in only if it works for you.`,
+    session.id,
+  )));
+  return recipients.length;
 }
 
 // ─── Saved travel locations ───────────────────────────────────────────────────
