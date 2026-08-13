@@ -1082,3 +1082,8 @@
 ## Sponsored Placement Expiration
 - [x] Reflect expired sponsored placements accurately in the Vendor Portal and allow a new promotion purchase
 - [x] Add regression coverage for active versus expired placement presentation
+
+## Sponsored Placement Visibility Repair
+- [x] Diagnose why sponsored placement controls and labels are not visible in the live user flow
+- [x] Surface clear promotion entry points and member-facing sponsored states
+- [x] Verify the repaired feature on desktop and mobile

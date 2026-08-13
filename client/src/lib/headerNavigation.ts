@@ -1,4 +1,4 @@
-import { Activity, Dumbbell, GraduationCap, Heart, LayoutGrid, Megaphone, Popcorn, Sparkles, Ticket, Trophy, Users, type LucideIcon } from "lucide-react";
+import { Activity, Dumbbell, GraduationCap, Heart, LayoutGrid, Megaphone, Popcorn, Sparkles, Store, Ticket, Trophy, Users, type LucideIcon } from "lucide-react";
 
 export type HeaderNavigationItem = { href: string; icon: LucideIcon; label: string };
 
@@ -10,6 +10,7 @@ export const primaryHeaderNavigation: HeaderNavigationItem[] = [
 ];
 
 export const moreHeaderNavigation: HeaderNavigationItem[] = [
+  { href: "/vendor", icon: Store, label: "For Businesses" },
   { href: "/concierge", icon: Sparkles, label: "Concierge" },
   { href: "/gym-buddy", icon: Dumbbell, label: "Gym Buddy" },
   { href: "/entertainment", icon: Popcorn, label: "Entertainment" },

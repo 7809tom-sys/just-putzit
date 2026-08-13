@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy, Megaphone } from "lucide-react";
 import { MapView } from "@/components/Map";
+import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 import { LocationOverrideControl } from "@/components/LocationOverrideControl";
@@ -371,6 +372,23 @@ export default function ActivityBoard() {
               <Plus className="w-4 h-4" /> Plan a public pickup
             </Button>
           )}
+        </div>
+
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <Megaphone className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-950">Own a local activity or event?</p>
+              <p className="text-xs leading-5 text-amber-900">Reach nearby members with a clearly labeled Sponsored placement. Members always stay free.</p>
+            </div>
+          </div>
+          <Link href="/vendor" className="shrink-0">
+            <Button variant="outline" size="sm" className="w-full rounded-full border-amber-300 bg-white text-amber-900 hover:bg-amber-100 sm:w-auto">
+              Promote an activity
+            </Button>
+          </Link>
         </div>
 
         <div className="mb-6 max-w-xl">
