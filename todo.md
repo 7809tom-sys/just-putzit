@@ -1043,3 +1043,17 @@
 - [x] Reconcile the five-year revenue-driver formulas and scenario assumptions
 - [x] Identify customer-acquisition-cost treatment, omissions, and model limitations
 - [x] Deliver a transparent revenue-driver and CAC assumption breakdown
+
+## One-Million-User Optimistic Case
+- [ ] Define transparent one-million-user activation and optional-upgrade assumptions
+- [ ] Model the optimistic-case user-scale revenue sensitivity and operating implications
+- [ ] Update the investor forecast disclosure and deliver the revised optimistic case
+
+## Free Member and Advertising Revenue Model
+- [ ] Define privacy-conscious advertising, partner, booking, and promotion revenue assumptions for free members
+- [ ] Model advertising-led revenue sensitivity and cost implications for the optimistic case
+- [ ] Document the milestones required before considering a multi-billion-dollar enterprise-value outcome
+
+## Free Member Profile Clarification
+- [x] Reframe the optimistic case so user profiles are free and business-funded revenue drives monetization
+- [x] Document business-partner, booking, promotion, and advertising assumptions without member subscription revenue
