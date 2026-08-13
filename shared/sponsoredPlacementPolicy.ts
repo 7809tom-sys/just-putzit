@@ -27,3 +27,7 @@ export function getSponsoredPlacementEligibility(input: {
   if (!input.listingIsActive) return "Only active activities can be promoted.";
   return null;
 }
+
+export function isActiveSponsoredPlacement(input: { status: string; endsAt?: Date | null }, now = new Date()) {
+  return input.status === "active" && !!input.endsAt && input.endsAt > now;
+}

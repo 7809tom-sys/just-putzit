@@ -76,6 +76,7 @@ import {
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { PICKUP_ALERT_CATEGORY, type PickupActivityType, isPickupPreferenceMatch } from "../shared/pickupActivityPolicy";
+import { isActiveSponsoredPlacement } from "../shared/sponsoredPlacementPolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -860,7 +861,7 @@ export async function getListingsByVenue(venueId: number) {
   return listings.map((listing) => ({
     ...listing,
     sponsorPlacement: placementByActivity.get(listing.id) ?? null,
-    isSponsored: listing.isSponsored || placementByActivity.get(listing.id)?.status === "active",
+    isSponsored: listing.isSponsored || isActiveSponsoredPlacement(placementByActivity.get(listing.id) ?? { status: "expired", endsAt: null }),
   }));
 }
 

@@ -1078,3 +1078,7 @@
 - [x] Add secure sponsored placement records, business ownership checks, and payment states
 - [x] Build vendor promotion controls and labeled sponsored recommendation placement
 - [x] Add regression coverage and verify desktop and mobile sponsored discovery layouts
+
+## Sponsored Placement Expiration
+- [x] Reflect expired sponsored placements accurately in the Vendor Portal and allow a new promotion purchase
+- [x] Add regression coverage for active versus expired placement presentation
