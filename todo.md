@@ -1038,3 +1038,8 @@
 - [x] Define cautious, realistic, and optimistic five-year operating assumptions from the monetization plan
 - [x] Build traceable three-case revenue and operating forecast outputs
 - [x] Create and review an investor-ready slide deck with forecast disclosures
+
+## Forecast Driver and CAC Breakdown
+- [x] Reconcile the five-year revenue-driver formulas and scenario assumptions
+- [x] Identify customer-acquisition-cost treatment, omissions, and model limitations
+- [x] Deliver a transparent revenue-driver and CAC assumption breakdown
