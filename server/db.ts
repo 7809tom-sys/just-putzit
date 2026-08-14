@@ -19,6 +19,7 @@ import {
   venuePartners,
   activityListings,
   sponsoredPlacements,
+  sponsoredPlacementEvents,
   activityRsvps,
   communityGroups,
   communityGroupMembers,
@@ -77,6 +78,7 @@ import {
 import { ENV } from "./_core/env";
 import { PICKUP_ALERT_CATEGORY, type PickupActivityType, isPickupPreferenceMatch } from "../shared/pickupActivityPolicy";
 import { isActiveSponsoredPlacement } from "../shared/sponsoredPlacementPolicy";
+import { getSponsoredPerformanceRates } from "../shared/sponsoredPerformance";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -957,6 +959,81 @@ export async function getSponsoredPlacementsForActivities(activityIds: number[])
   return db.select().from(sponsoredPlacements)
     .where(inArray(sponsoredPlacements.activityId, activityIds))
     .orderBy(desc(sponsoredPlacements.createdAt));
+}
+
+type SponsoredMetricType = "view" | "click" | "sign_up";
+
+function getMetricDay(value = new Date()) {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+}
+
+export async function recordSponsoredPlacementMetric(input: {
+  activityId: number;
+  userId: number;
+  eventType: SponsoredMetricType;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const [placement] = await db.select().from(sponsoredPlacements).where(and(
+    eq(sponsoredPlacements.activityId, input.activityId),
+    eq(sponsoredPlacements.status, "active"),
+    gt(sponsoredPlacements.endsAt, new Date()),
+  )).orderBy(desc(sponsoredPlacements.createdAt)).limit(1);
+  if (!placement) return null;
+
+  const eventDay = getMetricDay();
+  const existing = await db.select({ id: sponsoredPlacementEvents.id }).from(sponsoredPlacementEvents).where(and(
+    eq(sponsoredPlacementEvents.placementId, placement.id),
+    eq(sponsoredPlacementEvents.userId, input.userId),
+    eq(sponsoredPlacementEvents.eventType, input.eventType),
+    eq(sponsoredPlacementEvents.eventDay, eventDay),
+  )).limit(1);
+  if (existing[0]) return placement.id;
+
+  await db.insert(sponsoredPlacementEvents).values({
+    placementId: placement.id,
+    activityId: input.activityId,
+    userId: input.userId,
+    eventType: input.eventType,
+    eventDay,
+  });
+  return placement.id;
+}
+
+export async function getSponsoredPlacementPerformanceForOwner(ownerUserId: number) {
+  const db = await getDb();
+  if (!db) return { summary: { views: 0, clicks: 0, signUps: 0, clickThroughRate: 0, signUpRate: 0 }, placements: [] as Array<any> };
+  const venues = await getVenuesByOwner(ownerUserId);
+  const venueIds = venues.map((venue) => venue.id);
+  if (venueIds.length === 0) return { summary: { views: 0, clicks: 0, signUps: 0, clickThroughRate: 0, signUpRate: 0 }, placements: [] as Array<any> };
+
+  const placements = await db.select().from(sponsoredPlacements).where(inArray(sponsoredPlacements.venueId, venueIds)).orderBy(desc(sponsoredPlacements.createdAt));
+  if (placements.length === 0) return { summary: { views: 0, clicks: 0, signUps: 0, clickThroughRate: 0, signUpRate: 0 }, placements: [] as Array<any> };
+  const placementIds = placements.map((placement) => placement.id);
+  const activityIds = placements.map((placement) => placement.activityId);
+  const [events, listings] = await Promise.all([
+    db.select().from(sponsoredPlacementEvents).where(inArray(sponsoredPlacementEvents.placementId, placementIds)),
+    db.select().from(activityListings).where(inArray(activityListings.id, activityIds)),
+  ]);
+  const listingById = new Map(listings.map((listing) => [listing.id, listing]));
+  const summary = { views: 0, clicks: 0, signUps: 0 };
+  const byPlacement = new Map<number, { views: number; clicks: number; signUps: number }>();
+  for (const placement of placements) byPlacement.set(placement.id, { views: 0, clicks: 0, signUps: 0 });
+  for (const event of events) {
+    const row = byPlacement.get(event.placementId);
+    if (!row) continue;
+    if (event.eventType === "view") { row.views += 1; summary.views += 1; }
+    if (event.eventType === "click") { row.clicks += 1; summary.clicks += 1; }
+    if (event.eventType === "sign_up") { row.signUps += 1; summary.signUps += 1; }
+  }
+  return {
+    summary: getSponsoredPerformanceRates(summary),
+    placements: placements.map((placement) => ({
+      ...placement,
+      activityTitle: listingById.get(placement.activityId)?.title ?? "Activity",
+      ...getSponsoredPerformanceRates(byPlacement.get(placement.id) ?? { views: 0, clicks: 0, signUps: 0 }),
+    })),
+  };
 }
 
 // ─── Couples Network ────────────────────────────────────────────────────────────

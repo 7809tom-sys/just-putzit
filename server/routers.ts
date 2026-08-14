@@ -76,7 +76,9 @@ import {
   getActivityById,
   getSponsoredPlacementEligibleListing,
   getSponsoredPlacementsForActivities,
+  getSponsoredPlacementPerformanceForOwner,
   createSponsoredPlacement,
+  recordSponsoredPlacementMetric,
   createActivityListing,
   rsvpToActivity,
   getRsvpsForActivity,
@@ -1643,7 +1645,9 @@ Return JSON with questions array, each having optionA and optionB.`,
     rsvp: protectedProcedure
       .input(z.object({ activityId: z.number(), matchId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
-        return rsvpToActivity(input.activityId, ctx.user.id, input.matchId);
+        const rsvp = await rsvpToActivity(input.activityId, ctx.user.id, input.matchId);
+        if (rsvp) await recordSponsoredPlacementMetric({ activityId: input.activityId, userId: ctx.user.id, eventType: "sign_up" });
+        return rsvp;
       }),
 
     checkIn: protectedProcedure
@@ -2050,6 +2054,13 @@ Return JSON with questions array, each having optionA and optionB.`,
   // ─── Vendor Partner Portal ────────────────────────────────────────────────
   vendor: router({
     impactResults: protectedProcedure.query(async ({ ctx }) => getPartnerImpactForOwner(ctx.user.id)),
+    sponsoredPerformance: protectedProcedure.query(async ({ ctx }) => getSponsoredPlacementPerformanceForOwner(ctx.user.id)),
+    trackSponsoredMetric: protectedProcedure
+      .input(z.object({ activityId: z.number().int().positive(), eventType: z.enum(["view", "click"]) }))
+      .mutation(async ({ ctx, input }) => {
+        await recordSponsoredPlacementMetric({ activityId: input.activityId, userId: ctx.user.id, eventType: input.eventType });
+        return { success: true };
+      }),
     trend: protectedProcedure
       .input(z.object({ start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
       .query(async ({ ctx, input }) => {

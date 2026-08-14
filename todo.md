@@ -1087,3 +1087,9 @@
 - [x] Diagnose why sponsored placement controls and labels are not visible in the live user flow
 - [x] Surface clear promotion entry points and member-facing sponsored states
 - [x] Verify the repaired feature on desktop and mobile
+
+## Sponsored Activity Performance Dashboard
+- [x] Capture privacy-safe sponsored activity views, clicks, and sign-up actions
+- [x] Aggregate business-owned sponsored placement performance and conversion rates
+- [x] Add an accessible performance dashboard to the Vendor Portal
+- [x] Add regression coverage and verify the dashboard on desktop and mobile

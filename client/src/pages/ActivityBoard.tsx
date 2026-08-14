@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +106,7 @@ const BLANK_FORM = {
 
 export default function ActivityBoard() {
   const { user } = useAuth();
+  const reportedSponsoredViews = useRef(new Set<number>());
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [communityCategory, setCommunityCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -181,6 +182,20 @@ export default function ActivityBoard() {
       toast.success("Checked in! Have an amazing time! ✨");
     },
   });
+
+  const sponsoredMetricMutation = trpc.vendor.trackSponsoredMetric.useMutation();
+  const reportSponsoredMetric = useCallback((activityId: number, eventType: "view" | "click") => {
+    sponsoredMetricMutation.mutate({ activityId, eventType });
+  }, [sponsoredMetricMutation]);
+
+  useEffect(() => {
+    for (const activity of activities ?? []) {
+      if (activity.isSponsored && !reportedSponsoredViews.current.has(activity.id)) {
+        reportedSponsoredViews.current.add(activity.id);
+        reportSponsoredMetric(activity.id, "view");
+      }
+    }
+  }, [activities, reportSponsoredMetric]);
 
   const utils = trpc.useUtils();
   const pickupAlertMutation = trpc.pickupActivities.setAlertPreference.useMutation({
@@ -750,6 +765,7 @@ export default function ActivityBoard() {
                                   href={(activity as any).venueWebsite}
                                   target="_blank"
                                   rel="noreferrer"
+                                  onClick={() => activity.isSponsored && reportSponsoredMetric(activity.id, "click")}
                                   className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                                 >
                                   Check access & hours <ExternalLink className="h-3 w-3" />

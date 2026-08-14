@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Store, Plus, TrendingUp, Ticket, DollarSign, Users, Building2, Play, Eye, ToggleLeft, ToggleRight, BarChart3, Megaphone } from "lucide-react";
+import { Store, Plus, TrendingUp, Ticket, DollarSign, Users, Building2, Play, Eye, ToggleLeft, ToggleRight, BarChart3, Megaphone, MousePointerClick, UserPlus } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -35,6 +35,9 @@ export default function Vendor() {
   const utils = trpc.useUtils();
 
   const { data: venues, isLoading } = trpc.vendor.myVenues.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const { data: sponsoredPerformance, isLoading: sponsoredPerformanceLoading } = trpc.vendor.sponsoredPerformance.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
@@ -235,6 +238,59 @@ export default function Vendor() {
           <StatCard icon={<Users className="w-4 h-4" />} label="Check-ins" value={String(totalReferrals)} />
           <StatCard icon={<DollarSign className="w-4 h-4" />} label="Referral spend" value={dollars(totalReferralRevenue)} />
         </div>
+
+        {venues && venues.length > 0 && (
+          <section className="mb-8 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-orange-50 p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">Sponsored activity performance</p>
+                <h2 className="mt-1 font-display text-2xl font-bold text-gray-900">See what your promotion is doing</h2>
+                <p className="mt-1 max-w-2xl text-sm text-gray-600">Views, venue-link clicks, and activity sign-ups are aggregate only. Member names and private profile details are never included.</p>
+              </div>
+              <Badge className="w-fit bg-amber-100 text-amber-900 hover:bg-amber-100">Privacy-safe reporting</Badge>
+            </div>
+
+            {sponsoredPerformanceLoading ? (
+              <div className="mt-5 flex items-center gap-2 text-sm text-gray-600"><Spinner className="h-4 w-4" /> Loading campaign performance…</div>
+            ) : sponsoredPerformance ? (
+              <>
+                <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+                  <SponsoredMetric icon={<Eye className="h-4 w-4" />} label="Views" value={sponsoredPerformance.summary.views.toLocaleString()} />
+                  <SponsoredMetric icon={<MousePointerClick className="h-4 w-4" />} label="Clicks" value={sponsoredPerformance.summary.clicks.toLocaleString()} />
+                  <SponsoredMetric icon={<UserPlus className="h-4 w-4" />} label="Sign-ups" value={sponsoredPerformance.summary.signUps.toLocaleString()} />
+                  <SponsoredMetric icon={<TrendingUp className="h-4 w-4" />} label="Click rate" value={`${sponsoredPerformance.summary.clickThroughRate}%`} />
+                  <SponsoredMetric icon={<BarChart3 className="h-4 w-4" />} label="Sign-up rate" value={`${sponsoredPerformance.summary.signUpRate}%`} />
+                </div>
+
+                {sponsoredPerformance.placements.length > 0 ? (
+                  <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                    {sponsoredPerformance.placements.map((placement) => (
+                      <div key={placement.id} className="rounded-xl border border-amber-100 bg-white/90 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-gray-900">{placement.activityTitle}</p>
+                            <p className="mt-1 text-xs text-gray-500">{placement.packageCode === "week" ? "7-day" : "30-day"} placement · {placement.status === "active" && placement.endsAt && new Date(placement.endsAt) > new Date() ? "Live" : "Completed"}</p>
+                          </div>
+                          <Badge className={placement.status === "active" && placement.endsAt && new Date(placement.endsAt) > new Date() ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : "bg-gray-100 text-gray-700 hover:bg-gray-100"}>
+                            {placement.status === "active" && placement.endsAt && new Date(placement.endsAt) > new Date() ? "Live" : "Completed"}
+                          </Badge>
+                        </div>
+                        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+                          <div><p className="font-bold text-gray-900">{placement.views}</p><p className="text-gray-500">Views</p></div>
+                          <div><p className="font-bold text-gray-900">{placement.clicks}</p><p className="text-gray-500">Clicks</p></div>
+                          <div><p className="font-bold text-gray-900">{placement.signUps}</p><p className="text-gray-500">Sign-ups</p></div>
+                        </div>
+                        <p className="mt-3 text-xs text-gray-500">{placement.clickThroughRate}% click rate · {placement.signUpRate}% sign-up rate</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-xl border border-dashed border-amber-200 bg-white/70 p-4 text-sm text-gray-600">Promote an active activity to begin measuring aggregate views, clicks, and sign-ups here.</div>
+                )}
+              </>
+            ) : null}
+          </section>
+        )}
 
         {/* Venues */}
         {isLoading ? (
@@ -532,6 +588,15 @@ export default function Vendor() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function SponsoredMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-amber-100 bg-white/90 p-3">
+      <div className="flex items-center gap-1.5 text-amber-800">{icon}<span className="text-xs font-semibold">{label}</span></div>
+      <p className="mt-2 text-xl font-bold text-gray-900">{value}</p>
     </div>
   );
 }

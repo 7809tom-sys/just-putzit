@@ -325,6 +325,19 @@ export const sponsoredPlacements = mysqlTable("sponsored_placements", {
 });
 export type SponsoredPlacement = typeof sponsoredPlacements.$inferSelect;
 
+// ─── Sponsored Placement Performance Events ───────────────────────────────────
+// Business dashboards receive only aggregate outcomes; this event store is never exposed with member identities.
+export const sponsoredPlacementEvents = mysqlTable("sponsored_placement_events", {
+  id: int("id").autoincrement().primaryKey(),
+  placementId: int("placement_id").notNull(),
+  activityId: int("activity_id").notNull(),
+  userId: int("user_id").notNull(),
+  eventType: mysqlEnum("event_type", ["view", "click", "sign_up"]).notNull(),
+  eventDay: date("event_day").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type SponsoredPlacementEvent = typeof sponsoredPlacementEvents.$inferSelect;
+
 // ─── Public Activity Discovery Refreshes ──────────────────────────────────────
 export const cityActivityRefreshes = mysqlTable("city_activity_refreshes", {
   id: int("id").autoincrement().primaryKey(),
