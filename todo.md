@@ -1137,3 +1137,8 @@
 - [x] Add stable category filtering for similar-event recommendations
 - [x] Add an accessible category filter beside sorting controls with a clear empty state
 - [x] Add regression coverage and responsive verification for category filtering
+
+## Similar Events Map View
+- [x] Add an accessible list-and-map toggle for filtered Similar Events
+- [x] Render local recommendation markers with clear event details and map fallback
+- [x] Add regression coverage and responsive verification for Similar Events map view

@@ -10,12 +10,13 @@ import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight, Bookmark, BookmarkCheck } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight, Bookmark, BookmarkCheck, List, Map as MapIcon } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { formatSimilarEventDistance } from "@shared/similarEventDetails";
 import { getActivityBookmarkFeedback, isActivityBookmarked } from "@shared/activityBookmarks";
 import { sortSimilarEvents, type SimilarEventSort } from "@shared/similarEventSorting";
 import { filterSimilarEventsByCategory, SIMILAR_EVENT_CATEGORY_FILTERS, type SimilarEventCategoryFilter } from "@shared/similarEventCategoryFilter";
+import { SimilarEventsMap } from "@/components/SimilarEventsMap";
 import { toast } from "sonner";
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -31,6 +32,9 @@ export default function EventDetail() {
   const id = parseInt(activityId ?? "0", 10);
   const [similarSort, setSimilarSort] = useState<SimilarEventSort>("personalized");
   const [similarCategory, setSimilarCategory] = useState<SimilarEventCategoryFilter>("all");
+  const [similarView, setSimilarView] = useState<"list" | "map">(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("similarView") === "map" ? "map" : "list",
+  );
 
   const { data: activity, isLoading, error } = trpc.activityBoard.publicGetById.useQuery(
     { activityId: id },
@@ -198,32 +202,38 @@ export default function EventDetail() {
 
           {similarEvents && similarEvents.activities.length > 0 && (
             <section className="mb-8" aria-label="Similar events you might like">
-              <div className="mb-4 flex items-end justify-between gap-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Personalized discovery</p>
                   <h2 className="mt-1 font-display text-2xl font-bold">Similar Events You Might Like</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{similarEvents.basedOnPreferences ? "Based on activities you’ve saved, RSVP’d to, or attended." : "More nearby activities in this area to explore."}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Select value={similarCategory} onValueChange={(value) => setSimilarCategory(value as SimilarEventCategoryFilter)}>
-                    <SelectTrigger aria-label="Filter similar events by category" className="h-9 w-[148px] rounded-full bg-white text-xs"><SelectValue /></SelectTrigger>
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+                  <div className="flex rounded-full border border-border bg-white p-0.5" role="group" aria-label="Similar Events view">
+                    <Button type="button" size="icon" variant={similarView === "list" ? "secondary" : "ghost"} className="h-8 w-8 rounded-full" aria-label="Show Similar Events as a list" aria-pressed={similarView === "list"} onClick={() => setSimilarView("list")}><List className="h-3.5 w-3.5" /></Button>
+                    <Button type="button" size="icon" variant={similarView === "map" ? "secondary" : "ghost"} className="h-8 w-8 rounded-full" aria-label="Show Similar Events on a map" aria-pressed={similarView === "map"} onClick={() => setSimilarView("map")}><MapIcon className="h-3.5 w-3.5" /></Button>
+                  </div>
+                  <div className="w-[126px] shrink-0 sm:w-[148px]"><Select value={similarCategory} onValueChange={(value) => setSimilarCategory(value as SimilarEventCategoryFilter)}>
+                    <SelectTrigger aria-label="Filter similar events by category" className="h-9 w-full rounded-full bg-white text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {SIMILAR_EVENT_CATEGORY_FILTERS.map((filter) => <SelectItem key={filter.value} value={filter.value}>{filter.label}</SelectItem>)}
                     </SelectContent>
-                  </Select>
-                  <Select value={similarSort} onValueChange={(value) => setSimilarSort(value as SimilarEventSort)}>
-                    <SelectTrigger aria-label="Sort similar events" className="h-9 w-[142px] rounded-full bg-white text-xs"><SelectValue /></SelectTrigger>
+                  </Select></div>
+                  <div className="w-[112px] shrink-0 sm:w-[142px]"><Select value={similarSort} onValueChange={(value) => setSimilarSort(value as SimilarEventSort)}>
+                    <SelectTrigger aria-label="Sort similar events" className="h-9 w-full rounded-full bg-white text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="personalized">Best match</SelectItem>
                       <SelectItem value="date">Soonest date</SelectItem>
                       <SelectItem value="distance">Closest first</SelectItem>
                     </SelectContent>
-                  </Select>
+                  </Select></div>
                   <Button variant="ghost" size="sm" className="shrink-0 rounded-full" onClick={() => navigate("/activities")}>Browse all <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
                 </div>
               </div>
               {sortedSimilarEvents.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-white/70 px-5 py-6 text-sm text-muted-foreground">No similar events match this type yet. Try <button type="button" className="font-semibold text-primary underline underline-offset-4" onClick={() => setSimilarCategory("all")}>All types</button>.</div>
+              ) : similarView === "map" ? (
+                <SimilarEventsMap key={sortedSimilarEvents.map((event) => event.id).join("-")} events={sortedSimilarEvents} onSelect={(eventId) => navigate(`/events/${eventId}`)} />
               ) : <div className="grid gap-3 sm:grid-cols-3">
                 {sortedSimilarEvents.map((event) => {
                   const eventDate = event.eventDate ? new Date(event.eventDate) : null;
