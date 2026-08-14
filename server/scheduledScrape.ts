@@ -2,12 +2,12 @@
  * scheduledScrape.ts
  * Express handler for POST /api/scheduled/scrape-events
  * Triggered nightly by the Manus Heartbeat cron job.
- * Scrapes Milwaukee/Waukesha community event sources and upserts into DB.
+ * Scrapes Milwaukee/Waukesha and Madison official community event sources and upserts into DB.
  */
 
 import type { Request, Response } from "express";
 import { sdk } from "./_core/sdk";
-import { scrapeAllMilwaukeeEvents } from "./communityScraper";
+import { scrapeAllMadisonEvents, scrapeAllMilwaukeeEvents } from "./communityScraper";
 import { upsertScrapedEvents } from "./db";
 
 export async function scrapeEventsHandler(req: Request, res: Response) {
@@ -20,8 +20,12 @@ export async function scrapeEventsHandler(req: Request, res: Response) {
 
     console.log(`[scheduledScrape] Starting nightly community event scrape (taskUid: ${user.taskUid})`);
 
-    const events = await scrapeAllMilwaukeeEvents();
-    console.log(`[scheduledScrape] Scraped ${events.length} total events`);
+    const [milwaukeeEvents, madisonEvents] = await Promise.all([
+      scrapeAllMilwaukeeEvents(),
+      scrapeAllMadisonEvents(),
+    ]);
+    const events = [...milwaukeeEvents, ...madisonEvents];
+    console.log(`[scheduledScrape] Scraped ${events.length} total events across Milwaukee/Waukesha and Madison`);
 
     const inserted = await upsertScrapedEvents(events);
     console.log(`[scheduledScrape] Inserted ${inserted} new events`);

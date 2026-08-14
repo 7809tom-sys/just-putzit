@@ -1152,3 +1152,8 @@
 - [x] Add accessible report and block actions to match cards and chat interactions
 - [x] Explain private reporting, blocking, and moderation follow-up without exposing reporter identity
 - [x] Add regression coverage and responsive verification for member safety controls
+
+## Official Madison Event Discovery
+- [x] Add City of Madison civic and recreation events to the daily official-source scrape
+- [x] Add and validate source adapters for Madison library, performing-arts, and public church calendars
+- [ ] Add compliant feed or API alternatives for official sources that reject server-side calendar requests

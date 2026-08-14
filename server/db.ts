@@ -2668,6 +2668,10 @@ export async function upsertScrapedEvents(events: Array<{
       "jsonline": "jsonline",
       "Waukesha Freeman": "waukesha_freeman",
       "Milwaukee Journal": "milwaukee_journal",
+      "Madison Public Library": "scraped",
+      "City of Madison": "community",
+      "Overture Center": "scraped",
+      "City Church Madison": "church",
     };
     const source = (sourceMap[ev.sourceName] ?? "scraped") as CommunityEvent["source"];
 

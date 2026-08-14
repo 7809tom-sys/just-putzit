@@ -58,6 +58,44 @@ function parseDate(raw: string | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+/** Parse public calendar dates that omit their year, such as "Aug 15 · 7:30 PM". */
+export function parseCommunityCalendarDate(raw: string, referenceDate = new Date()): Date | null {
+  const cleaned = raw.replace(/[–—]/g, " ").replace(/\s+/g, " ").trim();
+  const match = cleaned.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?(?:[^\d]{0,25}(\d{1,2})(?::(\d{2}))?\s*(am|pm))?/i);
+  if (!match) return null;
+  const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const month = months.indexOf(match[1].slice(0, 3).toLowerCase());
+  const day = Number(match[2]);
+  if (month < 0 || day < 1 || day > 31) return null;
+  let year = match[3] ? Number(match[3]) : referenceDate.getFullYear();
+  let hour = match[4] ? Number(match[4]) : 12;
+  const minute = match[5] ? Number(match[5]) : 0;
+  const meridiem = match[6]?.toLowerCase();
+  if (meridiem === "pm" && hour < 12) hour += 12;
+  if (meridiem === "am" && hour === 12) hour = 0;
+  let result = new Date(year, month, day, hour, minute, 0, 0);
+  if (!match[3] && result.getTime() < referenceDate.getTime() - 36 * 60 * 60 * 1000) {
+    year += 1;
+    result = new Date(year, month, day, hour, minute, 0, 0);
+  }
+  return Number.isNaN(result.getTime()) ? null : result;
+}
+
+function futureEvents(events: ScrapedEvent[], limit = 40) {
+  const now = Date.now() - 6 * 60 * 60 * 1000;
+  return events.filter((event) => event.eventDate && event.eventDate.getTime() >= now).slice(0, limit);
+}
+
+function dedupeScrapedEvents(events: ScrapedEvent[]) {
+  const seen = new Set<string>();
+  return events.filter((event) => {
+    const key = `${event.sourceName}|${event.title.toLowerCase().replace(/\s+/g, " ").trim()}|${event.eventDate?.toISOString().slice(0, 10) ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function parseWaukeshaCalendarDate(month: string, day: string, year: string, time?: string) {
   const monthIndex = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].indexOf(month.trim().slice(0, 3).toLowerCase());
   const numericDay = Number(day);
@@ -318,6 +356,130 @@ export async function scrapeOnMilwaukee(): Promise<ScrapedEvent[]> {
   return events.slice(0, 20);
 }
 
+// ─── Madison official public calendars ───────────────────────────────────────
+
+function addMadisonHeadingEvents($: cheerio.CheerioAPI, options: {
+  selector: string;
+  sourceUrl: string;
+  sourceName: string;
+  venueName: string;
+  venueAddress?: string;
+  categoryText?: string;
+  isFree: boolean;
+  isOnCampus?: boolean;
+  excludedTitles?: string[];
+}) {
+  const events: ScrapedEvent[] = [];
+  const excluded = new Set((options.excludedTitles ?? []).map((title) => title.toLowerCase()));
+  $(options.selector).each((_, el) => {
+    const title = $(el).text().replace(/\s+/g, " ").trim();
+    if (title.length < 3 || title.length > 180 || excluded.has(title.toLowerCase()) || isDateOnlyHeading(title)) return;
+    const card = $(el).closest("article, li, .event, .views-row, .card");
+    const nearbyText = [card.text(), $(el).parent().text(), $(el).next().text(), $(el).next().next().text()].join(" ").replace(/\s+/g, " ").trim();
+    const eventDate = parseCommunityCalendarDate(nearbyText);
+    if (!eventDate) return;
+    const link = card.find("a[href]").first().attr("href") ?? $(el).find("a[href]").first().attr("href");
+    const sourceUrl = link ? (link.startsWith("http") ? link : new URL(link, options.sourceUrl).toString()) : options.sourceUrl;
+    const description = nearbyText.replace(title, "").slice(0, 500).trim() || null;
+    events.push({
+      title,
+      description,
+      eventDate,
+      endDate: null,
+      venueName: options.venueName,
+      venueAddress: options.venueAddress ?? null,
+      venueCity: "Madison, WI",
+      category: guessCategory(`${title} ${options.categoryText ?? ""} ${description ?? ""}`),
+      sourceUrl,
+      sourceName: options.sourceName,
+      isFree: options.isFree,
+      isOnCampus: options.isOnCampus ?? false,
+    });
+  });
+  return futureEvents(dedupeScrapedEvents(events));
+}
+
+function isDateOnlyHeading(title: string) {
+  return /^(?:(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:\s*\||\s|,|$)/i.test(title);
+}
+
+export async function scrapeMadisonLibrary(): Promise<ScrapedEvent[]> {
+  const url = "https://www.madisonpubliclibrary.org/spaces/events";
+  const html = await fetchHtml(url);
+  if (!html) return [];
+  return addMadisonHeadingEvents(cheerio.load(html), {
+    selector: "h3, .event-title, .views-row h2",
+    sourceUrl: url,
+    sourceName: "Madison Public Library",
+    venueName: "Madison Public Library",
+    categoryText: "library books reading storytime author talk",
+    isFree: true,
+    excludedTitles: ["Events Calendar", "Find more events", "Around Madison", "Online"],
+  });
+}
+
+export async function scrapeCityOfMadisonEvents(): Promise<ScrapedEvent[]> {
+  const url = "https://www.cityofmadison.com/events";
+  const html = await fetchHtml(url);
+  if (!html) return [];
+  return addMadisonHeadingEvents(cheerio.load(html), {
+    selector: "article h2, article h3, .event h2, .event h3, main h2, main h3",
+    sourceUrl: url,
+    sourceName: "City of Madison",
+    venueName: "City of Madison public event",
+    categoryText: "park recreation community public event",
+    isFree: true,
+    excludedTitles: ["Events", "Annual & Special Events", "Search Events"],
+  });
+}
+
+export async function scrapeOvertureCenter(): Promise<ScrapedEvent[]> {
+  const url = "https://www.overture.org/";
+  const html = await fetchHtml(url);
+  if (!html) return [];
+  return addMadisonHeadingEvents(cheerio.load(html), {
+    selector: "article h2, article h3, .event h2, .event h3, .card h2, .card h3",
+    sourceUrl: url,
+    sourceName: "Overture Center",
+    venueName: "Overture Center for the Arts",
+    venueAddress: "201 State St, Madison, WI 53703",
+    categoryText: "theater theatre performing arts music comedy dance",
+    isFree: false,
+    excludedTitles: ["Coming Up", "Overture’s 2025/26 Season", "Subscriptions available now"],
+  });
+}
+
+export async function scrapeCityChurchMadison(): Promise<ScrapedEvent[]> {
+  const url = "https://citychurchmadison.org/events";
+  const html = await fetchHtml(url);
+  if (!html) return [];
+  const $ = cheerio.load(html);
+  const events: ScrapedEvent[] = [];
+  $("h2, h3, .event-title").each((_, el) => {
+    const title = $(el).text().replace(/\s+/g, " ").trim();
+    if (!title || title.length > 180 || isDateOnlyHeading(title) || ["events", "calendar", "for additional event registrations"].includes(title.toLowerCase())) return;
+    const nearbyText = [$(el).next().text(), $(el).next().next().text(), $(el).next().next().next().text()].join(" ").replace(/\s+/g, " ").trim();
+    const eventDate = parseCommunityCalendarDate(nearbyText);
+    if (!eventDate) return;
+    const link = $(el).nextAll("a[href]").first().attr("href");
+    events.push({
+      title,
+      description: nearbyText.slice(0, 500) || null,
+      eventDate,
+      endDate: null,
+      venueName: "City Church Madison",
+      venueAddress: "4909 East Buckeye Road, Madison, WI 53716",
+      venueCity: "Madison, WI",
+      category: "church",
+      sourceUrl: link ? (link.startsWith("http") ? link : new URL(link, url).toString()) : url,
+      sourceName: "City Church Madison",
+      isFree: true,
+      isOnCampus: false,
+    });
+  });
+  return futureEvents(dedupeScrapedEvents(events));
+}
+
 // ─── Master scrape function ───────────────────────────────────────────────────
 export async function scrapeAllMilwaukeeEvents(): Promise<ScrapedEvent[]> {
   const results = await Promise.allSettled([
@@ -340,12 +502,25 @@ export async function scrapeAllMilwaukeeEvents(): Promise<ScrapedEvent[]> {
     }
   });
 
-  // Deduplicate by normalized title
-  const seen = new Set<string>();
-  return all.filter(e => {
-    const key = e.title.toLowerCase().replace(/\s+/g, " ").trim();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  return dedupeScrapedEvents(all);
+}
+
+export async function scrapeAllMadisonEvents(): Promise<ScrapedEvent[]> {
+  const results = await Promise.allSettled([
+    scrapeMadisonLibrary(),
+    scrapeCityOfMadisonEvents(),
+    scrapeOvertureCenter(),
+    scrapeCityChurchMadison(),
+  ]);
+  const labels = ["Madison Library", "City of Madison", "Overture Center", "City Church Madison"];
+  const all: ScrapedEvent[] = [];
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      console.log(`[communityScraper] ${labels[index]}: ${result.value.length} events`);
+      all.push(...result.value);
+    } else {
+      console.warn(`[communityScraper] ${labels[index]} failed: ${result.reason}`);
+    }
   });
+  return dedupeScrapedEvents(all);
 }
