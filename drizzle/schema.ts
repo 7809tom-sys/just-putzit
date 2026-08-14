@@ -51,6 +51,8 @@ export type ProfileTraits = {
   idealDate?: string;
   perfectSunday?: string;
   aiSummary?: string;
+  /** Direct preference phrases saved from explicit Would You Rather selections. */
+  wyrInsights?: string[];
   connectionPreferences?: {
     community: true;
     friendship: boolean;

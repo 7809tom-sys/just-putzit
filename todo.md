@@ -368,6 +368,12 @@
 - [ ] Add 'Game Insights' section to Profile page showing traits derived from games
 - [ ] Update matchmaking to weight game-derived traits in compatibility scoring
 
+## Transparent Game Preference Insights
+- [x] Persist a source-labeled list of direct preferences saved from Would You Rather
+- [x] Explain on the Profile page that these are selected preferences, not personality scores or raw answers
+- [x] Keep source-labeled game preferences separate from interview-derived personality traits
+- [x] Add regression coverage for the transparent Would You Rather insight display
+
 ## Campus / University Dating Pool
 - [ ] Audit existing campus schema (campuses table, campus_members)
 - [ ] Add campus_members table if missing; add joinCampus/leaveCampus tRPC procedures

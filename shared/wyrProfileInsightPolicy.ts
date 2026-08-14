@@ -41,3 +41,15 @@ export function sanitizeWyrProfileInsights(
 
   return sanitized;
 }
+
+export function getWyrDirectPreferenceInsights(
+  traits: Partial<Pick<ProfileTraits, AllowedWyrField>>,
+): string[] {
+  const values = ALLOWED_WYR_FIELDS.flatMap((field) => {
+    const value = traits[field];
+    return Array.isArray(value)
+      ? value.filter((entry): entry is string => typeof entry === "string")
+      : [];
+  });
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).slice(0, 12);
+}

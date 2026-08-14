@@ -632,12 +632,16 @@ export default function Profile() {
         {traits && (traits.wyrInsights?.length > 0 || traits.gameInsights?.length > 0 || traits.triviaStrengths?.length > 0) && (
           <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
             <h2 className="font-display font-bold text-xl mb-4 flex items-center gap-2">
-              <Gamepad2 className="w-5 h-5 text-purple-500" /> Game Insights
+              <Gamepad2 className="w-5 h-5 text-purple-500" /> {traits.wyrInsights?.length > 0 ? "Game Preference Insights" : "Game Insights"}
             </h2>
-            <p className="text-sm text-muted-foreground mb-4">Sally learned these things about you from your game play:</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              {traits.wyrInsights?.length > 0
+                ? "These are direct preference phrases saved from your Would You Rather selections. They are not personality scores, game performance, or a record of your full answers."
+                : "Sally learned these things about you from your game play."}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {traits.wyrInsights && traits.wyrInsights.length > 0 && (
-                <TraitCard label="Would You Rather" value={
+                <TraitCard label="Would You Rather preferences" value={
                   <div className="flex flex-wrap gap-1 mt-1">
                     {traits.wyrInsights.map((k: string) => (
                       <Badge key={k} variant="secondary" className="rounded-full text-xs bg-purple-50 text-purple-700">{k}</Badge>

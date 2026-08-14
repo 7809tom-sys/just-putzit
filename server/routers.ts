@@ -18,7 +18,7 @@ import { crawlAllCities } from "./museumLibraryCrawler";
 import { getLatestInterviewLearnings } from "./profileLearning";
 import { mergeProfileTraits } from "../shared/profileTraitMerge";
 import { buildProfileSummaryEvidence, isEvidenceGroundedProfileSummary } from "../shared/profileSummaryEvidence";
-import { sanitizeWyrProfileInsights } from "../shared/wyrProfileInsightPolicy";
+import { getWyrDirectPreferenceInsights, sanitizeWyrProfileInsights } from "../shared/wyrProfileInsightPolicy";
 import { formatCompetitiveGameContext } from "../shared/competitiveGameContext";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
@@ -2440,7 +2440,11 @@ Return JSON with questions array, each having optionA and optionB.`,
             questionText: `Would you rather: "${question.optionA}" OR "${question.optionB}"`,
             chosenOptionText: chosenText,
           });
-          profileInsight = await mergeGameTraitsIntoProfile(ctx.user.id, traits);
+          const directPreferences = getWyrDirectPreferenceInsights(traits);
+          profileInsight = await mergeGameTraitsIntoProfile(ctx.user.id, {
+            ...traits,
+            ...(directPreferences.length > 0 ? { wyrInsights: directPreferences } : {}),
+          });
         }
         return {
           yourChoice: input.choice,
@@ -3844,9 +3848,10 @@ async function mergeGameTraitsIntoProfile(userId: number, newTraits: Partial<Pro
       }
     }
 
-    if (learnedTraits.length === 0) return { updated: false, learnedTraits: [] };
+    const uniqueLearnedTraits = Array.from(new Set(learnedTraits.map((trait) => trait.trim()).filter(Boolean)));
+    if (uniqueLearnedTraits.length === 0) return { updated: false, learnedTraits: [] };
     await updateProfile(userId, { traits: merged });
-    return { updated: true, learnedTraits };
+    return { updated: true, learnedTraits: uniqueLearnedTraits };
   } catch {
     // Silently fail — never block gameplay
     return { updated: false, learnedTraits: [] };
