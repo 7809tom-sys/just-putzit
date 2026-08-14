@@ -83,6 +83,8 @@ import {
   recordSponsoredPlacementMetric,
   createActivityListing,
   rsvpToActivity,
+  getActivityBookmarksForUser,
+  toggleActivityBookmark,
   getRsvpsForActivity,
   checkInToActivity,
   recordReferralVisit,
@@ -1726,6 +1728,14 @@ Return JSON with questions array, each having optionA and optionB.`,
         activities: selectSimilarActivities(activities, preferredCategories),
       };
     }),
+    bookmarks: protectedProcedure.query(async ({ ctx }) => getActivityBookmarksForUser(ctx.user.id)),
+    toggleBookmark: protectedProcedure
+      .input(z.object({ activityId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const activity = await getActivityById(input.activityId);
+        if (!activity) throw new TRPCError({ code: "NOT_FOUND", message: "Activity not found." });
+        return toggleActivityBookmark(input.activityId, ctx.user.id);
+      }),
     similarForActivity: protectedProcedure
       .input(z.object({ activityId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {

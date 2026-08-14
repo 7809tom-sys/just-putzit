@@ -1118,3 +1118,8 @@
 - [x] Add member-location distance calculations to personalized similar-event recommendations
 - [x] Render Distance from you labels with no-location fallback
 - [x] Add distance regression coverage and responsive verification for similar-event cards
+
+## Similar Event Quick Bookmark
+- [x] Add save and unsave actions directly to personalized similar-event cards
+- [x] Show accessible bookmark state and save feedback without opening event details
+- [x] Add regression coverage and responsive verification for quick bookmarking

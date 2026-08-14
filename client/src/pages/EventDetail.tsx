@@ -8,9 +8,11 @@ import { trpc } from "@/lib/trpc";
 import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight, Bookmark, BookmarkCheck } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { formatSimilarEventDistance } from "@shared/similarEventDetails";
+import { getActivityBookmarkFeedback, isActivityBookmarked } from "@shared/activityBookmarks";
+import { toast } from "sonner";
 
 const CATEGORY_EMOJI: Record<string, string> = {
   bowling: "🎳", mini_golf: "⛳", kayaking: "🛶", movies: "🎬",
@@ -29,6 +31,15 @@ export default function EventDetail() {
     { enabled: id > 0 }
   );
   const { data: viewer } = trpc.auth.me.useQuery();
+  const utils = trpc.useUtils();
+  const { data: bookmarkedActivityIds } = trpc.activityBoard.bookmarks.useQuery(undefined, { enabled: Boolean(viewer) });
+  const toggleBookmark = trpc.activityBoard.toggleBookmark.useMutation({
+    onSuccess: (result) => {
+      void utils.activityBoard.bookmarks.invalidate();
+      toast.success(getActivityBookmarkFeedback(result.bookmarked));
+    },
+    onError: () => toast.error("Couldn’t update saved events", { description: "Please try again." }),
+  });
   const { data: similarEvents } = trpc.activityBoard.similarForActivity.useQuery(
     { activityId: id },
     { enabled: Boolean(viewer) && id > 0 },
@@ -179,11 +190,15 @@ export default function EventDetail() {
               <div className="grid gap-3 sm:grid-cols-3">
                 {similarEvents.activities.map((event) => {
                   const eventDate = event.eventDate ? new Date(event.eventDate) : null;
-                  return <button key={event.id} type="button" onClick={() => navigate(`/events/${event.id}`)} className="rounded-2xl border border-border bg-white p-4 text-left shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                    <div className="flex items-start gap-2"><span className="text-xl" aria-hidden="true">{CATEGORY_EMOJI[event.category ?? "other"] ?? "✨"}</span><div className="min-w-0"><Badge variant="secondary" className="mb-2 max-w-full truncate capitalize">{event.category?.replace(/_/g, " ") ?? "local activity"}</Badge><p className="line-clamp-2 font-semibold leading-snug">{event.title}</p></div></div>
-                    <p className="mt-3 text-xs text-muted-foreground">{eventDate ? eventDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "Flexible date"}{event.venueName ? ` · ${event.venueName}` : ""}</p>
-                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary"><MapPin className="h-3 w-3" />{formatSimilarEventDistance(event.distanceMiles)}</p>
-                  </button>;
+                  const bookmarked = isActivityBookmarked(bookmarkedActivityIds, event.id);
+                  return <div key={event.id} className="relative rounded-2xl border border-border bg-white p-4 shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:border-primary/40">
+                    {viewer && <Button type="button" size="icon" variant="ghost" aria-label={bookmarked ? `Remove ${event.title} from saved events` : `Save ${event.title} for later`} aria-pressed={bookmarked} disabled={toggleBookmark.isPending} className="absolute right-2 top-2 h-8 w-8 rounded-full" onClick={() => toggleBookmark.mutate({ activityId: event.id })}>{bookmarked ? <BookmarkCheck className="h-4 w-4 fill-primary text-primary" /> : <Bookmark className="h-4 w-4" />}</Button>}
+                    <button type="button" onClick={() => navigate(`/events/${event.id}`)} className="block w-full pr-8 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                      <div className="flex items-start gap-2"><span className="text-xl" aria-hidden="true">{CATEGORY_EMOJI[event.category ?? "other"] ?? "✨"}</span><div className="min-w-0"><Badge variant="secondary" className="mb-2 max-w-full truncate capitalize">{event.category?.replace(/_/g, " ") ?? "local activity"}</Badge><p className="line-clamp-2 font-semibold leading-snug">{event.title}</p></div></div>
+                      <p className="mt-3 text-xs text-muted-foreground">{eventDate ? eventDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "Flexible date"}{event.venueName ? ` · ${event.venueName}` : ""}</p>
+                      <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary"><MapPin className="h-3 w-3" />{formatSimilarEventDistance(event.distanceMiles)}</p>
+                    </button>
+                  </div>;
                 })}
               </div>
             </section>

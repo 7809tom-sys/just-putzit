@@ -21,6 +21,7 @@ import {
   sponsoredPlacements,
   sponsoredPlacementEvents,
   activityRsvps,
+  activityBookmarks,
   communityGroups,
   communityGroupMembers,
   bookings,
@@ -628,6 +629,30 @@ export async function rsvpToActivity(activityId: number, userId: number, matchId
   const result = await db.select().from(activityRsvps)
     .where(and(eq(activityRsvps.activityId, activityId), eq(activityRsvps.userId, userId))).limit(1);
   return result[0] ?? null;
+}
+
+export async function getActivityBookmarksForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ activityId: activityBookmarks.activityId })
+    .from(activityBookmarks)
+    .where(eq(activityBookmarks.userId, userId));
+  return rows.map((row) => row.activityId);
+}
+
+export async function toggleActivityBookmark(activityId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const existing = await db.select({ id: activityBookmarks.id })
+    .from(activityBookmarks)
+    .where(and(eq(activityBookmarks.activityId, activityId), eq(activityBookmarks.userId, userId)))
+    .limit(1);
+  if (existing[0]) {
+    await db.delete(activityBookmarks).where(eq(activityBookmarks.id, existing[0].id));
+    return { bookmarked: false };
+  }
+  await db.insert(activityBookmarks).values({ activityId, userId });
+  return { bookmarked: true };
 }
 
 export async function getRsvpsForActivity(activityId: number) {
@@ -3126,7 +3151,7 @@ export async function savePickupAlertPreference(userId: number, input: { enabled
 export async function getMemberPreferredPickupCategories(userId: number): Promise<string[]> {
   const db = await getDb();
   if (!db) return [];
-  const [eventSignals, activitySignals, alertPreference] = await Promise.all([
+  const [eventSignals, activitySignals, bookmarkSignals, alertPreference] = await Promise.all([
     db.select({ category: communityEvents.category, status: eventInterests.status })
       .from(eventInterests)
       .innerJoin(communityEvents, eq(eventInterests.eventId, communityEvents.id))
@@ -3135,6 +3160,10 @@ export async function getMemberPreferredPickupCategories(userId: number): Promis
       .from(activityRsvps)
       .innerJoin(activityListings, eq(activityRsvps.activityId, activityListings.id))
       .where(eq(activityRsvps.userId, userId)),
+    db.select({ category: activityListings.category })
+      .from(activityBookmarks)
+      .innerJoin(activityListings, eq(activityBookmarks.activityId, activityListings.id))
+      .where(eq(activityBookmarks.userId, userId)),
     getPickupAlertPreference(userId),
   ]);
   const categories = new Set<string>(alertPreference?.categories ?? []);
@@ -3151,6 +3180,7 @@ export async function getMemberPreferredPickupCategories(userId: number): Promis
       if (signal.category === "sports") categories.add("basketball");
     }
   }
+  for (const signal of bookmarkSignals) categories.add(signal.category);
   return Array.from(categories);
 }
 

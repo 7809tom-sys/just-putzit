@@ -5,11 +5,12 @@ import {
   double,
   int,
   json,
-  mysqlEnum,
-  mysqlTable,
-  text,
-  timestamp,
-  varchar,
+	mysqlEnum,
+	mysqlTable,
+	text,
+	timestamp,
+	uniqueIndex,
+	varchar,
 } from "drizzle-orm/mysql-core";
 
 // ─── Core user table ──────────────────────────────────────────────────────────
@@ -360,6 +361,17 @@ export const activityRsvps = mysqlTable("activity_rsvps", {
 });
 
 export type ActivityRsvp = typeof activityRsvps.$inferSelect;
+
+// ─── Activity Bookmarks ─────────────────────────────────────────────────────
+export const activityBookmarks = mysqlTable("activity_bookmarks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  activityId: int("activityId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userActivityUnique: uniqueIndex("activity_bookmarks_user_activity_unique").on(table.userId, table.activityId),
+}));
+export type ActivityBookmark = typeof activityBookmarks.$inferSelect;
 
 // ─── Community Groups ─────────────────────────────────────────────────────────
 export const communityGroups = mysqlTable("community_groups", {
