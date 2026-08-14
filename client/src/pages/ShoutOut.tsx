@@ -4,12 +4,13 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { buildJustPutzitReferralMessage } from "../../../shared/referralCopy";
+import { buildJustPutzitReferralMessage, JUST_PUTZIT_REFERRAL_NOTE } from "../../../shared/referralCopy";
 import {
   Users,
   Phone,
@@ -48,6 +49,7 @@ export default function ShoutOut() {
   const [newEmail, setNewEmail] = useState("");
   const [sentInvites, setSentInvites] = useState<SentInvite[]>([]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [inviteNote, setInviteNote] = useState(JUST_PUTZIT_REFERRAL_NOTE);
 
   const { data: myInvites } = trpc.invites.myInvites.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -147,7 +149,7 @@ export default function ShoutOut() {
   };
 
   const shareLink = (invite: SentInvite) => {
-    const text = buildJustPutzitReferralMessage(invite.link);
+    const text = buildJustPutzitReferralMessage(invite.link, inviteNote);
     if (navigator.share) {
       navigator.share({ title: "Join me on Just Putzit!", text, url: invite.link });
     } else {
@@ -156,7 +158,7 @@ export default function ShoutOut() {
   };
 
   const smsLink = (invite: SentInvite, phone?: string) => {
-    const text = encodeURIComponent(buildJustPutzitReferralMessage(invite.link));
+    const text = encodeURIComponent(buildJustPutzitReferralMessage(invite.link, inviteNote));
     window.open(`sms:${phone ?? ""}?body=${text}`, "_blank");
   };
 
@@ -221,6 +223,25 @@ export default function ShoutOut() {
         )}
 
         {/* Contact picker */}
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-orange-500" /> Your invitation note
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">Personalize this note before sharing. Each friend’s unique invite link is added automatically.</p>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={inviteNote}
+              onChange={(event) => setInviteNote(event.target.value.slice(0, 500))}
+              maxLength={500}
+              className="min-h-24 resize-none rounded-xl"
+              aria-label="Your invitation note"
+            />
+            <p className="mt-2 text-right text-xs text-muted-foreground">{inviteNote.length}/500</p>
+          </CardContent>
+        </Card>
+
         <Card className="border-none shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">

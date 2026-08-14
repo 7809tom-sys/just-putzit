@@ -405,7 +405,7 @@
 - [ ] Add a highly visible "Recommend a Friend" floating button / banner on Home dashboard
 - [x] Add Recommend button to mobile bottom nav bar (primary tab, not buried in More)
 - [x] Add Recommend button to Profile page sidebar
-- [ ] Clicking opens ShoutOut page with pre-filled message
+- [x] Clicking opens ShoutOut page with pre-filled message
 
 ## Authenticated Home Referral Entry Point
 - [x] Add a compact, always-available referral action beside Home customization controls
@@ -420,6 +420,11 @@
 - [x] Replace dating-first Shout-Out share and SMS copy with activity- and event-based community language
 - [x] Keep invite copy geographically neutral so it is accurate in every supported city
 - [x] Add regression coverage for accurate referral messaging
+
+## Personalized Shout-Out Invitation Note
+- [x] Show a pre-filled invitation note before members create or share invites
+- [x] Allow members to edit the note while always appending the unique invite link
+- [x] Add regression coverage for safe personalized invite-message construction
 
 ## Identity Save Android Fix & Refer-a-Friend
 - [x] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
