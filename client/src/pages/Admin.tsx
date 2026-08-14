@@ -445,6 +445,9 @@ export default function Admin() {
   const { data: allEvents, refetch: refetchEvents } = trpc.events.list.useQuery({}, {
     enabled: user?.role === "admin" && activeTab === "events",
   });
+  const { data: sourceHealth } = trpc.events.sourceHealth.useQuery(undefined, {
+    enabled: user?.role === "admin" && activeTab === "events",
+  });
   const { data: reports, refetch: refetchReports } = trpc.safety.getReports.useQuery(undefined, {
     enabled: user?.role === "admin",
   });
@@ -748,6 +751,29 @@ export default function Admin() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-4 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-medium text-sky-900">
+                      <RefreshCw className="h-3.5 w-3.5 text-sky-600" /> Official calendar source health
+                    </div>
+                    {!sourceHealth || sourceHealth.length === 0 ? (
+                      <p className="text-xs text-slate-600">No scheduled source refresh has completed yet.</p>
+                    ) : (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {sourceHealth.map((source) => (
+                          <div key={source.sourceKey} className="rounded-lg bg-white/80 px-2.5 py-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate text-xs font-medium text-slate-800">{source.sourceLabel}</span>
+                              <Badge className={source.status === "healthy" ? "bg-green-100 text-green-700 border-0" : source.status === "empty" ? "bg-amber-100 text-amber-700 border-0" : "bg-red-100 text-red-700 border-0"}>{source.status}</Badge>
+                            </div>
+                            <p className="mt-1 text-[11px] text-slate-600">
+                              {source.status === "healthy" ? `${source.eventsFound} upcoming found` : source.status === "empty" ? "No upcoming events returned" : "Last refresh failed"}
+                            </p>
+                            {source.status === "failed" && source.errorMessage && <p className="mt-1 line-clamp-1 text-[10px] text-red-600">{source.errorMessage}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {!allEvents || allEvents.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">No events yet. Post events in the Events tab first.</p>
                   ) : (

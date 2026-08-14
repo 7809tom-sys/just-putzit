@@ -29,6 +29,22 @@ export interface ScrapedEvent {
   isOnCampus: boolean;
 }
 
+export interface ScrapeSourceOutcome {
+  sourceKey: string;
+  sourceLabel: string;
+  city: string;
+  status: "healthy" | "empty" | "failed";
+  eventsFound: number;
+  errorMessage?: string;
+}
+
+interface NamedSourceScraper {
+  sourceKey: string;
+  sourceLabel: string;
+  city: string;
+  run: () => Promise<ScrapedEvent[]>;
+}
+
 const HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (compatible; JustPutzit-EventBot/1.0; +https://justputzit.com/about)",
@@ -539,48 +555,49 @@ export async function scrapeUWMadisonEvents(): Promise<ScrapedEvent[]> {
   }
 }
 
-// ─── Master scrape function ───────────────────────────────────────────────────
-export async function scrapeAllMilwaukeeEvents(): Promise<ScrapedEvent[]> {
-  const results = await Promise.allSettled([
-    scrapeMilwaukeeLibrary(),
-    scrapeWaukeshaLibrary(),
-    scrapeUWMilwaukee(),
-    scrapeMarquette(),
-    scrapeOnMilwaukee(),
-  ]);
-
+// ─── Master scrape functions ──────────────────────────────────────────────────
+async function runNamedSourceScrapers(sources: NamedSourceScraper[]) {
+  const results = await Promise.allSettled(sources.map((source) => source.run()));
   const all: ScrapedEvent[] = [];
-  const labels = ["Milwaukee Library", "Waukesha Library", "UWM", "Marquette", "OnMilwaukee"];
-
-  results.forEach((r, i) => {
-    if (r.status === "fulfilled") {
-      console.log(`[communityScraper] ${labels[i]}: ${r.value.length} events`);
-      all.push(...r.value);
-    } else {
-      console.warn(`[communityScraper] ${labels[i]} failed: ${r.reason}`);
+  const outcomes: ScrapeSourceOutcome[] = results.map((result, index) => {
+    const source = sources[index];
+    if (result.status === "fulfilled") {
+      const eventsFound = result.value.length;
+      console.log(`[communityScraper] ${source.sourceLabel}: ${eventsFound} events`);
+      all.push(...result.value);
+      return { sourceKey: source.sourceKey, sourceLabel: source.sourceLabel, city: source.city, status: eventsFound > 0 ? "healthy" : "empty", eventsFound };
     }
+    const errorMessage = String(result.reason instanceof Error ? result.reason.message : result.reason).slice(0, 1000);
+    console.warn(`[communityScraper] ${source.sourceLabel} failed: ${errorMessage}`);
+    return { sourceKey: source.sourceKey, sourceLabel: source.sourceLabel, city: source.city, status: "failed", eventsFound: 0, errorMessage };
   });
+  return { events: dedupeScrapedEvents(all), outcomes };
+}
 
-  return dedupeScrapedEvents(all);
+export async function scrapeAllMilwaukeeEventsWithHealth() {
+  return runNamedSourceScrapers([
+    { sourceKey: "milwaukee_library", sourceLabel: "Milwaukee Public Library", city: "Milwaukee", run: scrapeMilwaukeeLibrary },
+    { sourceKey: "waukesha_library", sourceLabel: "Waukesha Public Library", city: "Waukesha", run: scrapeWaukeshaLibrary },
+    { sourceKey: "uwm", sourceLabel: "UW–Milwaukee", city: "Milwaukee", run: scrapeUWMilwaukee },
+    { sourceKey: "marquette", sourceLabel: "Marquette University", city: "Milwaukee", run: scrapeMarquette },
+    { sourceKey: "onmilwaukee", sourceLabel: "OnMilwaukee", city: "Milwaukee", run: scrapeOnMilwaukee },
+  ]);
+}
+
+export async function scrapeAllMilwaukeeEvents(): Promise<ScrapedEvent[]> {
+  return (await scrapeAllMilwaukeeEventsWithHealth()).events;
+}
+
+export async function scrapeAllMadisonEventsWithHealth() {
+  return runNamedSourceScrapers([
+    { sourceKey: "madison_library", sourceLabel: "Madison Public Library", city: "Madison", run: scrapeMadisonLibrary },
+    { sourceKey: "city_madison", sourceLabel: "City of Madison", city: "Madison", run: scrapeCityOfMadisonEvents },
+    { sourceKey: "overture", sourceLabel: "Overture Center", city: "Madison", run: scrapeOvertureCenter },
+    { sourceKey: "city_church_madison", sourceLabel: "City Church Madison", city: "Madison", run: scrapeCityChurchMadison },
+    { sourceKey: "uw_madison", sourceLabel: "UW–Madison", city: "Madison", run: scrapeUWMadisonEvents },
+  ]);
 }
 
 export async function scrapeAllMadisonEvents(): Promise<ScrapedEvent[]> {
-  const results = await Promise.allSettled([
-    scrapeMadisonLibrary(),
-    scrapeCityOfMadisonEvents(),
-    scrapeOvertureCenter(),
-    scrapeCityChurchMadison(),
-    scrapeUWMadisonEvents(),
-  ]);
-  const labels = ["Madison Library", "City of Madison", "Overture Center", "City Church Madison", "UW–Madison"];
-  const all: ScrapedEvent[] = [];
-  results.forEach((result, index) => {
-    if (result.status === "fulfilled") {
-      console.log(`[communityScraper] ${labels[index]}: ${result.value.length} events`);
-      all.push(...result.value);
-    } else {
-      console.warn(`[communityScraper] ${labels[index]} failed: ${result.reason}`);
-    }
-  });
-  return dedupeScrapedEvents(all);
+  return (await scrapeAllMadisonEventsWithHealth()).events;
 }

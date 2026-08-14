@@ -7,8 +7,8 @@
 
 import type { Request, Response } from "express";
 import { sdk } from "./_core/sdk";
-import { scrapeAllMadisonEvents, scrapeAllMilwaukeeEvents } from "./communityScraper";
-import { upsertScrapedEvents } from "./db";
+import { scrapeAllMadisonEventsWithHealth, scrapeAllMilwaukeeEventsWithHealth } from "./communityScraper";
+import { recordEventSourceHealth, upsertScrapedEvents } from "./db";
 
 export async function scrapeEventsHandler(req: Request, res: Response) {
   try {
@@ -20,20 +20,25 @@ export async function scrapeEventsHandler(req: Request, res: Response) {
 
     console.log(`[scheduledScrape] Starting nightly community event scrape (taskUid: ${user.taskUid})`);
 
-    const [milwaukeeEvents, madisonEvents] = await Promise.all([
-      scrapeAllMilwaukeeEvents(),
-      scrapeAllMadisonEvents(),
+    const [milwaukee, madison] = await Promise.all([
+      scrapeAllMilwaukeeEventsWithHealth(),
+      scrapeAllMadisonEventsWithHealth(),
     ]);
+    const milwaukeeEvents = milwaukee.events;
+    const madisonEvents = madison.events;
     const events = [...milwaukeeEvents, ...madisonEvents];
     console.log(`[scheduledScrape] Scraped ${events.length} total events across Milwaukee/Waukesha and Madison`);
 
     const inserted = await upsertScrapedEvents(events);
+    const sourceOutcomes = [...milwaukee.outcomes, ...madison.outcomes];
+    await Promise.all(sourceOutcomes.map(recordEventSourceHealth));
     console.log(`[scheduledScrape] Inserted ${inserted} new events`);
 
     return res.json({
       ok: true,
       scraped: events.length,
       inserted,
+      sources: sourceOutcomes,
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {

@@ -629,6 +629,20 @@ export const communityEvents = mysqlTable("community_events", {
 export type CommunityEvent = typeof communityEvents.$inferSelect;
 export type InsertCommunityEvent = typeof communityEvents.$inferInsert;
 
+// ─── Event Source Health ─────────────────────────────────────────────────────
+export const eventSourceHealth = mysqlTable("event_source_health", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceKey: varchar("sourceKey", { length: 100 }).notNull().unique(),
+  sourceLabel: varchar("sourceLabel", { length: 160 }).notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  status: mysqlEnum("status", ["healthy", "empty", "failed"]).notNull().default("empty"),
+  eventsFound: int("eventsFound").notNull().default(0),
+  errorMessage: text("errorMessage"),
+  lastAttemptedAt: timestamp("lastAttemptedAt").defaultNow().notNull(),
+  lastSucceededAt: timestamp("lastSucceededAt"),
+});
+export type EventSourceHealth = typeof eventSourceHealth.$inferSelect;
+
 // ─── Event RSVPs ──────────────────────────────────────────────────────────────
 export const eventRsvps = mysqlTable("event_rsvps", {
   id: int("id").autoincrement().primaryKey(),

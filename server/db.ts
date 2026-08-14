@@ -35,6 +35,7 @@ import {
   wouldYouRatherAnswers,
   wyrChallenges,
   communityEvents,
+  eventSourceHealth,
   eventRsvps,
   eventInterests,
   eventRecommendationFeedback,
@@ -2126,6 +2127,40 @@ export async function setThirdWheelHostForEvent(eventId: number, hasThirdWheelHo
     hasThirdWheelHost,
     thirdWheelHostNote: hasThirdWheelHost ? thirdWheelHostNote?.trim().slice(0, 280) || null : null,
   }).where(eq(communityEvents.id, eventId));
+}
+
+export async function recordEventSourceHealth(input: {
+  sourceKey: string;
+  sourceLabel: string;
+  city: string;
+  status: "healthy" | "empty" | "failed";
+  eventsFound: number;
+  errorMessage?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const now = new Date();
+  const [existing] = await db.select().from(eventSourceHealth).where(eq(eventSourceHealth.sourceKey, input.sourceKey)).limit(1);
+  const values = {
+    sourceLabel: input.sourceLabel,
+    city: input.city,
+    status: input.status,
+    eventsFound: input.eventsFound,
+    errorMessage: input.errorMessage?.slice(0, 1000) ?? null,
+    lastAttemptedAt: now,
+    lastSucceededAt: input.status === "failed" ? existing?.lastSucceededAt ?? null : now,
+  };
+  if (existing) {
+    await db.update(eventSourceHealth).set(values).where(eq(eventSourceHealth.id, existing.id));
+  } else {
+    await db.insert(eventSourceHealth).values({ sourceKey: input.sourceKey, ...values });
+  }
+}
+
+export async function getEventSourceHealth() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(eventSourceHealth).orderBy(eventSourceHealth.city, eventSourceHealth.sourceLabel);
 }
 
 export async function toggleSponsoredActivity(activityId: number, isSponsored: boolean) {

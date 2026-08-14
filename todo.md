@@ -1252,3 +1252,8 @@
 - [x] Add an accurate Third Wheel event-host label for partner-managed public community events
 - [x] Add member guidance explaining what the label does and does not provide
 - [x] Add regression coverage for Third Wheel indicator eligibility and copy
+
+## Event Source Health Monitoring
+- [x] Record source-level refresh results, event counts, and failures for official community event feeds
+- [x] Show administrators the latest source health and a clear failure state
+- [x] Add regression coverage for source-health aggregation and rendering

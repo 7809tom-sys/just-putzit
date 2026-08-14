@@ -171,6 +171,7 @@ import {
   updateLoginAdStatus,
   toggleSponsoredEvent,
   setThirdWheelHostForEvent,
+  getEventSourceHealth,
   toggleSponsoredActivity,
   getRevenueSummary,
   getProfilePhotos,
@@ -2892,6 +2893,11 @@ Return JSON with questions array, each having optionA and optionB.`,
         await setThirdWheelHostForEvent(input.eventId, input.hasThirdWheelHost, input.thirdWheelHostNote);
         return { success: true };
       }),
+
+    sourceHealth: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      return getEventSourceHealth();
+    }),
 
     markInterest: protectedProcedure
       .input(z.object({ eventId: z.number().int(), status: z.enum(["interested", "going", "attended"]).default("interested") }))
