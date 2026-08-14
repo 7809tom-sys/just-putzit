@@ -1227,3 +1227,7 @@
 - [x] Add a genuine suspended-account state and prevent suspended members from using protected features
 - [x] Make administrator suspend and restore actions update real account access state
 - [x] Add regression coverage for the suspension workflow
+
+## Distinct-Reporter Safety Escalation
+- [x] Suspend accounts only after three distinct members submit open reports and log the escalation for moderation
+- [x] Add regression coverage for distinct-reporter escalation safeguards

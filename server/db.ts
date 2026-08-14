@@ -83,6 +83,7 @@ import { PICKUP_ALERT_CATEGORY, type PickupActivityType, isPickupPreferenceMatch
 import { isActiveSponsoredPlacement } from "../shared/sponsoredPlacementPolicy";
 import { getSponsoredPerformanceRates } from "../shared/sponsoredPerformance";
 import { buildSponsoredAudienceSummary, SPONSORED_AUDIENCE_MIN_GROUP_SIZE } from "../shared/sponsoredAudienceSummary";
+import { shouldAutoSuspendForReports } from "../shared/reportEscalationPolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -486,15 +487,24 @@ export async function createReport(
   const db = await getDb();
   if (!db) return null;
   await db.insert(reports).values({ reporterId, reportedUserId, reason, details });
-  // Auto-flag if user has 3+ reports
+  // Escalate only independently filed open reports; dismissed reports and administrators
+  // never count toward an automatic suspension.
   const allReports = await db.select().from(reports).where(eq(reports.reportedUserId, reportedUserId));
-  if (allReports.length >= 3) {
-    await db.insert(adminFlags).values({
-      userId: reportedUserId,
-      flagType: "multiple_reports",
-      severity: "high",
-      notes: `Auto-flagged: ${allReports.length} reports received`,
-    });
+  const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, reportedUserId)).limit(1);
+  if (shouldAutoSuspendForReports(target?.role, allReports)) {
+    await db.update(users).set({ role: "banned" as any }).where(eq(users.id, reportedUserId));
+    const existingEscalation = await db.select({ id: adminFlags.id }).from(adminFlags)
+      .where(and(eq(adminFlags.userId, reportedUserId), eq(adminFlags.flagType, "multiple_reports"), sql`${adminFlags.resolvedAt} IS NULL`)).limit(1);
+    if (!existingEscalation[0]) {
+      const distinctReporterCount = new Set(allReports.filter((report) => report.status !== "dismissed").map((report) => report.reporterId)).size;
+      await db.insert(adminFlags).values({
+        userId: reportedUserId,
+        flagType: "multiple_reports",
+        severity: "high",
+        notes: `Automatically suspended pending review after ${distinctReporterCount} distinct open reports`,
+      });
+    }
+    return { success: true, autoSuspended: true };
   }
   return { success: true };
 }
