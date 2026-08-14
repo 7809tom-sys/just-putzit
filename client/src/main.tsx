@@ -6,9 +6,12 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
+import { enablePwaUpdateRefresh } from "./lib/pwaUpdateRefresh";
 import "./index.css";
 
 const queryClient = new QueryClient();
+
+enablePwaUpdateRefresh();
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;

@@ -162,6 +162,9 @@ const plugins = [
     injectRegister: "auto",
     manifest: false, // We use our own manifest.json in public/
     workbox: {
+      clientsClaim: true,
+      skipWaiting: true,
+      cleanupOutdatedCaches: true,
       globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       navigateFallback: "/index.html",

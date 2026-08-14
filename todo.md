@@ -1189,3 +1189,7 @@
 ## Jeopardy Live Answer Flow Repair
 - [x] Trace and repair the live Jeopardy answer submission, result feedback, and next-clue progression
 - [x] Add regression coverage and verify the full answer-result flow at mobile size
+
+## Mobile App Update Delivery
+- [x] Detect PWA updates promptly and refresh stale installed mobile clients safely
+- [x] Add regression coverage for service-worker update behavior
