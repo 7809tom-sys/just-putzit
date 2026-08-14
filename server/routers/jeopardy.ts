@@ -1,7 +1,7 @@
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { getDb } from "../db";
+import { getDb, getJeopardyChatMessages, sendJeopardyChatMessage } from "../db";
 import { jeopardyRooms, jeopardyRoomPlayers, jeopardyAnswers, jeopardyQuestions, jeopardyCategories } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { answeredJeopardyClueIds } from "../../shared/jeopardyAnswerPolicy";
@@ -231,10 +231,25 @@ export const jeopardyRouter = router({
 
   // Send chat message
   chat: protectedProcedure
-    .input(z.object({ roomId: z.number(), message: z.string().max(500) }))
+    .input(z.object({ roomId: z.number(), message: z.string().trim().min(1).max(500) }))
     .mutation(async ({ ctx, input }) => {
-      // TODO: Save to gameChatMessages table
-      return { success: true };
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [player] = await db.select().from(jeopardyRoomPlayers)
+        .where(and(eq(jeopardyRoomPlayers.roomId, input.roomId), eq(jeopardyRoomPlayers.userId, ctx.user.id))).limit(1);
+      if (!player) throw new TRPCError({ code: "FORBIDDEN", message: "Join this game before using its chat" });
+      return sendJeopardyChatMessage(input.roomId, ctx.user.id, input.message);
+    }),
+
+  getChat: protectedProcedure
+    .input(z.object({ roomId: z.number(), limit: z.number().min(1).max(100).optional() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [player] = await db.select().from(jeopardyRoomPlayers)
+        .where(and(eq(jeopardyRoomPlayers.roomId, input.roomId), eq(jeopardyRoomPlayers.userId, ctx.user.id))).limit(1);
+      if (!player) throw new TRPCError({ code: "FORBIDDEN", message: "Join this game before viewing its chat" });
+      return getJeopardyChatMessages(input.roomId, input.limit ?? 50);
     }),
 
   // Get scoreboard

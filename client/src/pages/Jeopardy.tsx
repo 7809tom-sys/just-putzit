@@ -77,6 +77,10 @@ export default function Jeopardy() {
     { roomId: roomId! },
     { enabled: !!roomId, refetchInterval: 3000 }
   );
+  const { data: persistedChat, refetch: refetchChat } = trpc.jeopardy.getChat.useQuery(
+    { roomId: roomId! },
+    { enabled: !!roomId, refetchInterval: 3000 }
+  );
 
   // Sync players and detect new joins
   useEffect(() => {
@@ -104,6 +108,14 @@ export default function Jeopardy() {
       setPhase("results");
     }
   }, [playersData]);
+
+  useEffect(() => {
+    if (!persistedChat) return;
+    setChatMessages(persistedChat.map((message) => {
+      const player = players.find((candidate) => candidate.userId === message.userId);
+      return { userId: message.userId, displayName: player?.displayName ?? `Player ${message.userId}`, content: message.content };
+    }));
+  }, [persistedChat, players]);
 
   // Build board from room data
   useEffect(() => {
@@ -566,9 +578,10 @@ export default function Jeopardy() {
   // Chat helper (defined after hooks to avoid conditional hook calls)
   function handleSendChat() {
     if (!chatInput.trim()) return;
-    const myPlayer = players.find((p) => p.userId === user?.id);
-    chatMutation.mutate({ roomId: roomId!, message: chatInput });
-    setChatMessages((prev) => [...prev, { userId: user?.id || 0, displayName: myPlayer?.displayName ?? "You", content: chatInput }]);
+    chatMutation.mutate(
+      { roomId: roomId!, message: chatInput.trim() },
+      { onSuccess: () => { void refetchChat(); }, onError: (error) => toast.error(error.message || "Message could not be sent.") }
+    );
     setChatInput("");
   }
 }

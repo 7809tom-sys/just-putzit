@@ -1201,3 +1201,7 @@
 ## Jeopardy Game Lifecycle
 - [x] Add a reliable game-completion path and member-visible final scoreboard for Jeopardy
 - [x] Add regression coverage for Jeopardy completion behavior
+
+## Jeopardy Multiplayer Chat Repair
+- [x] Persist Jeopardy chat messages and load them for every room participant
+- [x] Add regression coverage for player-visible Jeopardy chat behavior

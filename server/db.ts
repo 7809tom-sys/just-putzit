@@ -63,6 +63,7 @@ import {
   triviaRoomPlayers,
   triviaAnswers,
   gameChatMessages,
+  gameChatMessagesUpdated,
   type TriviaQuestion,
   type TriviaRoom,
   type TriviaRoomPlayer,
@@ -3011,6 +3012,27 @@ export async function getGameChatMessages(roomId: number, limit = 50) {
   return db.select().from(gameChatMessages)
     .where(eq(gameChatMessages.roomId, roomId))
     .orderBy(gameChatMessages.createdAt).limit(limit);
+}
+
+export async function sendJeopardyChatMessage(roomId: number, userId: number, content: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const cleanContent = content.trim();
+  if (!cleanContent) return null;
+  await db.insert(gameChatMessagesUpdated).values({ roomId, userId, content: cleanContent, roomType: "jeopardy" });
+  const result = await db.select().from(gameChatMessagesUpdated)
+    .where(and(eq(gameChatMessagesUpdated.roomId, roomId), eq(gameChatMessagesUpdated.roomType, "jeopardy")))
+    .orderBy(desc(gameChatMessagesUpdated.createdAt)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getJeopardyChatMessages(roomId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(gameChatMessagesUpdated)
+    .where(and(eq(gameChatMessagesUpdated.roomId, roomId), eq(gameChatMessagesUpdated.roomType, "jeopardy")))
+    .orderBy(gameChatMessagesUpdated.createdAt)
+    .limit(Math.min(Math.max(limit, 1), 100));
 }
 
 // ─── Game Trait Extraction ────────────────────────────────────────────────────
