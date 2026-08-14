@@ -1214,3 +1214,7 @@
 ## Current Event Discovery Repair
 - [x] Exclude expired event listings from the near-you discovery experience
 - [x] Add regression coverage for timezone-safe current and upcoming event filtering
+
+## Accurate Member Trust Signals
+- [x] Replace unsupported blanket verification claims with clear descriptions of optional account and location verification
+- [x] Add regression coverage for accurate verification and safety-label copy

@@ -81,8 +81,10 @@ const FALLBACK_ANNOUNCEMENTS: FallbackAnnouncement[] = [
   },
   {
     emoji: "🛡️",
-    headline: "Just Putzit is 100% Local & Verified",
-    body: "Every member is GPS-verified in the Milwaukee/Waukesha area. Real people, real connections.",
+    headline: "Keep it local, on your terms",
+    body: "Use your saved location to discover nearby events. Optional account and location verification tools are available in Safety & Trust.",
+    cta: "How safety works",
+    href: "/safety",
     gradient: "from-slate-50 to-blue-50",
     labelColor: "text-slate-500",
   },
@@ -113,7 +115,7 @@ export function LocalVenueBanner({ page, className = "" }: LocalVenueBannerProps
   const [fallbackDismissed, setFallbackDismissed] = useState(false);
   const [shared, setShared] = useState(false);
 
-  // Use the user's saved GPS-verified location from their profile
+  // Prefer any saved coordinates for geographically relevant local banners.
   const profileQuery = trpc.profile.get.useQuery(undefined, {
     enabled: !!user,
   });
