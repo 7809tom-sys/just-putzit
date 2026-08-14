@@ -4,6 +4,7 @@ export type BookingCalendarInput = {
   durationMinutes?: number | null;
   location?: string | null;
   confirmationCode?: string | null;
+  details?: string | null;
 };
 
 export type BookingCalendarEvent = {
@@ -39,7 +40,7 @@ export function buildBookingCalendarEvent(input: BookingCalendarInput): BookingC
     start,
     end: new Date(start.getTime() + durationMinutes * 60_000),
     location,
-    details: `Booked through Just Putzit.${confirmation}`,
+    details: input.details?.trim() || `Booked through Just Putzit.${confirmation}`,
     uid: `justputzit-${input.confirmationCode ?? `${start.getTime()}-${input.title.replace(/\W+/g, "-")}`}`,
   };
 }

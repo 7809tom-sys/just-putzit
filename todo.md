@@ -1098,3 +1098,8 @@
 - [x] Aggregate sponsored sign-up age bands and interest themes with minimum-group suppression
 - [x] Add a privacy-protected anonymous audience summary to business performance reporting
 - [x] Add suppression regression coverage and responsive verification
+
+## Waukesha Library Calendar Action
+- [x] Add personal-calendar export controls to Waukesha Public Library program cards
+- [x] Reuse verified calendar data and feedback for library event exports
+- [x] Add regression coverage and responsive verification for the library calendar action
