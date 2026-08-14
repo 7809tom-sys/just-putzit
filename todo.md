@@ -1103,3 +1103,8 @@
 - [x] Add personal-calendar export controls to Waukesha Public Library program cards
 - [x] Reuse verified calendar data and feedback for library event exports
 - [x] Add regression coverage and responsive verification for the library calendar action
+
+## Waukesha Library Event Sharing
+- [x] Add native event sharing and clipboard fallback beside library calendar controls
+- [x] Keep event share copy limited to public program details and official source links
+- [x] Add regression coverage and responsive verification for library event sharing
