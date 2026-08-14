@@ -274,11 +274,11 @@
 - [x] Add an admin dashboard tab for reviewing Sally interview event recommendation feedback
 
 ## Mobile Navigation & Feature Parity
-- [ ] Audit Navbar for mobile breakpoint — what is hidden/collapsed
-- [ ] Build MobileBottomNav component with: Home, Matches, Activities, Community, More menu
-- [ ] Add Admin shortcut in More menu for admin users
-- [ ] Ensure all major pages are reachable from mobile bottom nav
-- [ ] Add mobile-responsive padding/spacing to key pages
+- [x] Audit Navbar for mobile breakpoint — what is hidden/collapsed
+- [x] Build MobileBottomNav component with: Home, Matches, Activities, Community, More menu
+- [x] Add Admin shortcut in More menu for admin users
+- [x] Ensure all major pages are reachable from mobile bottom nav
+- [x] Add mobile-responsive padding/spacing to key pages
 
 ## Local Venues & City-Based Activities
 - [x] Seed Waukesha local venues (Farmers Market, Frame Park mini golf, parks, etc.) into activityListings

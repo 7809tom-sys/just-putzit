@@ -20,4 +20,18 @@ describe("mobile notification navigation", () => {
     expect(app).toContain('<Route path="/shout-out" component={ShoutOut} />');
     expect(mobileNav).toContain('{ href: "/shout-out", icon: Megaphone, label: "Refer" }');
   });
+
+  it("keeps core member destinations in the mobile bar and provides an admin-only More shortcut", () => {
+    const root = resolve(__dirname, "..");
+    const app = readFileSync(resolve(root, "client/src/App.tsx"), "utf8");
+    const mobileNav = readFileSync(resolve(root, "client/src/components/MobileBottomNav.tsx"), "utf8");
+
+    expect(mobileNav).toContain('{ href: "/", icon: Home, label: "Home" }');
+    expect(mobileNav).toContain('{ href: "/matches", icon: Heart, label: "Matches" }');
+    expect(mobileNav).toContain('{ href: "/activity-board", icon: LayoutGrid, label: "Activities" }');
+    expect(mobileNav).toContain('{ href: "/community", icon: Users, label: "Community" }');
+    expect(mobileNav).toContain('user?.role === "admin"');
+    expect(mobileNav).toContain('href="/admin"');
+    expect(app).toContain('<Route path="/admin" component={Admin} />');
+  });
 });
