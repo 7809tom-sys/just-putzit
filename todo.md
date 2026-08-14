@@ -575,10 +575,10 @@
 - [x] Add navigation links to MobileBottomNav
 - [x] Create seed script with 1000 questions (500 Jeopardy + 500 Trivia)
 - [x] Seed questions into database (verified 550 Jeopardy and 243 Trivia Pursuit questions live)
-- [ ] Add game_results and player_stats tracking tables
-- [ ] Update routers to record game stats
+- [x] Add game_results and player_stats tracking tables
+- [x] Update routers to record game stats
 - [ ] Extract knowledge traits from game performance
-- [ ] Add game stats section to Profile page
+- [x] Add game stats section to Profile page
 - [ ] Update matching algorithm to factor in knowledge compatibility
 - [ ] Write vitest tests for game stats and matching
 
@@ -599,12 +599,12 @@
 
 ## Phase 28: Game Stats & Knowledge-Based Matching
 - [ ] Retry seeding 1000 questions into database
-- [ ] Add game_results and player_stats tracking tables
-- [ ] Update Jeopardy/Trivia Pursuit routers to record game stats
+- [x] Add game_results and player_stats tracking tables
+- [x] Update Jeopardy/Trivia Pursuit routers to record game stats
 - [ ] Extract knowledge traits from game performance
-- [ ] Add game stats section to Profile page
+- [x] Add game stats section to Profile page
 - [ ] Update matching algorithm to factor in knowledge compatibility
-- [ ] Write vitest tests for game stats and matching
+- [x] Write vitest tests for game stats and matching
 - [ ] Checkpoint and deliver
 
 
