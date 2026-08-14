@@ -1734,7 +1734,13 @@ Return JSON with questions array, each having optionA and optionB.`,
         const profile = await getProfileByUserId(ctx.user.id);
         const preferredCategories = await getMemberPreferredPickupCategories(ctx.user.id);
         const city = profile?.city ?? (current as any).venueCity ?? undefined;
-        const activities = await getActivityListings(city);
+        const userLat = profile?.latitude != null ? Number(profile.latitude) : undefined;
+        const userLng = profile?.longitude != null ? Number(profile.longitude) : undefined;
+        const activities = await getActivityListings(city, undefined, {
+          lat: userLat,
+          lng: userLng,
+          radiusMiles: 50,
+        });
         return {
           basedOnPreferences: preferredCategories.length > 0,
           activities: selectSimilarEventDetails({

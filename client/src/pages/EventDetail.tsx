@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight } from "lucide-react";
 import { getLoginUrl } from "@/const";
+import { formatSimilarEventDistance } from "@shared/similarEventDetails";
 
 const CATEGORY_EMOJI: Record<string, string> = {
   bowling: "🎳", mini_golf: "⛳", kayaking: "🛶", movies: "🎬",
@@ -181,6 +182,7 @@ export default function EventDetail() {
                   return <button key={event.id} type="button" onClick={() => navigate(`/events/${event.id}`)} className="rounded-2xl border border-border bg-white p-4 text-left shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                     <div className="flex items-start gap-2"><span className="text-xl" aria-hidden="true">{CATEGORY_EMOJI[event.category ?? "other"] ?? "✨"}</span><div className="min-w-0"><Badge variant="secondary" className="mb-2 max-w-full truncate capitalize">{event.category?.replace(/_/g, " ") ?? "local activity"}</Badge><p className="line-clamp-2 font-semibold leading-snug">{event.title}</p></div></div>
                     <p className="mt-3 text-xs text-muted-foreground">{eventDate ? eventDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "Flexible date"}{event.venueName ? ` · ${event.venueName}` : ""}</p>
+                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary"><MapPin className="h-3 w-3" />{formatSimilarEventDistance(event.distanceMiles)}</p>
                   </button>;
                 })}
               </div>

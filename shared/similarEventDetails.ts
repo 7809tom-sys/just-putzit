@@ -1,3 +1,5 @@
+import { formatMilesAway } from "./geo";
+
 export type SimilarEventCandidate = {
   id: number;
   category?: string | null;
@@ -22,4 +24,8 @@ export function selectSimilarEventDetails<T extends SimilarEventCandidate>(input
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .slice(0, input.limit ?? 3)
     .map(({ activity }) => activity);
+}
+
+export function formatSimilarEventDistance(miles: number | null | undefined) {
+  return miles == null ? "Distance from you unavailable" : `Distance from you: ${formatMilesAway(miles)}`;
 }

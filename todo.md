@@ -1113,3 +1113,8 @@
 - [x] Add personalized related-event data beneath event details using explicit preference signals
 - [x] Build local similar-event cards with clear relevance and empty states
 - [x] Add regression coverage and responsive verification for event-detail recommendations
+
+## Similar Event Distance Indicators
+- [x] Add member-location distance calculations to personalized similar-event recommendations
+- [x] Render Distance from you labels with no-location fallback
+- [x] Add distance regression coverage and responsive verification for similar-event cards
