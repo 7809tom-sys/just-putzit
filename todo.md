@@ -417,7 +417,7 @@
 - [x] Add regression coverage for Profile-to-Shout-Out navigation
 
 ## Identity Save Android Fix & Refer-a-Friend
-- [ ] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
+- [x] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
 - [ ] Add prominent Refer-a-Friend floating button on Home dashboard
 - [ ] Add Refer-a-Friend as a primary tab in mobile bottom nav
 - [ ] Create standalone /refer page with shareable link and contact picker
