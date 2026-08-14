@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { canCreateEventIntroduction } from "../shared/eventIntroductionPolicy";
+import { canCreateEventIntroduction, getEventIntroductionPair } from "../shared/eventIntroductionPolicy";
 
 const eligible = {
   requesterUserId: 11,
@@ -22,6 +22,11 @@ describe("mutual event introduction policy", () => {
   it("never creates an event introduction across a block or existing match", () => {
     expect(canCreateEventIntroduction({ ...eligible, isBlocked: true })).toBe(false);
     expect(canCreateEventIntroduction({ ...eligible, alreadyMatched: true })).toBe(false);
+  });
+
+  it("normalizes an attendee pair so concurrent requests share one unique key", () => {
+    expect(getEventIntroductionPair(11, 22)).toEqual({ lowerUserId: 11, higherUserId: 22 });
+    expect(getEventIntroductionPair(22, 11)).toEqual({ lowerUserId: 11, higherUserId: 22 });
   });
 
   it("keeps the mutual introduction mutation and private member action wired", () => {

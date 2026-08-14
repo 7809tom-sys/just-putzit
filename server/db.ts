@@ -37,6 +37,7 @@ import {
   communityEvents,
   eventSourceHealth,
   eventRsvps,
+  eventIntroductions,
   eventInterests,
   eventRecommendationFeedback,
   pickupAlertPreferences,
@@ -88,7 +89,7 @@ import { getSponsoredPerformanceRates } from "../shared/sponsoredPerformance";
 import { buildSponsoredAudienceSummary, SPONSORED_AUDIENCE_MIN_GROUP_SIZE } from "../shared/sponsoredAudienceSummary";
 import { shouldAutoSuspendForReports } from "../shared/reportEscalationPolicy";
 import { getWebauthnChallengeExpiry } from "../shared/webauthnChallengePolicy";
-import { canCreateEventIntroduction } from "../shared/eventIntroductionPolicy";
+import { canCreateEventIntroduction, getEventIntroductionPair } from "../shared/eventIntroductionPolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -2004,14 +2005,45 @@ export async function createMutualEventIntroduction(eventId: number, requesterUs
       alreadyMatched: Boolean(alreadyMatched),
     })) continue;
 
-    const match = await createMatch(
-      requesterUserId,
-      candidate.userId,
-      72,
-      "You both opted in to a Sally introduction for the same public event.",
-    );
+    const pair = getEventIntroductionPair(requesterUserId, candidate.userId);
+    let introductionId: number;
+    try {
+      await db.insert(eventIntroductions).values({ eventId, ...pair });
+      const reservation = await db
+        .select({ id: eventIntroductions.id })
+        .from(eventIntroductions)
+        .where(and(
+          eq(eventIntroductions.eventId, eventId),
+          eq(eventIntroductions.lowerUserId, pair.lowerUserId),
+          eq(eventIntroductions.higherUserId, pair.higherUserId),
+        ))
+        .limit(1);
+      if (!reservation[0]) throw new Error("Could not reserve the private event introduction");
+      introductionId = reservation[0].id;
+    } catch (error) {
+      if (String(error).toLowerCase().includes("duplicate")) continue;
+      throw error;
+    }
 
-    if (!match) throw new Error("Could not create the private event introduction");
+    let match;
+    try {
+      match = await createMatch(
+        requesterUserId,
+        candidate.userId,
+        72,
+        "You both opted in to a Sally introduction for the same public event.",
+      );
+    } catch (error) {
+      await db.delete(eventIntroductions).where(eq(eventIntroductions.id, introductionId));
+      throw error;
+    }
+
+    if (!match) {
+      await db.delete(eventIntroductions).where(eq(eventIntroductions.id, introductionId));
+      throw new Error("Could not create the private event introduction");
+    }
+
+    await db.update(eventIntroductions).set({ matchId: match.id }).where(eq(eventIntroductions.id, introductionId));
 
     await Promise.all([
       createNotification(

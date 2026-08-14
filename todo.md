@@ -1307,6 +1307,10 @@
 - [x] Require mutual consent and preserve block/report safeguards before creating an event connection
 - [x] Add regression coverage for RSVP introduction eligibility and privacy
 
+## Duplicate-Safe RSVP Introductions
+- [x] Prevent simultaneous mutual introduction requests from creating duplicate matches for the same event attendee pair
+- [x] Add regression coverage for pair-level idempotency in RSVP introduction creation
+
 ## Expanded Public Venue Discovery
 - [x] Expand structured discovery coverage for public pools, courts, trails, beaches, recreation centers, and YMCA facilities
 - [x] Keep public-venue results city-aware and explain source freshness to members

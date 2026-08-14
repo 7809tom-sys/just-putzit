@@ -20,3 +20,9 @@ export function canCreateEventIntroduction(candidate: EventIntroductionCandidate
     && !candidate.isBlocked
     && !candidate.alreadyMatched;
 }
+
+export function getEventIntroductionPair(userAId: number, userBId: number) {
+  return userAId < userBId
+    ? { lowerUserId: userAId, higherUserId: userBId }
+    : { lowerUserId: userBId, higherUserId: userAId };
+}

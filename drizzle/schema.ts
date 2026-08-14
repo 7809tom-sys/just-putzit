@@ -653,6 +653,21 @@ export const eventRsvps = mysqlTable("event_rsvps", {
 });
 export type EventRsvp = typeof eventRsvps.$inferSelect;
 
+// ─── Mutual Event Introductions ──────────────────────────────────────────────
+// A normalized attendee pair creates a durable uniqueness boundary, preventing
+// concurrent mutual RSVP requests from creating duplicate private matches.
+export const eventIntroductions = mysqlTable("event_introductions", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: int("eventId").notNull(),
+  lowerUserId: int("lowerUserId").notNull(),
+  higherUserId: int("higherUserId").notNull(),
+  matchId: int("matchId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("event_introductions_pair_unique").on(table.eventId, table.lowerUserId, table.higherUserId),
+]);
+export type EventIntroduction = typeof eventIntroductions.$inferSelect;
+
 // ─── Event Bookmarks ─────────────────────────────────────────────────────────
 export const eventBookmarks = mysqlTable("event_bookmarks", {
   id: int("id").autoincrement().primaryKey(),
