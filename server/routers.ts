@@ -17,6 +17,7 @@ import { autoSeedCityEvents } from "./cityEventSeeder";
 import { crawlAllCities } from "./museumLibraryCrawler";
 import { getLatestInterviewLearnings } from "./profileLearning";
 import { mergeProfileTraits } from "../shared/profileTraitMerge";
+import { formatCompetitiveGameContext } from "../shared/competitiveGameContext";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
 import { isValidLocationQuery, resolveLocationQuery } from "./locationResolver";
@@ -706,6 +707,7 @@ Rules:
 
         const profile = await getProfileByUserId(ctx.user.id);
         const existingTraits = profile?.traits as ProfileTraits ?? {};
+        const competitiveGameStats = await getCompetitiveGameStatsForUser(ctx.user.id);
         const userName = profile?.displayName || ctx.user.name || "friend";
 
         const messages = (session.messages as InterviewMessage[]) || [];
@@ -740,6 +742,7 @@ Current profile traits already known: ${JSON.stringify(existingTraits)}
 Identity on file: ${JSON.stringify(profileIdentity)}
 Profile completeness: ${profileCompleteness}%
 Fields still missing or incomplete: ${missingFields.length > 0 ? missingFields.join(", ") : "none — profile is looking great!"}
+Private competitive-game participation summary: ${formatCompetitiveGameContext(competitiveGameStats)}
 
 Rules:
 - Respond warmly to their answer (1-2 sentences genuinely acknowledging what they shared)
@@ -750,6 +753,7 @@ Rules:
 - Keep it conversational, warm, and fun — like a best friend who's genuinely curious
 - Use emojis sparingly but naturally
 - After 5+ exchanges, occasionally say "I'm updating your profile with all this amazing info!" to signal progress
+- Game participation is optional context only: never expose answers or individual scores, never turn wins or losses into personality claims, and only mention a game if it fits naturally into the conversation
 - Never be clinical, robotic, or repeat questions`,
           },
           ...messages.map(m => ({ role: m.role as "assistant" | "user", content: m.content })),

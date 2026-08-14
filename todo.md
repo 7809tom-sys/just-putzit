@@ -1267,3 +1267,7 @@
 ## Mobile Install Prompt Layout Repair
 - [x] Keep the install prompt from covering mobile bottom navigation or page actions
 - [x] Add regression coverage and mobile verification for install prompt placement
+
+## Sally Competitive Game Context
+- [x] Give Sally factual summaries of completed Jeopardy and Trivia Pursuit participation without exposing answers
+- [x] Add regression coverage that prevents game outcomes from becoming unsupported personality claims
