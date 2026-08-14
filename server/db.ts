@@ -79,6 +79,7 @@ import { ENV } from "./_core/env";
 import { PICKUP_ALERT_CATEGORY, type PickupActivityType, isPickupPreferenceMatch } from "../shared/pickupActivityPolicy";
 import { isActiveSponsoredPlacement } from "../shared/sponsoredPlacementPolicy";
 import { getSponsoredPerformanceRates } from "../shared/sponsoredPerformance";
+import { buildSponsoredAudienceSummary, SPONSORED_AUDIENCE_MIN_GROUP_SIZE } from "../shared/sponsoredAudienceSummary";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -1034,6 +1035,48 @@ export async function getSponsoredPlacementPerformanceForOwner(ownerUserId: numb
       ...getSponsoredPerformanceRates(byPlacement.get(placement.id) ?? { views: 0, clicks: 0, signUps: 0 }),
     })),
   };
+}
+
+export async function getSponsoredAudienceSummaryForOwner(ownerUserId: number) {
+  const empty = buildSponsoredAudienceSummary({ signUpCount: 0, birthDates: [], interestCategories: [] });
+  const db = await getDb();
+  if (!db) return empty;
+  const venues = await getVenuesByOwner(ownerUserId);
+  const venueIds = venues.map((venue) => venue.id);
+  if (venueIds.length === 0) return empty;
+  const placements = await db.select().from(sponsoredPlacements).where(inArray(sponsoredPlacements.venueId, venueIds));
+  const placementIds = placements.map((placement) => placement.id);
+  if (placementIds.length === 0) return empty;
+
+  const signUpEvents = await db.select().from(sponsoredPlacementEvents).where(and(
+    inArray(sponsoredPlacementEvents.placementId, placementIds),
+    eq(sponsoredPlacementEvents.eventType, "sign_up"),
+  ));
+  const signUpUserIds = Array.from(new Set(signUpEvents.map((event) => event.userId)));
+  if (signUpUserIds.length < SPONSORED_AUDIENCE_MIN_GROUP_SIZE) {
+    return buildSponsoredAudienceSummary({ signUpCount: signUpUserIds.length, birthDates: [], interestCategories: [] });
+  }
+
+  const [profiles, rsvpRows, listings] = await Promise.all([
+    db.select({ userId: userProfiles.userId, birthDate: userProfiles.birthDate }).from(userProfiles).where(inArray(userProfiles.userId, signUpUserIds)),
+    db.select({ userId: activityRsvps.userId, category: activityListings.category })
+      .from(activityRsvps)
+      .innerJoin(activityListings, eq(activityRsvps.activityId, activityListings.id))
+      .where(and(inArray(activityRsvps.userId, signUpUserIds), eq(activityRsvps.status, "going"))),
+    db.select({ id: activityListings.id, category: activityListings.category }).from(activityListings).where(inArray(activityListings.id, placements.map((placement) => placement.activityId))),
+  ]);
+  const categoryByActivityId = new Map(listings.map((listing) => [listing.id, listing.category]));
+  const placementById = new Map(placements.map((placement) => [placement.id, placement]));
+  const sponsoredCategories = signUpEvents.flatMap((event) => {
+    const activityId = placementById.get(event.placementId)?.activityId;
+    const category = activityId ? categoryByActivityId.get(activityId) : undefined;
+    return category ? [category] : [];
+  });
+  return buildSponsoredAudienceSummary({
+    signUpCount: signUpUserIds.length,
+    birthDates: profiles.map((profile) => profile.birthDate),
+    interestCategories: [...sponsoredCategories, ...rsvpRows.map((rsvp) => rsvp.category)],
+  });
 }
 
 // ─── Couples Network ────────────────────────────────────────────────────────────

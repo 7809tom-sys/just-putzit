@@ -40,6 +40,9 @@ export default function Vendor() {
   const { data: sponsoredPerformance, isLoading: sponsoredPerformanceLoading } = trpc.vendor.sponsoredPerformance.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const { data: sponsoredAudience } = trpc.vendor.sponsoredAudience.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
 
   // Register venue form
   const [venueOpen, setVenueOpen] = useState(false);
@@ -287,6 +290,24 @@ export default function Vendor() {
                 ) : (
                   <div className="mt-5 rounded-xl border border-dashed border-amber-200 bg-white/70 p-4 text-sm text-gray-600">Promote an active activity to begin measuring aggregate views, clicks, and sign-ups here.</div>
                 )}
+
+                <div className="mt-5 rounded-xl border border-teal-100 bg-teal-50/60 p-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-teal-800">Anonymous audience summary</p>
+                      <p className="mt-1 text-sm text-gray-700">Broad age bands and activity themes from sponsored sign-ups. Individual identities, exact ages, and private profile answers are never shared.</p>
+                    </div>
+                    <Badge className="w-fit bg-teal-100 text-teal-800 hover:bg-teal-100">Minimum group protected</Badge>
+                  </div>
+                  {sponsoredAudience?.isSuppressed ? (
+                    <p className="mt-4 rounded-lg border border-dashed border-teal-200 bg-white/80 p-3 text-sm text-gray-600">Audience details will appear after at least {sponsoredAudience.minimumGroupSize} unique sponsored sign-ups. This prevents small groups from being profiled.</p>
+                  ) : sponsoredAudience ? (
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <AudienceBreakdown title="Age bands" values={sponsoredAudience.ageBands} emptyLabel="No age bands meet the privacy threshold yet." />
+                      <AudienceBreakdown title="Top activity interests" values={sponsoredAudience.topInterests} emptyLabel="No interest themes meet the privacy threshold yet." />
+                    </div>
+                  ) : null}
+                </div>
               </>
             ) : null}
           </section>
@@ -597,6 +618,19 @@ function SponsoredMetric({ icon, label, value }: { icon: React.ReactNode; label:
     <div className="rounded-xl border border-amber-100 bg-white/90 p-3">
       <div className="flex items-center gap-1.5 text-amber-800">{icon}<span className="text-xs font-semibold">{label}</span></div>
       <p className="mt-2 text-xl font-bold text-gray-900">{value}</p>
+    </div>
+  );
+}
+
+function AudienceBreakdown({ title, values, emptyLabel }: { title: string; values: Array<{ label: string; count: number }>; emptyLabel: string }) {
+  return (
+    <div className="rounded-lg bg-white/80 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{title}</p>
+      {values.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {values.map((value) => <Badge key={value.label} variant="secondary" className="rounded-full capitalize">{value.label} · {value.count}</Badge>)}
+        </div>
+      ) : <p className="mt-2 text-sm text-gray-500">{emptyLabel}</p>}
     </div>
   );
 }

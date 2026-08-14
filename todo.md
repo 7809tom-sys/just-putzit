@@ -1093,3 +1093,8 @@
 - [x] Aggregate business-owned sponsored placement performance and conversion rates
 - [x] Add an accessible performance dashboard to the Vendor Portal
 - [x] Add regression coverage and verify the dashboard on desktop and mobile
+
+## Anonymous Sponsored Audience Summary
+- [x] Aggregate sponsored sign-up age bands and interest themes with minimum-group suppression
+- [x] Add a privacy-protected anonymous audience summary to business performance reporting
+- [x] Add suppression regression coverage and responsive verification

@@ -77,6 +77,7 @@ import {
   getSponsoredPlacementEligibleListing,
   getSponsoredPlacementsForActivities,
   getSponsoredPlacementPerformanceForOwner,
+  getSponsoredAudienceSummaryForOwner,
   createSponsoredPlacement,
   recordSponsoredPlacementMetric,
   createActivityListing,
@@ -2055,6 +2056,7 @@ Return JSON with questions array, each having optionA and optionB.`,
   vendor: router({
     impactResults: protectedProcedure.query(async ({ ctx }) => getPartnerImpactForOwner(ctx.user.id)),
     sponsoredPerformance: protectedProcedure.query(async ({ ctx }) => getSponsoredPlacementPerformanceForOwner(ctx.user.id)),
+    sponsoredAudience: protectedProcedure.query(async ({ ctx }) => getSponsoredAudienceSummaryForOwner(ctx.user.id)),
     trackSponsoredMetric: protectedProcedure
       .input(z.object({ activityId: z.number().int().positive(), eventType: z.enum(["view", "click"]) }))
       .mutation(async ({ ctx, input }) => {
