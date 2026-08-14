@@ -844,10 +844,11 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
       <button
         type="button"
         onClick={() => navigate("/shout-out")}
-        className="fixed bottom-6 left-4 z-40 hidden items-center gap-2 rounded-full border border-orange-300 bg-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/25 transition-transform hover:bg-orange-600 active:scale-95 sm:flex"
+        className="fixed bottom-6 left-2 z-40 hidden h-12 w-12 items-center justify-center rounded-full border border-orange-300 bg-orange-500 text-white shadow-lg shadow-orange-500/25 transition-transform hover:bg-orange-600 active:scale-95 sm:flex"
         aria-label="Invite friends to Just Putzit"
+        title="Invite friends"
       >
-        <Megaphone className="h-4 w-4" /> Invite friends
+        <Megaphone className="h-5 w-5" />
       </button>
     </div>
   );
