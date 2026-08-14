@@ -841,6 +841,14 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
           onClose={() => setShowCustomize(false)}
         />
       )}
+      <button
+        type="button"
+        onClick={() => navigate("/shout-out")}
+        className="fixed bottom-6 left-4 z-40 hidden items-center gap-2 rounded-full border border-orange-300 bg-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/25 transition-transform hover:bg-orange-600 active:scale-95 sm:flex"
+        aria-label="Invite friends to Just Putzit"
+      >
+        <Megaphone className="h-4 w-4" /> Invite friends
+      </button>
     </div>
   );
 }

@@ -402,7 +402,7 @@
 - [ ] Campus dating pool: filter matches by shared campus affiliation
 
 ## Recommend a Friend (Prominent Referral Button)
-- [ ] Add a highly visible "Recommend a Friend" floating button / banner on Home dashboard
+- [x] Add a highly visible "Recommend a Friend" floating button / banner on Home dashboard
 - [x] Add Recommend button to mobile bottom nav bar (primary tab, not buried in More)
 - [x] Add Recommend button to Profile page sidebar
 - [x] Clicking opens ShoutOut page with pre-filled message
@@ -426,9 +426,14 @@
 - [x] Allow members to edit the note while always appending the unique invite link
 - [x] Add regression coverage for safe personalized invite-message construction
 
+## Floating Home Referral Action
+- [x] Add an accessible floating referral action for authenticated Home
+- [x] Keep the desktop floating action clear of page controls while mobile uses the primary Refer tab
+- [x] Add regression coverage for the mobile-safe referral action
+
 ## Identity Save Android Fix & Refer-a-Friend
 - [x] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
-- [ ] Add prominent Refer-a-Friend floating button on Home dashboard
+- [x] Add prominent Refer-a-Friend floating button on Home dashboard
 - [x] Add Refer-a-Friend as a primary tab in mobile bottom nav
 - [ ] Create standalone /refer page with shareable link and contact picker
 
