@@ -1108,3 +1108,8 @@
 - [x] Add native event sharing and clipboard fallback beside library calendar controls
 - [x] Keep event share copy limited to public program details and official source links
 - [x] Add regression coverage and responsive verification for library event sharing
+
+## Personalized Similar Event Details
+- [x] Add personalized related-event data beneath event details using explicit preference signals
+- [x] Build local similar-event cards with clear relevance and empty states
+- [x] Add regression coverage and responsive verification for event-detail recommendations

@@ -26,6 +26,7 @@ import { getBookingCheckInError } from "../shared/attendanceProof";
 import { getPartnerTrendRangeError, parsePartnerTrendDate } from "./partnerImpact";
 import { getPickupSafetyError, PICKUP_ACTIVITY_TYPES, pickupTemplate, selectSimilarActivities } from "../shared/pickupActivityPolicy";
 import { getSponsoredPlacementEligibility, getSponsoredPlacementPackage, type SponsoredPlacementPackage } from "../shared/sponsoredPlacementPolicy";
+import { selectSimilarEventDetails } from "../shared/similarEventDetails";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -1725,6 +1726,25 @@ Return JSON with questions array, each having optionA and optionB.`,
         activities: selectSimilarActivities(activities, preferredCategories),
       };
     }),
+    similarForActivity: protectedProcedure
+      .input(z.object({ activityId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const current = await getActivityById(input.activityId);
+        if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "Activity not found." });
+        const profile = await getProfileByUserId(ctx.user.id);
+        const preferredCategories = await getMemberPreferredPickupCategories(ctx.user.id);
+        const city = profile?.city ?? (current as any).venueCity ?? undefined;
+        const activities = await getActivityListings(city);
+        return {
+          basedOnPreferences: preferredCategories.length > 0,
+          activities: selectSimilarEventDetails({
+            activities,
+            currentActivityId: current.id,
+            currentCategory: current.category,
+            preferredCategories,
+          }),
+        };
+      }),
   }),
 
   pickupActivities: router({

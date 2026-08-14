@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -26,6 +26,11 @@ export default function EventDetail() {
   const { data: activity, isLoading, error } = trpc.activityBoard.publicGetById.useQuery(
     { activityId: id },
     { enabled: id > 0 }
+  );
+  const { data: viewer } = trpc.auth.me.useQuery();
+  const { data: similarEvents } = trpc.activityBoard.similarForActivity.useQuery(
+    { activityId: id },
+    { enabled: Boolean(viewer) && id > 0 },
   );
 
   // Build SEO data from activity
@@ -158,6 +163,28 @@ export default function EventDetail() {
               <h2 className="font-display font-bold text-lg mb-3">About This Activity</h2>
               <p className="text-muted-foreground leading-relaxed">{activity.description}</p>
             </div>
+          )}
+
+          {similarEvents && similarEvents.activities.length > 0 && (
+            <section className="mb-8" aria-label="Similar events you might like">
+              <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Personalized discovery</p>
+                  <h2 className="mt-1 font-display text-2xl font-bold">Similar Events You Might Like</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{similarEvents.basedOnPreferences ? "Based on activities you’ve saved, RSVP’d to, or attended." : "More nearby activities in this area to explore."}</p>
+                </div>
+                <Button variant="ghost" size="sm" className="shrink-0 rounded-full" onClick={() => navigate("/activities")}>Browse all <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {similarEvents.activities.map((event) => {
+                  const eventDate = event.eventDate ? new Date(event.eventDate) : null;
+                  return <button key={event.id} type="button" onClick={() => navigate(`/events/${event.id}`)} className="rounded-2xl border border-border bg-white p-4 text-left shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                    <div className="flex items-start gap-2"><span className="text-xl" aria-hidden="true">{CATEGORY_EMOJI[event.category ?? "other"] ?? "✨"}</span><div className="min-w-0"><Badge variant="secondary" className="mb-2 max-w-full truncate capitalize">{event.category?.replace(/_/g, " ") ?? "local activity"}</Badge><p className="line-clamp-2 font-semibold leading-snug">{event.title}</p></div></div>
+                    <p className="mt-3 text-xs text-muted-foreground">{eventDate ? eventDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "Flexible date"}{event.venueName ? ` · ${event.venueName}` : ""}</p>
+                  </button>;
+                })}
+              </div>
+            </section>
           )}
 
           {/* CTA */}
