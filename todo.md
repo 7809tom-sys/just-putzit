@@ -435,7 +435,11 @@
 - [x] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
 - [x] Add prominent Refer-a-Friend floating button on Home dashboard
 - [x] Add Refer-a-Friend as a primary tab in mobile bottom nav
-- [ ] Create standalone /refer page with shareable link and contact picker
+- [x] Create standalone /refer page with shareable link and contact picker
+
+## Concise Referral Route
+- [x] Add `/refer` as a stable alias for the existing Shout-Out invitation flow
+- [x] Add regression coverage for direct referral-route navigation
 
 ## Mandatory Account Verification Gate
 - [x] Add passkeyVerified boolean field to users table in schema.ts

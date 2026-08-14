@@ -149,6 +149,7 @@ function Router() {
         <Route path="/game-lobby" component={GameLobby} />
         <Route path="/entertainment" component={Entertainment} />
         <Route path="/shout-out" component={ShoutOut} />
+        <Route path="/refer" component={ShoutOut} />
         <Route path="/safety" component={Safety} />
         <Route path="/advertise" component={AdvertiseWithUs} />
         <Route path="/admin/advertising" component={AdminAdvertising} />
