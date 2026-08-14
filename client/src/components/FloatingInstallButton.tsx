@@ -87,7 +87,7 @@ export function FloatingInstallButton() {
 
   return (
     <div
-      className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-4 z-50 flex flex-col items-end gap-2 sm:bottom-6"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-2 z-50 flex flex-col items-end gap-2 sm:bottom-6 sm:right-4"
       style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.18))" }}
     >
       {/* Tooltip for manual install */}
@@ -115,10 +115,11 @@ export function FloatingInstallButton() {
 
       {/* Floating button */}
       <div className="relative flex items-center gap-2">
-        {/* Dismiss X */}
+        {/* Dismiss control is available on larger screens; on mobile the compact
+            install icon stays out of the event-action row. */}
         <button
           onClick={handleDismiss}
-          className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-colors"
+          className="hidden h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground sm:flex"
           aria-label="Dismiss install prompt"
         >
           <X className="w-3 h-3" />
@@ -127,11 +128,12 @@ export function FloatingInstallButton() {
         {/* Main install button */}
         <button
           onClick={handleInstall}
-          className="flex items-center gap-2 bg-primary text-primary-foreground rounded-full px-4 py-3 font-semibold text-sm shadow-lg hover:bg-primary/90 active:scale-95 transition-all"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm sm:font-semibold"
           aria-label="Install Just Putzit app"
+          title="Install Just Putzit app"
         >
           <Download className="w-4 h-4" />
-          Install App
+          <span className="hidden sm:inline">Install App</span>
         </button>
       </div>
     </div>

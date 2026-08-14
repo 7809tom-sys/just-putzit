@@ -1350,6 +1350,11 @@
 - [x] Keep the install prompt from covering mobile bottom navigation or page actions
 - [x] Add regression coverage and mobile verification for install prompt placement
 
+## Mobile Install Prompt Interaction Repair
+- [x] Prevent the install prompt from covering event-card actions on short mobile viewports
+- [x] Keep the install entry discoverable through a compact, edge-safe mobile control
+- [x] Add regression coverage for non-obstructive mobile prompt behavior
+
 ## Sally Competitive Game Context
 - [x] Give Sally factual summaries of completed Jeopardy and Trivia Pursuit participation without exposing answers
 - [x] Add regression coverage that prevents game outcomes from becoming unsupported personality claims
