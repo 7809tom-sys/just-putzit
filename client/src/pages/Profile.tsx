@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft, Sparkles, Brain, Fingerprint, Bookmark, CalendarDays, ExternalLink, Megaphone } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Pencil, Check, X } from "lucide-react";
 import { ProfileCompletenessCard } from "@/components/ProfileCompletenessCard";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { formatProfileBirthday, getProfileAge, isProfileBirthdayToday, parseProfileBirthDate } from "../../../shared/profileBirthDate";
 import { startRegistration } from "@simplewebauthn/browser";
 
@@ -110,11 +111,12 @@ export default function Profile() {
   // Bio edit state
   const [bioEditOpen, setBioEditOpen] = useState(false);
   const [bioText, setBioText] = useState("");
-  const [isListening, setIsListening] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [friendshipEnabled, setFriendshipEnabled] = useState(false);
   const [datingEnabled, setDatingEnabled] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  const { isSupported: speechSupported, isListening, error: speechError, startListening, stopListening } = useSpeechRecognition((transcript) => {
+    setBioText((current) => current ? `${current} ${transcript}` : transcript);
+  });
 
   const updateBirthday = trpc.profile.updateIdentity.useMutation({
     onSuccess: () => {
@@ -168,44 +170,14 @@ export default function Profile() {
     updateBio.mutate({ bio: bioText });
   }
 
-  const startListening = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Voice input is not supported in this browser. Try Chrome on Android or Safari on iOS.");
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-    recognitionRef.current = recognition;
-
-    recognition.onresult = (event: any) => {
-      let transcript = "";
-      for (let i = 0; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
-      }
-      setBioText(transcript);
-    };
-    recognition.onerror = () => {
-      setIsListening(false);
-    };
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-    recognition.start();
-    setIsListening(true);
-  }, []);
-
-  function stopListening() {
-    recognitionRef.current?.stop();
-    setIsListening(false);
-  }
-
   // Stop recognition when dialog closes
   useEffect(() => {
     if (!bioEditOpen) stopListening();
-  }, [bioEditOpen]);
+  }, [bioEditOpen, stopListening]);
+
+  useEffect(() => {
+    if (speechError) toast.error(speechError);
+  }, [speechError]);
 
   if (isLoading) {
     return (
@@ -820,24 +792,29 @@ export default function Profile() {
                 placeholder="Tell people about yourself, what you enjoy, what you're looking for..."
                 className="min-h-[120px] rounded-xl resize-none pr-12"
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className={`absolute bottom-2 right-2 h-8 w-8 p-0 rounded-full transition-colors ${
-                  isListening ? "bg-red-100 text-red-600 hover:bg-red-200" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                }`}
-                onClick={isListening ? stopListening : startListening}
-                title={isListening ? "Stop recording" : "Speak your bio"}
-              >
-                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </Button>
+              {speechSupported && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={`absolute bottom-2 right-2 h-8 w-8 p-0 rounded-full transition-colors ${
+                    isListening ? "bg-red-100 text-red-600 hover:bg-red-200" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                  }`}
+                  onClick={isListening ? stopListening : startListening}
+                  title={isListening ? "Stop recording" : "Speak your bio"}
+                  aria-label={isListening ? "Stop recording your bio" : "Speak your bio"}
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </Button>
+              )}
             </div>
             {isListening && (
               <p className="text-xs text-red-500 flex items-center gap-1 animate-pulse">
                 <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Listening... speak now
               </p>
             )}
+            {!isListening && speechSupported && <p className="text-xs text-muted-foreground">Use the microphone to add words, then review your bio before saving.</p>}
+            {!speechSupported && <p className="text-xs text-muted-foreground">Voice input is unavailable in this browser. You can still type and save your bio.</p>}
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setBioEditOpen(false)}>
                 <X className="w-4 h-4 mr-1" /> Cancel

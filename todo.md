@@ -523,9 +523,9 @@
 - [ ] TypeScript check, tests, checkpoint
 
 ## Voice-to-Text Profile Input
-- [ ] Build VoiceBio reusable component using Web Speech API (SpeechRecognition) with Whisper API fallback
-- [ ] Mic button shows recording state (pulsing red), transcribes in real time, stops on tap
-- [ ] Wire VoiceBio into profile bio field on Profile edit page
+- [x] Build VoiceBio reusable component using Web Speech API (SpeechRecognition) with Whisper API fallback
+- [x] Mic button shows recording state (pulsing red), transcribes in real time, stops on tap
+- [x] Wire VoiceBio into profile bio field on Profile edit page
 - [ ] Wire VoiceBio into family profile bio field on Family Network setup
 - [x] Wire VoiceBio into Sally interview text input (speak answers instead of typing)
 - [ ] Show "AI-written" vs "Voice-recorded" badge on bio so other users know it's authentic
@@ -536,6 +536,12 @@
 - [x] Preserve typed input and append speech transcripts without auto-sending a response
 - [x] Gracefully hide the control when browser speech recognition is unavailable
 - [x] Add regression coverage for voice-response availability and input handling
+
+## Profile Voice Bio Refinement
+- [x] Reuse the shared browser speech-recognition hook in the profile bio editor
+- [x] Append dictated text to the editable bio instead of replacing it
+- [x] Preserve member review before saving and provide an unsupported-browser fallback
+- [x] Add regression coverage for profile voice-bio behavior
 
 ## Games Suite (Multiplayer + Profile-Building)
 - [ ] Schema: trivia_questions table (question, optionA-D, correctAnswer, category, difficulty)
