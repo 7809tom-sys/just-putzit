@@ -352,8 +352,14 @@
 
 ## WYR Answers → Sally Profile
 - [ ] Read WouldYouRather router to understand answer storage
-- [ ] After each WYR answer, run AI trait extraction and merge into userProfiles
-- [ ] Show 'Sally updated your profile' toast in WYR UI after extraction
+- [x] After each WYR answer, run AI trait extraction and merge into userProfiles
+- [x] Show 'Sally updated your profile' toast in WYR UI after extraction
+
+## Would You Rather Evidence-Grounded Insights
+- [x] Restrict game insight extraction to direct preference signals from an explicit answer
+- [x] Make profile-update feedback truthful by reporting only successfully saved new insights
+- [x] Show a non-disruptive member-facing confirmation when Sally saves a game-derived preference
+- [x] Add regression coverage for conservative WYR game insight handling
 
 ## All Games → Sally Profile (Matchmaking Intelligence)
 - [ ] WYR answers: extract traits async after every answer, merge into userProfiles

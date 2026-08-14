@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Scale, Sparkles, RotateCcw, Trophy, Users2 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { toast } from "sonner";
 
 type Choice = "A" | "B";
 
@@ -52,6 +53,10 @@ export default function WouldYouRather() {
         totalVotes: res.totalVotes,
       });
       setStreak((s) => s + 1);
+      if (res.profileUpdated && res.learnedTraits.length > 0) {
+        const preview = res.learnedTraits.slice(0, 2).join(" and ");
+        toast.success(`Sally saved a preference from your pick: ${preview}.`);
+      }
     },
   });
 

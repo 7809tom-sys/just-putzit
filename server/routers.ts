@@ -18,6 +18,7 @@ import { crawlAllCities } from "./museumLibraryCrawler";
 import { getLatestInterviewLearnings } from "./profileLearning";
 import { mergeProfileTraits } from "../shared/profileTraitMerge";
 import { buildProfileSummaryEvidence, isEvidenceGroundedProfileSummary } from "../shared/profileSummaryEvidence";
+import { sanitizeWyrProfileInsights } from "../shared/wyrProfileInsightPolicy";
 import { formatCompetitiveGameContext } from "../shared/competitiveGameContext";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
@@ -2423,23 +2424,23 @@ Return JSON with questions array, each having optionA and optionB.`,
       }),
 
     // Records the answer and returns the honest crowd split for that question.
-    // Also fires async trait extraction so Sally learns from every choice.
+    // Sally may retain only direct preference phrases from the selected option.
     answer: protectedProcedure
       .input(z.object({ questionId: z.number(), choice: z.enum(["A", "B"]) }))
       .mutation(async ({ ctx, input }) => {
         await recordWyrAnswer(ctx.user.id, input.questionId, input.choice);
         const split = await getWyrSplit(input.questionId);
         const total = split.a + split.b;
-        // Fire-and-forget: extract personality traits from this WYR choice
+        let profileInsight: { updated: boolean; learnedTraits: string[] } = { updated: false, learnedTraits: [] };
         const question = await getWyrQuestionById(input.questionId);
         if (question) {
           const chosenText = input.choice === "A" ? question.optionA : question.optionB;
-          const notChosenText = input.choice === "A" ? question.optionB : question.optionA;
-          extractTraitsFromGameplay({
+          const traits = await extractTraitsFromGameplay({
             gameType: "wyr",
             questionText: `Would you rather: "${question.optionA}" OR "${question.optionB}"`,
-            chosenOptionText: `Chose: "${chosenText}" (over "${notChosenText}")`,
-          }).then((traits) => mergeGameTraitsIntoProfile(ctx.user.id, traits)).catch(() => {});
+            chosenOptionText: chosenText,
+          });
+          profileInsight = await mergeGameTraitsIntoProfile(ctx.user.id, traits);
         }
         return {
           yourChoice: input.choice,
@@ -2448,7 +2449,8 @@ Return JSON with questions array, each having optionA and optionB.`,
           percentA: total === 0 ? 0 : Math.round((split.a / total) * 100),
           percentB: total === 0 ? 0 : Math.round((split.b / total) * 100),
           totalVotes: total,
-          profileUpdated: true,
+          profileUpdated: profileInsight.updated,
+          learnedTraits: profileInsight.learnedTraits,
         };
       }),
 
@@ -3763,7 +3765,7 @@ interface GameplaySignal {
 async function extractTraitsFromGameplay(signal: GameplaySignal): Promise<Partial<ProfileTraits>> {
   let userContent = "";
   if (signal.gameType === "wyr") {
-    userContent = `The player chose "${signal.chosenOptionText}" when asked: "${signal.questionText}". What does this reveal about their personality, values, or preferences?`;
+    userContent = `The player explicitly selected this option: "${signal.chosenOptionText}"\n\nQuestion context: "${signal.questionText}"`;
   } else if (signal.qaItems && signal.qaItems.length > 0) {
     const pairs = signal.qaItems.map(q => `Q: ${q.question}\nA: ${q.answer}`).join("\n\n");
     userContent = `Game type: ${signal.gameType}. Here are the player's answers:\n\n${pairs}\n\nWhat personality traits, interests, or values do these answers reveal?`;
@@ -3776,7 +3778,9 @@ async function extractTraitsFromGameplay(signal: GameplaySignal): Promise<Partia
       messages: [
         {
           role: "system",
-          content: `You are Sally from Just Putzit. Analyze this gameplay data and extract personality insights. Return a JSON object with any of these fields that are revealed: hobbies (array), favoriteActivities (array), personalityKeywords (array), interests (array), values (array), competitiveStyle (string: "very_competitive"|"casual"|"just_for_fun"), humorStyle (string), adventurousness (string: "low"|"medium"|"high"), socialStyle (string: "introvert"|"extrovert"|"ambivert"). Only include fields with clear evidence.`,
+          content: signal.gameType === "wyr"
+            ? `You are Sally from Just Putzit. A single Would You Rather selection establishes only a direct preference, never a personality trait. Return JSON with favoriteActivities, interests, and values arrays. Each entry must be a 1-6 word phrase copied exactly from the selected option. If no direct preference phrase is safe to retain, return empty arrays. Never infer labels such as adventurous, extrovert, funny, competitive, or anything not literally present in the selected option.`
+            : `You are Sally from Just Putzit. Analyze this gameplay data and extract personality insights. Return a JSON object with any of these fields that are revealed: hobbies (array), favoriteActivities (array), personalityKeywords (array), interests (array), values (array), competitiveStyle (string: "very_competitive"|"casual"|"just_for_fun"), humorStyle (string), adventurousness (string: "low"|"medium"|"high"), socialStyle (string: "introvert"|"extrovert"|"ambivert"). Only include fields with clear evidence.`,
         },
         { role: "user", content: userContent },
       ],
@@ -3804,35 +3808,47 @@ async function extractTraitsFromGameplay(signal: GameplaySignal): Promise<Partia
       },
     });
     const content = response.choices[0]?.message?.content as string | undefined;
-    return JSON.parse(typeof content === "string" ? content : "{}");
+    const parsed = JSON.parse(typeof content === "string" ? content : "{}");
+    return signal.gameType === "wyr"
+      ? sanitizeWyrProfileInsights(parsed, signal.chosenOptionText ?? "")
+      : parsed;
   } catch {
     return {};
   }
 }
 
-async function mergeGameTraitsIntoProfile(userId: number, newTraits: Partial<ProfileTraits>): Promise<void> {
-  if (!newTraits || Object.keys(newTraits).length === 0) return;
+async function mergeGameTraitsIntoProfile(userId: number, newTraits: Partial<ProfileTraits>): Promise<{ updated: boolean; learnedTraits: string[] }> {
+  if (!newTraits || Object.keys(newTraits).length === 0) return { updated: false, learnedTraits: [] };
   try {
     const profile = await getProfileByUserId(userId);
     const existing: ProfileTraits = (profile?.traits as ProfileTraits) ?? {};
 
     // Deep-merge arrays (deduplicate), overwrite scalar fields only if not already set
     const merged: ProfileTraits = { ...existing };
+    const learnedTraits: string[] = [];
     for (const [key, value] of Object.entries(newTraits)) {
       if (Array.isArray(value) && value.length > 0) {
         const existingArr: string[] = (existing as Record<string, unknown>)[key] as string[] ?? [];
-        const combined = Array.from(new Set([...existingArr, ...value]));
-        (merged as Record<string, unknown>)[key] = combined;
+        const known = new Set(existingArr.map((entry) => entry.toLocaleLowerCase()));
+        const additions = value.filter((entry): entry is string => typeof entry === "string" && !known.has(entry.toLocaleLowerCase()));
+        if (additions.length > 0) {
+          (merged as Record<string, unknown>)[key] = [...existingArr, ...additions];
+          learnedTraits.push(...additions);
+        }
       } else if (value !== undefined && value !== null && value !== "") {
         // Only overwrite scalar if not already set
         if (!(merged as Record<string, unknown>)[key]) {
           (merged as Record<string, unknown>)[key] = value;
+          learnedTraits.push(String(value));
         }
       }
     }
 
+    if (learnedTraits.length === 0) return { updated: false, learnedTraits: [] };
     await updateProfile(userId, { traits: merged });
+    return { updated: true, learnedTraits };
   } catch {
     // Silently fail — never block gameplay
+    return { updated: false, learnedTraits: [] };
   }
 }
