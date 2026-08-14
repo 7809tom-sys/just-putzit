@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { getDb, getTriviaPursuitChatMessages, sendTriviaPursuitChatMessage } from "../db";
+import { getDb, getTriviaPursuitChatMessages, recordCompetitiveGameResults, sendTriviaPursuitChatMessage } from "../db";
 import { triviaPursuitRooms, triviaPursuitRoomPlayers, triviaPursuitAnswers, triviaPursuitQuestions } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -348,6 +348,11 @@ export const triviaPursuitRouter = router({
       await db.update(triviaPursuitRooms)
         .set({ status: "completed", completedAt: new Date() })
         .where(eq(triviaPursuitRooms.id, room.id));
+
+      const players = await db.select({ userId: triviaPursuitRoomPlayers.userId, score: triviaPursuitRoomPlayers.score })
+        .from(triviaPursuitRoomPlayers)
+        .where(eq(triviaPursuitRoomPlayers.roomId, room.id));
+      await recordCompetitiveGameResults("trivia_pursuit", room.id, players);
 
       return { success: true };
     }),

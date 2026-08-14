@@ -512,7 +512,7 @@
 - [x] Integrate both games into GamesHub with cards
 - [x] Add navigation links to MobileBottomNav
 - [x] Create seed script with 1000 questions (500 Jeopardy + 500 Trivia)
-- [ ] Seed questions into database (connection issues - retry later)
+- [x] Seed questions into database (verified 550 Jeopardy and 243 Trivia Pursuit questions live)
 - [ ] Add game_results and player_stats tracking tables
 - [ ] Update routers to record game stats
 - [ ] Extract knowledge traits from game performance
@@ -1257,3 +1257,9 @@
 - [x] Record source-level refresh results, event counts, and failures for official community event feeds
 - [x] Show administrators the latest source health and a clear failure state
 - [x] Add regression coverage for source-health aggregation and rendering
+
+## Durable Game Results and Player Stats
+- [x] Persist completed Jeopardy and Trivia Pursuit player results without duplicating a room outcome
+- [x] Aggregate member game starts, completions, wins, and score totals
+- [x] Show a truthful game-achievement summary on the member dashboard
+- [x] Add regression coverage for game-result and player-stat aggregation

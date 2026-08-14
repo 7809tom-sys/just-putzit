@@ -48,6 +48,7 @@ import {
   venueOutreach,
   gameRooms,
   gameRoomPlayers,
+  gameResults,
   movieBookingClicks,
   entertainmentClicks,
   friendInvites,
@@ -2161,6 +2162,55 @@ export async function getEventSourceHealth() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(eventSourceHealth).orderBy(eventSourceHealth.city, eventSourceHealth.sourceLabel);
+}
+
+export async function recordCompetitiveGameResults(
+  gameType: "jeopardy" | "trivia_pursuit",
+  roomId: number,
+  players: Array<{ userId: number; score: number }>,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const sorted = [...players].sort((left, right) => right.score - left.score);
+  const topScore = sorted[0]?.score ?? 0;
+  const completedAt = new Date();
+  await Promise.all(sorted.map((player, index) =>
+    db.insert(gameResults).values({
+      gameType,
+      roomId,
+      userId: player.userId,
+      score: player.score,
+      rank: index + 1,
+      isWinner: player.score === topScore,
+      completedAt,
+    }).onDuplicateKeyUpdate({
+      set: {
+        score: player.score,
+        rank: index + 1,
+        isWinner: player.score === topScore,
+        completedAt,
+      },
+    })
+  ));
+}
+
+export async function getCompetitiveGameStatsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return { gamesCompleted: 0, wins: 0, totalScore: 0, jeopardyCompleted: 0, triviaCompleted: 0 };
+  const [summary] = await db.select({
+    gamesCompleted: sql<number>`COUNT(*)`,
+    wins: sql<number>`COALESCE(SUM(CASE WHEN ${gameResults.isWinner} = 1 THEN 1 ELSE 0 END), 0)`,
+    totalScore: sql<number>`COALESCE(SUM(${gameResults.score}), 0)`,
+    jeopardyCompleted: sql<number>`COALESCE(SUM(CASE WHEN ${gameResults.gameType} = 'jeopardy' THEN 1 ELSE 0 END), 0)`,
+    triviaCompleted: sql<number>`COALESCE(SUM(CASE WHEN ${gameResults.gameType} = 'trivia_pursuit' THEN 1 ELSE 0 END), 0)`,
+  }).from(gameResults).where(eq(gameResults.userId, userId));
+  return {
+    gamesCompleted: Number(summary?.gamesCompleted ?? 0),
+    wins: Number(summary?.wins ?? 0),
+    totalScore: Number(summary?.totalScore ?? 0),
+    jeopardyCompleted: Number(summary?.jeopardyCompleted ?? 0),
+    triviaCompleted: Number(summary?.triviaCompleted ?? 0),
+  };
 }
 
 export async function toggleSponsoredActivity(activityId: number, isSponsored: boolean) {

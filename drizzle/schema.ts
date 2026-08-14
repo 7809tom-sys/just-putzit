@@ -741,6 +741,21 @@ export const gameRoomPlayers = mysqlTable("game_room_players", {
 });
 export type GameRoomPlayer = typeof gameRoomPlayers.$inferSelect;
 
+// ─── Durable competitive game results ─────────────────────────────────────────
+export const gameResults = mysqlTable("game_results", {
+  id: int("id").autoincrement().primaryKey(),
+  gameType: mysqlEnum("gameType", ["jeopardy", "trivia_pursuit"]).notNull(),
+  roomId: int("roomId").notNull(),
+  userId: int("userId").notNull(),
+  score: int("score").notNull().default(0),
+  rank: int("rank").notNull(),
+  isWinner: boolean("isWinner").notNull().default(false),
+  completedAt: timestamp("completedAt").defaultNow().notNull(),
+}, (table) => ({
+  gameResultRoomPlayerUnique: uniqueIndex("game_results_room_player_unique").on(table.gameType, table.roomId, table.userId),
+}));
+export type GameResult = typeof gameResults.$inferSelect;
+
 // ─── Movie booking clicks (affiliate revenue tracking) ────────────────────────
 export const movieBookingClicks = mysqlTable("movie_booking_clicks", {
   id: int("id").autoincrement().primaryKey(),

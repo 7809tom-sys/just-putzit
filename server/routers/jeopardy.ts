@@ -1,7 +1,7 @@
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { getDb, getJeopardyChatMessages, sendJeopardyChatMessage } from "../db";
+import { getDb, getJeopardyChatMessages, recordCompetitiveGameResults, sendJeopardyChatMessage } from "../db";
 import { jeopardyRooms, jeopardyRoomPlayers, jeopardyAnswers, jeopardyQuestions, jeopardyCategories } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { answeredJeopardyClueIds } from "../../shared/jeopardyAnswerPolicy";
@@ -358,6 +358,11 @@ export const jeopardyRouter = router({
       await db.update(jeopardyRooms)
         .set({ status: "completed", completedAt: new Date() })
         .where(eq(jeopardyRooms.id, room.id));
+
+      const players = await db.select({ userId: jeopardyRoomPlayers.userId, score: jeopardyRoomPlayers.score })
+        .from(jeopardyRoomPlayers)
+        .where(eq(jeopardyRoomPlayers.roomId, room.id));
+      await recordCompetitiveGameResults("jeopardy", room.id, players);
 
       return { success: true };
     }),

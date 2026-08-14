@@ -138,6 +138,7 @@ import {
   createWyrChallenge,
   getWyrChallenge,
   getWyrChallengesForUser,
+  getCompetitiveGameStatsForUser,
   updateWyrChallengeStatus,
   computeWyrCompatibility,
   getCampusStats,
@@ -833,11 +834,12 @@ Rules:
   // ─── Member dashboard ─────────────────────────────────────────────────────
   dashboard: router({
     get: protectedProcedure.query(async ({ ctx }) => {
-      const [profile, bookings, wyrAnswerCount, challenges] = await Promise.all([
+      const [profile, bookings, wyrAnswerCount, challenges, competitiveGameStats] = await Promise.all([
         getProfileByUserId(ctx.user.id),
         getBookingsForUser(ctx.user.id),
         getWyrAnswerCount(ctx.user.id),
         getWyrChallengesForUser(ctx.user.id),
+        getCompetitiveGameStatsForUser(ctx.user.id),
       ]);
       const enrichedBookings = await Promise.all(bookings.map(async (booking) => {
         const [activity, venue] = await Promise.all([getActivityById(booking.activityId), getVenueById(booking.venueId)]);
@@ -866,6 +868,7 @@ Rules:
         upcomingBookings: upcomingBookings.slice(0, 3),
         upcomingBookingCount: upcomingBookings.length,
         achievements,
+        competitiveGameStats,
       };
     }),
   }),
