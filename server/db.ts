@@ -443,7 +443,7 @@ export async function getGameSessionsForMatch(matchId: number) {
 
 export async function createNotification(
   userId: number,
-  type: "new_match" | "game_ready" | "new_message" | "interview_reminder" | "pickup_invite" | "event_proposal",
+  type: "new_match" | "game_ready" | "new_message" | "interview_reminder" | "pickup_invite" | "event_proposal" | "report_update",
   title: string,
   body: string,
   relatedId?: number
@@ -521,7 +521,18 @@ export async function updateReportStatus(
 ) {
   const db = await getDb();
   if (!db) return;
+  const [report] = await db.select().from(reports).where(eq(reports.id, reportId)).limit(1);
+  if (!report || report.status === status) return;
   await db.update(reports).set({ status, reviewedAt: new Date() }).where(eq(reports.id, reportId));
+  if (status !== "pending") {
+    await createNotification(
+      report.reporterId,
+      "report_update",
+      "Your safety report was reviewed",
+      "A report you submitted has been reviewed. To protect everyone’s privacy, we can’t share any action taken. Thank you for helping keep Just Putzit safe.",
+      reportId,
+    );
+  }
 }
 
 export async function blockUser(blockerId: number, blockedUserId: number) {

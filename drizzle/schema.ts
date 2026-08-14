@@ -216,7 +216,7 @@ export type GameSession = typeof gameSessions.$inferSelect;
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["new_match", "game_ready", "new_message", "interview_reminder", "pickup_invite", "event_proposal"]).notNull(),
+  type: mysqlEnum("type", ["new_match", "game_ready", "new_message", "interview_reminder", "pickup_invite", "event_proposal", "report_update"]).notNull(),
   title: varchar("title", { length: 200 }).notNull(),
   body: text("body").notNull(),
   isRead: boolean("isRead").notNull().default(false),

@@ -1231,3 +1231,7 @@
 ## Distinct-Reporter Safety Escalation
 - [x] Suspend accounts only after three distinct members submit open reports and log the escalation for moderation
 - [x] Add regression coverage for distinct-reporter escalation safeguards
+
+## Private Report Follow-up Notifications
+- [x] Notify the reporter privately when an administrator records a report status, without disclosing the action taken
+- [x] Add regression coverage for report follow-up notification privacy
