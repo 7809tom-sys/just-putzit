@@ -96,6 +96,9 @@ interface EventCardProps {
   onRsvp?: (id: number) => void;
   rsvpLoading?: boolean;
   hasRsvped?: boolean;
+  introductionOptIn?: boolean;
+  onToggleIntroductionOptIn?: (id: number, nextValue: boolean) => void;
+  introductionLoading?: boolean;
   interestedCount?: number;
   isInterested?: boolean;
   onToggleInterest?: (id: number) => void;
@@ -104,7 +107,7 @@ interface EventCardProps {
   userLng?: number;
 }
 
-function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0, isInterested = false, onToggleInterest, interestLoading, userLat, userLng }: EventCardProps) {
+function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, introductionOptIn = false, onToggleIntroductionOptIn, introductionLoading, interestedCount = 0, isInterested = false, onToggleInterest, interestLoading, userLat, userLng }: EventCardProps) {
   const CatIcon = CATEGORIES.find((c) => c.value === event.category)?.icon ?? Star;
   const numericId = typeof event.id === "string" ? parseInt(event.id.replace("eb_", ""), 10) : event.id;
 
@@ -238,6 +241,19 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0,
               )}
             </Button>
           ) : null}
+          {hasRsvped && onToggleIntroductionOptIn && typeof event.id === "number" ? (
+            <button
+              type="button"
+              title="Sally may offer a public-event introduction only if another attendee independently opts in. Attendee identities stay private until both people agree."
+              onClick={() => onToggleIntroductionOptIn(numericId, !introductionOptIn)}
+              disabled={introductionLoading}
+              className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+                introductionOptIn ? "border-teal-400/40 bg-teal-500/15 text-teal-100" : "border-white/10 text-gray-300 hover:border-teal-400/40 hover:text-teal-100"
+              }`}
+            >
+              {introductionOptIn ? "Sally intro on" : "Open to an intro"}
+            </button>
+          ) : null}
           {event.externalUrl && (
             <a
               href={event.externalUrl}
@@ -295,7 +311,7 @@ export default function Events() {
     radiusMiles: hasGps ? radiusMiles : undefined,
   });
 
-  const { data: myRsvps = [] } = trpc.events.myRsvps.useQuery(undefined, {
+  const { data: myRsvps = [], refetch: refetchRsvps } = trpc.events.myRsvps.useQuery(undefined, {
     enabled: !!user,
   });
 
@@ -305,6 +321,10 @@ export default function Events() {
 
   const rsvpedIds = useMemo(() => {
     return new Set((myRsvps as Array<{ rsvp: { eventId: number } }>).map((r) => r.rsvp.eventId));
+  }, [myRsvps]);
+
+  const introductionOptInIds = useMemo(() => {
+    return new Set((myRsvps as Array<{ rsvp: { eventId: number; openToSallyIntroduction?: boolean } }>).filter((r) => r.rsvp.openToSallyIntroduction).map((r) => r.rsvp.eventId));
   }, [myRsvps]);
 
   const interestedIds = useMemo(() => {
@@ -327,6 +347,16 @@ export default function Events() {
     },
   });
 
+  const introductionOptInMutation = trpc.events.setIntroductionOptIn.useMutation({
+    onSuccess: (data) => {
+      void refetchRsvps();
+      toast.success(data.openToSallyIntroduction ? "Sally introductions enabled" : "Sally introductions turned off", {
+        description: data.openToSallyIntroduction ? "You remain private until both attendees independently agree to an introduction." : "You will not be considered for attendee introductions at this event.",
+      });
+    },
+    onError: (error) => toast.error(error.message || "Could not update your introduction setting."),
+  });
+
   async function handleRefreshList() {
     setIsRefreshing(true);
     try {
@@ -346,6 +376,14 @@ export default function Events() {
     }
     setRsvpingId(eventId);
     rsvpMutation.mutate({ eventId });
+  }
+
+  function handleIntroductionOptIn(eventId: number, openToSallyIntroduction: boolean) {
+    if (!user) {
+      toast.error("Sign in to manage event introductions.");
+      return;
+    }
+    introductionOptInMutation.mutate({ eventId, openToSallyIntroduction });
   }
 
   const interestMutation = trpc.events.markInterest.useMutation({
@@ -613,6 +651,9 @@ export default function Events() {
                 onRsvp={user ? handleRsvp : undefined}
                 rsvpLoading={rsvpingId === event.id}
                 hasRsvped={rsvpedIds.has(event.id)}
+                introductionOptIn={introductionOptInIds.has(event.id)}
+                onToggleIntroductionOptIn={user ? handleIntroductionOptIn : undefined}
+                introductionLoading={introductionOptInMutation.isPending}
                 onToggleInterest={user ? handleToggleInterest : undefined}
                 isInterested={interestedIds.has(event.id)}
                 interestLoading={interestingId === event.id}

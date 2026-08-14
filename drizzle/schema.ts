@@ -648,6 +648,7 @@ export const eventRsvps = mysqlTable("event_rsvps", {
   id: int("id").autoincrement().primaryKey(),
   eventId: int("eventId").notNull(),
   userId: int("userId").notNull(),
+  openToSallyIntroduction: boolean("openToSallyIntroduction").notNull().default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type EventRsvp = typeof eventRsvps.$inferSelect;

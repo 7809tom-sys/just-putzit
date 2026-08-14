@@ -1301,3 +1301,8 @@
 - [x] Detect repeated low-signal interview responses and create a review-only administrator flag
 - [x] Keep behavioral review flags private, non-punitive, and free of automatic suspension
 - [x] Add regression coverage for behavioral review eligibility and duplicate prevention
+
+## RSVP-based Sally Introductions
+- [x] Let attendees explicitly opt in to a Sally introduction with another attendee of the same public event
+- [ ] Require mutual consent and preserve block/report safeguards before creating an event connection
+- [x] Add regression coverage for RSVP introduction eligibility and privacy

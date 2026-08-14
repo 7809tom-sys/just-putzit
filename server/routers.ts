@@ -159,6 +159,7 @@ import {
   getAdminSallyEventFeedback,
   createCommunityEvent,
   rsvpToEvent,
+  setEventIntroductionOptIn,
   getUserEventRsvps,
   getEventbriteEvents,
   getPasskeysForUser,
@@ -2867,6 +2868,12 @@ Return JSON with questions array, each having optionA and optionB.`,
       .input(z.object({ eventId: z.number().int() }))
       .mutation(async ({ ctx, input }) => {
         return rsvpToEvent(input.eventId, ctx.user.id);
+      }),
+
+    setIntroductionOptIn: protectedProcedure
+      .input(z.object({ eventId: z.number().int(), openToSallyIntroduction: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        return setEventIntroductionOptIn(input.eventId, ctx.user.id, input.openToSallyIntroduction);
       }),
 
     myRsvps: protectedProcedure.query(async ({ ctx }) => {

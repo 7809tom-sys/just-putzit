@@ -1943,6 +1943,22 @@ export async function rsvpToEvent(eventId: number, userId: number) {
   return { alreadyRsvped: false };
 }
 
+export async function setEventIntroductionOptIn(eventId: number, userId: number, openToSallyIntroduction: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const existing = await db
+    .select({ id: eventRsvps.id })
+    .from(eventRsvps)
+    .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)))
+    .limit(1);
+  if (!existing[0]) throw new Error("RSVP to this public event before opting in to introductions");
+  await db
+    .update(eventRsvps)
+    .set({ openToSallyIntroduction })
+    .where(eq(eventRsvps.id, existing[0].id));
+  return { openToSallyIntroduction };
+}
+
 export async function getUserEventRsvps(userId: number) {
   const db = await getDb();
   if (!db) return [];
