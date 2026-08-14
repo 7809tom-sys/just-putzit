@@ -1284,3 +1284,11 @@
 ## Durable WebAuthn Challenges
 - [x] Persist one-time WebAuthn registration and authentication challenges with expiration
 - [x] Consume challenges after use and add regression coverage for challenge lifecycle rules
+
+## Biometric Enrollment and Sign-in Polish
+- [ ] Verify post-login biometric enrollment is offered at an appropriate member entry point
+- [ ] Verify passkey sign-in hook usage is stable and add regression coverage for the member-facing flow
+
+## AccountVerify Render-Safety Repair
+- [x] Move verification-status state updates and redirect logic out of the AccountVerify render path
+- [x] Add regression coverage for safe verification status synchronization

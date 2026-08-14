@@ -6,7 +6,7 @@
  *
  * Users are redirected here automatically if they haven't completed both steps.
  */
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -27,18 +27,18 @@ export default function AccountVerify() {
 
   const { data: verificationStatus } = trpc.passkey.verificationStatus.useQuery();
 
-  // React to verification status changes
-  const prevStatusRef = useRef<{ passkeyVerified: boolean; gpsPhotoVerified: boolean } | null>(null);
-  if (verificationStatus && prevStatusRef.current === null) {
-    prevStatusRef.current = verificationStatus;
+  // React to verification status changes after render so the gate never navigates
+  // or changes state while React is reconciling this component.
+  useEffect(() => {
+    if (!verificationStatus) return;
     if (verificationStatus.passkeyVerified) setPasskeyDone(true);
     if (verificationStatus.gpsPhotoVerified) setGpsDone(true);
     if (verificationStatus.passkeyVerified && verificationStatus.gpsPhotoVerified) {
       navigate("/");
-    } else if (verificationStatus.passkeyVerified && !verificationStatus.gpsPhotoVerified) {
+    } else if (verificationStatus.passkeyVerified) {
       setStep(2);
     }
-  }
+  }, [verificationStatus?.passkeyVerified, verificationStatus?.gpsPhotoVerified, navigate]);
 
   // ── Passkey registration ──────────────────────────────────────────────────
   const utils = trpc.useUtils();
