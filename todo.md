@@ -1162,3 +1162,8 @@
 - [x] Add a safe “Invite a match” entry point for saved public-event plans
 - [x] Reuse private acceptance, block, and event-proposal safeguards for plan invitations
 - [x] Add regression coverage for event-only plan invitations
+
+## Safety & Trust Accuracy
+- [x] Replace unsupported safety guarantees with accurate descriptions of implemented controls
+- [x] Add practical report, block, public-meeting, and emergency guidance to the Safety page
+- [x] Add regression coverage and responsive verification for revised Safety & Trust content
