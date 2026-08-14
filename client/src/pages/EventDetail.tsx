@@ -4,14 +4,17 @@
  * No login required to VIEW — users are prompted to sign up to RSVP.
  */
 import { useParams, useLocation } from "wouter";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight, Bookmark, BookmarkCheck } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { formatSimilarEventDistance } from "@shared/similarEventDetails";
 import { getActivityBookmarkFeedback, isActivityBookmarked } from "@shared/activityBookmarks";
+import { sortSimilarEvents, type SimilarEventSort } from "@shared/similarEventSorting";
 import { toast } from "sonner";
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -25,6 +28,7 @@ export default function EventDetail() {
   const { activityId } = useParams<{ activityId: string }>();
   const [, navigate] = useLocation();
   const id = parseInt(activityId ?? "0", 10);
+  const [similarSort, setSimilarSort] = useState<SimilarEventSort>("personalized");
 
   const { data: activity, isLoading, error } = trpc.activityBoard.publicGetById.useQuery(
     { activityId: id },
@@ -48,6 +52,10 @@ export default function EventDetail() {
   const { data: similarEvents } = trpc.activityBoard.similarForActivity.useQuery(
     { activityId: id },
     { enabled: Boolean(viewer) && id > 0 },
+  );
+  const sortedSimilarEvents = useMemo(
+    () => sortSimilarEvents(similarEvents?.activities ?? [], similarSort),
+    [similarEvents?.activities, similarSort],
   );
 
   // Build SEO data from activity
@@ -190,10 +198,20 @@ export default function EventDetail() {
                   <h2 className="mt-1 font-display text-2xl font-bold">Similar Events You Might Like</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{similarEvents.basedOnPreferences ? "Based on activities you’ve saved, RSVP’d to, or attended." : "More nearby activities in this area to explore."}</p>
                 </div>
-                <Button variant="ghost" size="sm" className="shrink-0 rounded-full" onClick={() => navigate("/activities")}>Browse all <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
+                <div className="flex items-center gap-2">
+                  <Select value={similarSort} onValueChange={(value) => setSimilarSort(value as SimilarEventSort)}>
+                    <SelectTrigger aria-label="Sort similar events" className="h-9 w-[142px] rounded-full bg-white text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="personalized">Best match</SelectItem>
+                      <SelectItem value="date">Soonest date</SelectItem>
+                      <SelectItem value="distance">Closest first</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="sm" className="shrink-0 rounded-full" onClick={() => navigate("/activities")}>Browse all <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
+                </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                {similarEvents.activities.map((event) => {
+                {sortedSimilarEvents.map((event) => {
                   const eventDate = event.eventDate ? new Date(event.eventDate) : null;
                   const bookmarked = isActivityBookmarked(bookmarkedActivityIds, event.id);
                   return <div key={event.id} className="relative rounded-2xl border border-border bg-white p-4 shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:border-primary/40">

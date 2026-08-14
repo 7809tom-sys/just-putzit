@@ -1127,3 +1127,8 @@
 ## Similar Event Bookmark Toast Feedback
 - [x] Show a distinct short success toast when a similar event is saved
 - [x] Preserve clear removal feedback and add regression coverage
+
+## Similar Event Sorting
+- [x] Add stable personalized, date, and distance sorting for similar-event recommendations
+- [x] Add an accessible sorting dropdown to event-detail recommendations
+- [x] Add regression coverage and responsive verification for similar-event sorting
