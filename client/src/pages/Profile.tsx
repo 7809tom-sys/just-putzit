@@ -80,6 +80,9 @@ export default function Profile() {
   const [bioEditOpen, setBioEditOpen] = useState(false);
   const [bioText, setBioText] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [connectionOpen, setConnectionOpen] = useState(false);
+  const [friendshipEnabled, setFriendshipEnabled] = useState(false);
+  const [datingEnabled, setDatingEnabled] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   const updateBirthday = trpc.profile.updateIdentity.useMutation({
@@ -107,6 +110,14 @@ export default function Profile() {
       setBioEditOpen(false);
     },
     onError: (err) => toast.error("Failed to save bio: " + err.message),
+  });
+  const updateConnectionPreferences = trpc.profile.updateConnectionPreferences.useMutation({
+    onSuccess: () => {
+      utils.profile.get.invalidate();
+      toast.success("Connection settings saved", { description: "Your community, friendship, and dating choices stay private." });
+      setConnectionOpen(false);
+    },
+    onError: (err) => toast.error("Couldn’t save connection settings", { description: err.message }),
   });
 
   function openBioEdit() {
@@ -167,6 +178,7 @@ export default function Profile() {
 
   const traits = profile?.traits as any;
   const profileAny = profile as any;
+  const connectionPreferences = traits?.connectionPreferences ?? { community: true, friendship: false, dating: false };
 
   // Compute age from birth_date (YYYY-MM-DD string)
   const age = profileAny?.birthDate
@@ -226,6 +238,16 @@ export default function Profile() {
     updateBirthday.mutate({
       birthDate: birthDateStr,
     });
+  }
+
+  function openConnectionPreferences() {
+    setFriendshipEnabled(connectionPreferences.friendship === true);
+    setDatingEnabled(connectionPreferences.dating === true);
+    setConnectionOpen(true);
+  }
+
+  function saveConnectionPreferences() {
+    updateConnectionPreferences.mutate({ friendship: friendshipEnabled, dating: datingEnabled });
   }
 
 
@@ -348,6 +370,23 @@ export default function Profile() {
             ) : (
               <p className="text-sm text-muted-foreground italic">Tap "Add bio" to tell people about yourself — or use your voice!</p>
             )}
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-teal-200 bg-teal-50/70 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-800">Connection settings</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">Community activities are always on</p>
+                <p className="mt-1 text-sm text-muted-foreground">Friendship and dating introductions only happen when both people choose the same option.</p>
+              </div>
+              <Button type="button" size="sm" variant="outline" className="rounded-full border-teal-200 bg-white" onClick={openConnectionPreferences}><Edit2 className="mr-1.5 h-3.5 w-3.5" />Edit</Button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Badge className="rounded-full border-0 bg-teal-100 text-teal-800">🧡 Community</Badge>
+              {connectionPreferences.friendship && <Badge className="rounded-full border-0 bg-blue-100 text-blue-800">🤝 Friendship</Badge>}
+              {connectionPreferences.dating && <Badge className="rounded-full border-0 bg-rose-100 text-rose-800">💛 Dating</Badge>}
+              {!connectionPreferences.friendship && !connectionPreferences.dating && <Badge variant="outline" className="rounded-full border-teal-200 bg-white text-teal-800">Community only</Badge>}
+            </div>
           </div>
 
           {/* AI Summary */}
@@ -629,6 +668,22 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Connection Preference Dialog */}
+      <Dialog open={connectionOpen} onOpenChange={setConnectionOpen}>
+        <DialogContent className="max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Your connection settings</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="rounded-2xl border border-teal-200 bg-teal-50 p-3"><p className="font-semibold text-teal-900">🧡 Community activities</p><p className="mt-1 text-xs text-teal-800">Always available. Joining an event does not put you in a dating pool.</p></div>
+            <button type="button" onClick={() => setFriendshipEnabled((value) => !value)} className={`w-full rounded-2xl border-2 p-4 text-left ${friendshipEnabled ? "border-primary bg-primary/5" : "border-border bg-white"}`}><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">🤝 Open to new friendships</p><p className="mt-1 text-sm text-muted-foreground">Allow Sally to introduce public-activity companions.</p></div><span className={`flex h-6 w-6 items-center justify-center rounded-full ${friendshipEnabled ? "bg-primary text-white" : "border border-muted-foreground/40 text-transparent"}`}>✓</span></div></button>
+            <button type="button" onClick={() => setDatingEnabled((value) => !value)} className={`w-full rounded-2xl border-2 p-4 text-left ${datingEnabled ? "border-primary bg-primary/5" : "border-border bg-white"}`}><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">💛 Open to dating introductions</p><p className="mt-1 text-sm text-muted-foreground">Only match with people who have chosen the same option.</p></div><span className={`flex h-6 w-6 items-center justify-center rounded-full ${datingEnabled ? "bg-primary text-white" : "border border-muted-foreground/40 text-transparent"}`}>✓</span></div></button>
+            <p className="px-1 text-xs leading-relaxed text-muted-foreground">These choices are private. You can turn them off any time, and they never affect your access to local events.</p>
+            <div className="flex gap-2 pt-1"><Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setConnectionOpen(false)}>Cancel</Button><Button type="button" className="flex-1 rounded-xl gradient-sally text-white" disabled={updateConnectionPreferences.isPending} onClick={saveConnectionPreferences}>{updateConnectionPreferences.isPending ? "Saving…" : "Save settings"}</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Bio Edit Dialog */}
       <Dialog open={bioEditOpen} onOpenChange={setBioEditOpen}>

@@ -28,6 +28,7 @@ import { getPickupSafetyError, PICKUP_ACTIVITY_TYPES, pickupTemplate, selectSimi
 import { getSponsoredPlacementEligibility, getSponsoredPlacementPackage, type SponsoredPlacementPackage } from "../shared/sponsoredPlacementPolicy";
 import { selectSimilarEventDetails } from "../shared/similarEventDetails";
 import { isEligiblePublicEventProposal } from "../shared/eventProposalPolicy";
+import { hasSharedConnectionIntent, normalizeConnectionPreferences } from "../shared/connectionPreferences";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -529,11 +530,33 @@ export const appRouter = router({
           avatarColor: z.string(),
           displayName: z.string(),
           networkType: z.enum(["singles", "couples", "community"]),
+          connectionPreferences: z.object({ friendship: z.boolean(), dating: z.boolean() }),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        await getOrCreateProfile(ctx.user.id);
-        await updateProfile(ctx.user.id, { ...input, onboardingComplete: true });
+        const profile = await getOrCreateProfile(ctx.user.id);
+        const { connectionPreferences, ...profileInput } = input;
+        await updateProfile(ctx.user.id, {
+          ...profileInput,
+          traits: {
+            ...(profile?.traits ?? {}),
+            connectionPreferences: normalizeConnectionPreferences(connectionPreferences),
+          },
+          onboardingComplete: true,
+        });
+        return getProfileByUserId(ctx.user.id);
+      }),
+
+    updateConnectionPreferences: protectedProcedure
+      .input(z.object({ friendship: z.boolean(), dating: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await getOrCreateProfile(ctx.user.id);
+        await updateProfile(ctx.user.id, {
+          traits: {
+            ...(profile?.traits ?? {}),
+            connectionPreferences: normalizeConnectionPreferences(input),
+          },
+        });
         return getProfileByUserId(ctx.user.id);
       }),
 
@@ -868,13 +891,17 @@ Rules:
     findMatches: protectedProcedure.mutation(async ({ ctx }) => {
       const myProfile = await getProfileByUserId(ctx.user.id);
       if (!myProfile) throw new Error("Complete your profile first");
+      const myPreferences = normalizeConnectionPreferences((myProfile.traits as ProfileTraits | null)?.connectionPreferences);
+      if (!myPreferences.friendship && !myPreferences.dating) {
+        return { matches: [], preferenceRequired: true };
+      }
 
       const allProfiles = await getAllProfiles();
       const candidates = allProfiles.filter(
-        p => p.userId !== ctx.user.id && p.onboardingComplete && p.interviewCount > 0
+        p => p.userId !== ctx.user.id && p.onboardingComplete && p.interviewCount > 0 && hasSharedConnectionIntent(myPreferences, (p.traits as ProfileTraits | null)?.connectionPreferences)
       );
 
-      if (candidates.length === 0) return { matches: [] };
+      if (candidates.length === 0) return { matches: [], preferenceRequired: false };
 
       const newMatches = [];
       for (const candidate of candidates.slice(0, 5)) {
@@ -929,7 +956,7 @@ Return a JSON object with:
         }
       }
 
-      return { matches: newMatches };
+      return { matches: newMatches, preferenceRequired: false };
     }),
 
     getMatchDetails: protectedProcedure

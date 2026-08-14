@@ -13,9 +13,9 @@ const COLORS = [
   "#84cc16", "#6366f1", "#14b8a6", "#f43f5e",
 ];
 const NETWORKS = [
-  { value: "singles", label: "Singles Network", emoji: "💙", desc: "Find connections & dates" },
-  { value: "couples", label: "Couples Network", emoji: "💚", desc: "Meet other couples" },
-  { value: "community", label: "Community Events", emoji: "🧡", desc: "Local activities & groups" },
+  { value: "singles", label: "Just me", emoji: "💙", desc: "Personal activities and connections" },
+  { value: "couples", label: "My partner and me", emoji: "💚", desc: "Double dates and shared activities" },
+  { value: "community", label: "Community first", emoji: "🧡", desc: "Local events, groups, and activities" },
 ];
 
 export default function Onboarding() {
@@ -26,6 +26,8 @@ export default function Onboarding() {
   const [avatarEmoji, setAvatarEmoji] = useState("😊");
   const [avatarColor, setAvatarColor] = useState("#f97316");
   const [networkType, setNetworkType] = useState<"singles" | "couples" | "community">("singles");
+  const [friendshipEnabled, setFriendshipEnabled] = useState(false);
+  const [datingEnabled, setDatingEnabled] = useState(false);
 
   const completeOnboarding = trpc.profile.completeOnboarding.useMutation({
     onSuccess: () => {
@@ -40,7 +42,7 @@ export default function Onboarding() {
       toast.error("Please enter your name");
       return;
     }
-    completeOnboarding.mutate({ avatarEmoji, avatarColor, displayName: displayName.trim(), networkType });
+    completeOnboarding.mutate({ avatarEmoji, avatarColor, displayName: displayName.trim(), networkType, connectionPreferences: { friendship: friendshipEnabled, dating: datingEnabled } });
   };
 
   return (
@@ -57,7 +59,7 @@ export default function Onboarding() {
 
         {/* Step indicator */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3].map(s => (
+          {[1, 2, 3, 4].map(s => (
             <div key={s} className={`h-2 rounded-full transition-all duration-300 ${s === step ? "w-8 bg-primary" : s < step ? "w-4 bg-primary/40" : "w-4 bg-muted"}`} />
           ))}
         </div>
@@ -142,7 +144,7 @@ export default function Onboarding() {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="font-display font-bold text-xl mb-2">Which network fits you?</h2>
-              <p className="text-muted-foreground text-sm">You can always change this later</p>
+              <p className="text-muted-foreground text-sm">This only organizes your home base. Your connection choices are next.</p>
             </div>
             <div className="space-y-3">
               {NETWORKS.map(n => (
@@ -161,13 +163,32 @@ export default function Onboarding() {
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setStep(2)}>← Back</Button>
-              <Button
-                className="flex-1 gradient-sally text-white border-0 rounded-xl btn-scale"
-                onClick={handleFinish}
-                disabled={completeOnboarding.isPending}
-              >
-                {completeOnboarding.isPending ? "Setting up..." : "Let's Go! 🚀"}
-              </Button>
+              <Button className="flex-1 gradient-sally text-white border-0 rounded-xl btn-scale" onClick={() => setStep(4)}>Next →</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Explicit connection opt-ins */}
+        {step === 4 && (
+          <div className="space-y-5">
+            <div className="text-center">
+              <h2 className="font-display font-bold text-xl mb-2">How would you like to connect?</h2>
+              <p className="text-muted-foreground text-sm">Community events stay on. Dating and friendship introductions are optional and private.</p>
+            </div>
+            <div className="rounded-2xl border border-teal-200 bg-teal-50 p-4">
+              <p className="font-semibold text-teal-900">🧡 Community activities</p>
+              <p className="mt-1 text-sm text-teal-800">Always on. Browse events and join public groups without appearing in a dating pool.</p>
+            </div>
+            <button type="button" onClick={() => setFriendshipEnabled((value) => !value)} className={`w-full rounded-2xl border-2 p-4 text-left transition-colors ${friendshipEnabled ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/40"}`}>
+              <div className="flex items-start justify-between gap-3"><div><p className="font-semibold">🤝 Open to new friendships</p><p className="mt-1 text-sm text-muted-foreground">Let Sally introduce compatible people for shared public activities.</p></div><span className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-sm ${friendshipEnabled ? "bg-primary text-white" : "border border-muted-foreground/40 text-transparent"}`}>✓</span></div>
+            </button>
+            <button type="button" onClick={() => setDatingEnabled((value) => !value)} className={`w-full rounded-2xl border-2 p-4 text-left transition-colors ${datingEnabled ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/40"}`}>
+              <div className="flex items-start justify-between gap-3"><div><p className="font-semibold">💛 Open to dating introductions</p><p className="mt-1 text-sm text-muted-foreground">Only see date-oriented introductions with people who also opt in.</p></div><span className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-sm ${datingEnabled ? "bg-primary text-white" : "border border-muted-foreground/40 text-transparent"}`}>✓</span></div>
+            </button>
+            <p className="rounded-xl bg-muted/50 px-3 py-2 text-center text-xs text-muted-foreground">You can change these settings anytime from your profile. No one sees your choices unless you both opt in to the same kind of connection.</p>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setStep(3)}>← Back</Button>
+              <Button className="flex-1 gradient-sally text-white border-0 rounded-xl btn-scale" onClick={handleFinish} disabled={completeOnboarding.isPending}>{completeOnboarding.isPending ? "Setting up..." : "Let's Go! 🚀"}</Button>
             </div>
           </div>
         )}

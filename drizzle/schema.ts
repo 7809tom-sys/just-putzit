@@ -51,6 +51,11 @@ export type ProfileTraits = {
   idealDate?: string;
   perfectSunday?: string;
   aiSummary?: string;
+  connectionPreferences?: {
+    community: true;
+    friendship: boolean;
+    dating: boolean;
+  };
   [key: string]: unknown;
 };
 

@@ -12,7 +12,9 @@ export default function Matches() {
   const { data: profile } = trpc.profile.get.useQuery();
   const findMatches = trpc.matchmaking.findMatches.useMutation({
     onSuccess: data => {
-      if (data.matches.length > 0) {
+      if (data.preferenceRequired) {
+        toast.info("Choose a connection preference first", { description: "Open your profile and opt into friendship or dating introductions when you are ready." });
+      } else if (data.matches.length > 0) {
         toast.success(`Sally found ${data.matches.length} new match${data.matches.length !== 1 ? "es" : ""}! 🎉`);
         refetch();
       } else {

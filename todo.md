@@ -1142,3 +1142,8 @@
 - [x] Add an accessible list-and-map toggle for filtered Similar Events
 - [x] Render local recommendation markers with clear event details and map fallback
 - [x] Add regression coverage and responsive verification for Similar Events map view
+
+## Opt-in Dating and Friendship Preferences
+- [x] Store explicit community, friendship, and dating preference choices with private defaults
+- [x] Add clear, editable preference choices to onboarding and the member profile
+- [x] Add regression coverage and responsive verification for opt-in connection preferences
