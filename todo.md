@@ -1157,3 +1157,8 @@
 - [x] Add City of Madison civic and recreation events to the daily official-source scrape
 - [x] Add and validate source adapters for Madison library, performing-arts, and public church calendars
 - [ ] Add compliant feed or API alternatives for official sources that reject server-side calendar requests
+
+## Today’s Plan Match Coordination
+- [x] Add a safe “Invite a match” entry point for saved public-event plans
+- [x] Reuse private acceptance, block, and event-proposal safeguards for plan invitations
+- [x] Add regression coverage for event-only plan invitations

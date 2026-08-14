@@ -17,6 +17,7 @@ import { toggleHomepageSection } from "@shared/homepageLayout";
 import { filterHomepageDiscovery, type HomepageDiscoveryDateRange, type HomepageDiscoverySort } from "@shared/homepageDiscovery";
 import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
 import { buildTodayPlanSelection } from "@shared/todaysPlan";
+import { TodayPlanInviteDialog } from "@/components/TodayPlanInviteDialog";
 
 // ─── Module definitions ───────────────────────────────────────────────────────
 
@@ -515,6 +516,7 @@ function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
   const { data: plan } = trpc.homepage.getTodaysPlan.useQuery();
   const savePlan = trpc.homepage.saveTodaysPlan.useMutation({ onSuccess: () => utils.homepage.getTodaysPlan.invalidate() });
   const clearPlan = trpc.homepage.clearTodaysPlan.useMutation({ onSuccess: () => utils.homepage.getTodaysPlan.invalidate() });
+  const { data: myMatches = [] } = trpc.matchmaking.getMyMatches.useQuery();
 
   const items: NearbyDiscoveryItem[] = [
     ...events.map((event: any) => ({
@@ -548,8 +550,12 @@ function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
 
       {planTitle && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-primary/5 p-4">
-          <div><p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Today’s plan</p><p className="mt-1 font-semibold text-foreground">{planTitle}</p>{selected?.venueName && <p className="text-xs text-muted-foreground">{selected.venueName} · {selected.distanceMiles != null ? formatMilesAway(selected.distanceMiles) : "nearby"}</p>}</div>
-          <div className="flex gap-2"><Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => clearPlan.mutate()}>Clear</Button>{selected && <Button type="button" size="sm" className="rounded-full" onClick={() => navigate(selected.kind === "event" ? "/events" : `/activities/${selected.id}`)}>Open</Button>}</div>
+          <div><p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Today's plan</p><p className="mt-1 font-semibold text-foreground">{planTitle}</p>{selected?.venueName && <p className="text-xs text-muted-foreground">{selected.venueName} · {selected.distanceMiles != null ? formatMilesAway(selected.distanceMiles) : "nearby"}</p>}</div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => clearPlan.mutate()}>Clear</Button>
+            {selected && <Button type="button" size="sm" className="rounded-full" onClick={() => navigate(selected.kind === "event" ? "/events" : `/activities/${selected.id}`)}>Open</Button>}
+            {plan?.eventId && selected?.kind === "event" && myMatches.length > 0 && <TodayPlanInviteDialog eventId={plan.eventId} eventTitle={selected.title} eventDate={selected.eventDate} venueName={selected.venueName} matches={myMatches} />}
+          </div>
         </div>
       )}
 
