@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCommunityCalendarDate } from "./communityScraper";
+import { isLocalMadisonCampusEvent, parseCommunityCalendarDate } from "./communityScraper";
 
 describe("official Madison community calendar parsing", () => {
   const referenceDate = new Date(2026, 7, 14, 9, 0, 0);
@@ -16,5 +16,11 @@ describe("official Madison community calendar parsing", () => {
 
   it("rejects date-free content so non-event headings are not published", () => {
     expect(parseCommunityCalendarDate("Coming Up", referenceDate)).toBeNull();
+  });
+
+  it("keeps local campus listings while excluding virtual and out-of-area events", () => {
+    expect(isLocalMadisonCampusEvent({ id: 1, location: "Memorial Union", latlon: "43.0764,-89.4012" })).toBe(true);
+    expect(isLocalMadisonCampusEvent({ id: 2, location: "Online" })).toBe(false);
+    expect(isLocalMadisonCampusEvent({ id: 3, location: "Faraway venue", latlon: "44.9765,-93.2650" })).toBe(false);
   });
 });

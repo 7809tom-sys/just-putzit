@@ -1157,6 +1157,7 @@
 - [x] Add City of Madison civic and recreation events to the daily official-source scrape
 - [x] Add and validate source adapters for Madison library, performing-arts, and public church calendars
 - [ ] Add compliant feed or API alternatives for official sources that reject server-side calendar requests
+- [x] Integrate the official UW–Madison event JSON feed for current campus and performance listings
 
 ## Today’s Plan Match Coordination
 - [x] Add a safe “Invite a match” entry point for saved public-event plans

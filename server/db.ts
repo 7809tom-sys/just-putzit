@@ -2672,6 +2672,7 @@ export async function upsertScrapedEvents(events: Array<{
       "City of Madison": "community",
       "Overture Center": "scraped",
       "City Church Madison": "church",
+      "UW–Madison Events Calendar": "university",
     };
     const source = (sourceMap[ev.sourceName] ?? "scraped") as CommunityEvent["source"];
 

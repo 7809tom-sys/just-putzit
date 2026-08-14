@@ -480,6 +480,65 @@ export async function scrapeCityChurchMadison(): Promise<ScrapedEvent[]> {
   return futureEvents(dedupeScrapedEvents(events));
 }
 
+type UWMadisonCalendarEvent = {
+  id: number | string;
+  title?: string;
+  description?: string;
+  startDate?: string;
+  startDateUnix?: number;
+  endDateUnix?: number | null;
+  cost?: string;
+  url?: string;
+  location?: string;
+  latlon?: string;
+  sponsor?: string;
+  tags?: string[];
+};
+
+export function isLocalMadisonCampusEvent(event: UWMadisonCalendarEvent) {
+  const location = (event.location ?? "").toLowerCase();
+  if (location.includes("online") || location.includes("virtual")) return false;
+  const [lat, lng] = (event.latlon ?? "").split(",").map(Number);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) return Math.abs(lat - 43.0731) < 0.28 && Math.abs(lng + 89.4012) < 0.32;
+  return /(madison|university|arboretum|memorial union|campus)/i.test(event.location ?? "");
+}
+
+export async function scrapeUWMadisonEvents(): Promise<ScrapedEvent[]> {
+  const url = "https://today.wisc.edu/events.json?limit=100";
+  try {
+    const response = await axios.get<UWMadisonCalendarEvent[]>(url, {
+      headers: { ...HEADERS, Accept: "application/json" },
+      timeout: 15000,
+      maxRedirects: 5,
+    });
+    if (!Array.isArray(response.data)) return [];
+    const events = response.data.flatMap((event) => {
+      const eventDate = event.startDateUnix ? new Date(event.startDateUnix * 1000) : parseDate(event.startDate);
+      if (!event.title || !eventDate || !isLocalMadisonCampusEvent(event)) return [];
+      const detailsUrl = event.url?.startsWith("http") ? event.url : `https://today.wisc.edu/events/view/${event.id}`;
+      const cost = (event.cost ?? "").trim();
+      return [{
+        title: event.title.trim(),
+        description: event.description?.trim().slice(0, 1000) || null,
+        eventDate,
+        endDate: event.endDateUnix ? new Date(event.endDateUnix * 1000) : null,
+        venueName: event.location?.trim() || "UW–Madison campus",
+        venueAddress: null,
+        venueCity: "Madison, WI",
+        category: guessCategory(`${event.title} ${(event.tags ?? []).join(" ")} ${event.description ?? ""}`),
+        sourceUrl: detailsUrl,
+        sourceName: "UW–Madison Events Calendar",
+        isFree: !cost || /free|no charge/i.test(cost),
+        isOnCampus: true,
+      } satisfies ScrapedEvent];
+    });
+    return futureEvents(dedupeScrapedEvents(events), 75);
+  } catch (err: any) {
+    console.warn(`[communityScraper] Failed to fetch ${url}: ${err.message}`);
+    return [];
+  }
+}
+
 // ─── Master scrape function ───────────────────────────────────────────────────
 export async function scrapeAllMilwaukeeEvents(): Promise<ScrapedEvent[]> {
   const results = await Promise.allSettled([
@@ -511,8 +570,9 @@ export async function scrapeAllMadisonEvents(): Promise<ScrapedEvent[]> {
     scrapeCityOfMadisonEvents(),
     scrapeOvertureCenter(),
     scrapeCityChurchMadison(),
+    scrapeUWMadisonEvents(),
   ]);
-  const labels = ["Madison Library", "City of Madison", "Overture Center", "City Church Madison"];
+  const labels = ["Madison Library", "City of Madison", "Overture Center", "City Church Madison", "UW–Madison"];
   const all: ScrapedEvent[] = [];
   results.forEach((result, index) => {
     if (result.status === "fulfilled") {
