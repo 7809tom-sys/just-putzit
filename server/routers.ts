@@ -16,6 +16,7 @@ import { workoutRouter } from "./routers/workout";
 import { autoSeedCityEvents } from "./cityEventSeeder";
 import { crawlAllCities } from "./museumLibraryCrawler";
 import { getLatestInterviewLearnings } from "./profileLearning";
+import { mergeProfileTraits } from "../shared/profileTraitMerge";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
 import { isValidLocationQuery, resolveLocationQuery } from "./locationResolver";
@@ -770,19 +771,7 @@ Rules:
             extractIdentityFromInterview(messages),
           ]);
 
-          // Deep-merge arrays (hobbies, favoriteActivities, personalityKeywords) instead of overwriting
-          const mergedTraits: ProfileTraits = { ...existingTraits };
-          for (const [key, value] of Object.entries(newTraits)) {
-            if (Array.isArray(value) && Array.isArray((existingTraits as any)[key])) {
-              // Merge arrays and deduplicate
-              const existing = (existingTraits as any)[key] as string[];
-              const merged = Array.from(new Set([...existing, ...value]));
-              (mergedTraits as any)[key] = merged;
-            } else if (value !== undefined && value !== null && value !== "") {
-              // Only overwrite scalar fields if we got a real value
-              (mergedTraits as any)[key] = value;
-            }
-          }
+          const mergedTraits = mergeProfileTraits(existingTraits, newTraits) as ProfileTraits;
 
           // Regenerate AI summary if we have enough data
           if (Object.keys(mergedTraits).length > 2) {

@@ -299,10 +299,10 @@
 - [ ] Add college performing-arts sources and outreach templates for musical plays and theater productions
 
 ## Sally Continuous Profile Enrichment
-- [ ] After every Sally chat message, extract new traits/hobbies/preferences and MERGE into profile (not overwrite)
-- [ ] Sally system prompt should track what profile fields are still missing and ask about them naturally
-- [ ] Profile traits, hobbies, dream vacation, personality tags all accumulate across sessions
-- [ ] Identity fields (gender, orientation, age) extracted if mentioned in any conversation
+- [x] After every Sally chat message, extract new traits/hobbies/preferences and MERGE into profile (not overwrite)
+- [x] Sally system prompt should track what profile fields are still missing and ask about them naturally
+- [x] Profile traits, hobbies, dream vacation, personality tags all accumulate across sessions
+- [x] Identity fields (gender, orientation, age) extracted if mentioned in any conversation
 - [x] Profile completeness score shown to user to encourage more chatting
 - [x] During Sally interviews, offer current local events and capture interested/not-for-me feedback for future recommendations
 - [x] During Sally interviews, offer current local events and capture interested/not-for-me feedback for future recommendations
