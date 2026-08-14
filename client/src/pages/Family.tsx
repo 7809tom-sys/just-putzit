@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { MapPin, Plus, Trash2, Users, Calendar } from "lucide-react";
+import { MapPin, Plus, Trash2, Users, Calendar, Mic, MicOff } from "lucide-react";
 import { getFamilyGenderSelectionToast, getFamilyInvalidGenderToast, normalizeFamilyChildGender, type FamilyChildGender } from "@/lib/familySelection";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 
 export default function Family() {
   const [familyName, setFamilyName] = useState("");
@@ -23,6 +24,9 @@ export default function Family() {
   const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [isAddChildOpen, setIsAddChildOpen] = useState(false);
   const [geoLocation, setGeoLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const { isSupported: speechSupported, isListening, error: speechError, startListening, stopListening } = useSpeechRecognition((transcript) => {
+    setBio((current) => current ? `${current} ${transcript}` : transcript);
+  });
 
   // Queries
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = trpc.family.getProfile.useQuery();
@@ -104,6 +108,10 @@ export default function Family() {
     }
   }, [profile]);
 
+  useEffect(() => {
+    if (speechError) toast.error(speechError);
+  }, [speechError]);
+
   const handleAddInterest = () => {
     if (interestInput.trim() && !interests.includes(interestInput.trim())) {
       setInterests([...interests, interestInput.trim()]);
@@ -144,6 +152,37 @@ export default function Family() {
       gender,
     });
   };
+
+  const renderBioEditor = (rows: number, id: string) => (
+    <div>
+      <div className="relative">
+        <Textarea
+          id={id}
+          placeholder="Tell other families about yourselves..."
+          value={bio}
+          onChange={(event) => setBio(event.target.value)}
+          rows={rows}
+          className="pr-12"
+        />
+        {speechSupported && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={`absolute bottom-2 right-2 h-8 w-8 rounded-full p-0 ${isListening ? "bg-red-100 text-red-600 hover:bg-red-200" : "text-muted-foreground hover:bg-blue-50 hover:text-blue-700"}`}
+            onClick={isListening ? stopListening : startListening}
+            aria-label={isListening ? "Stop recording family bio" : "Speak your family bio"}
+            title={isListening ? "Stop recording" : "Speak your family bio"}
+          >
+            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </Button>
+        )}
+      </div>
+      {isListening && <p className="mt-1 flex items-center gap-1 text-xs text-red-600"><span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" /> Listening… speak now</p>}
+      {!isListening && speechSupported && <p className="mt-1 text-xs text-muted-foreground">Use the microphone to add words, then review the bio before saving.</p>}
+      {!speechSupported && <p className="mt-1 text-xs text-muted-foreground">Voice input is unavailable in this browser. You can still type your family bio.</p>}
+    </div>
+  );
 
   if (profileLoading) {
     return (
@@ -187,12 +226,7 @@ export default function Family() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">About Your Family</label>
-                <Textarea
-                  placeholder="Tell other families about yourselves..."
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  rows={4}
-                />
+                {renderBioEditor(4, "family-bio-setup")}
               </div>
 
               <div>
@@ -278,12 +312,7 @@ export default function Family() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                  <Textarea
-                    placeholder="About your family"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    rows={3}
-                  />
+                  {renderBioEditor(3, "family-bio-edit")}
                 </div>
                 <Button onClick={handleSetupFamily} disabled={setupMutation.isPending} className="w-full">
                   {setupMutation.isPending ? "Saving..." : "Save Changes"}

@@ -526,7 +526,7 @@
 - [x] Build VoiceBio reusable component using Web Speech API (SpeechRecognition) with Whisper API fallback
 - [x] Mic button shows recording state (pulsing red), transcribes in real time, stops on tap
 - [x] Wire VoiceBio into profile bio field on Profile edit page
-- [ ] Wire VoiceBio into family profile bio field on Family Network setup
+- [x] Wire VoiceBio into family profile bio field on Family Network setup
 - [x] Wire VoiceBio into Sally interview text input (speak answers instead of typing)
 - [ ] Show "AI-written" vs "Voice-recorded" badge on bio so other users know it's authentic
 - [ ] TypeScript check, tests, checkpoint
@@ -542,6 +542,11 @@
 - [x] Append dictated text to the editable bio instead of replacing it
 - [x] Preserve member review before saving and provide an unsupported-browser fallback
 - [x] Add regression coverage for profile voice-bio behavior
+
+## Family Voice Bio
+- [x] Add shared browser speech-recognition controls to both Family bio editors
+- [x] Append dictated text and keep the save action member-controlled
+- [x] Provide unavailable-browser fallback copy and regression coverage
 
 ## Games Suite (Multiplayer + Profile-Building)
 - [ ] Schema: trivia_questions table (question, optionA-D, correctAnswer, category, difficulty)
