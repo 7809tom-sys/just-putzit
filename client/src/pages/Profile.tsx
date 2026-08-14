@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft, Sparkles, Brain } from "lucide-react";
+import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft, Sparkles, Brain, Fingerprint } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Pencil, Check, X } from "lucide-react";
 import { ProfileCompletenessCard } from "@/components/ProfileCompletenessCard";
 import { formatProfileBirthday, getProfileAge, parseProfileBirthDate } from "../../../shared/profileBirthDate";
+import { startRegistration } from "@simplewebauthn/browser";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -47,6 +48,30 @@ export default function Profile() {
     },
   });
   const utils = trpc.useUtils();
+  const verifyPasskeyRegistration = trpc.passkey.verifyRegistration.useMutation();
+  const markPasskeyVerified = trpc.passkey.markVerified.useMutation({
+    onSuccess: () => {
+      utils.passkey.verificationStatus.invalidate();
+    },
+  });
+
+  const handlePasskeyEnrollment = async () => {
+    try {
+      const options = await utils.passkey.registrationOptions.fetch();
+      const response = await startRegistration({ optionsJSON: options as any });
+      await verifyPasskeyRegistration.mutateAsync({ response });
+      await markPasskeyVerified.mutateAsync();
+      toast.success("Device passkey enabled", {
+        description: "You can now use your device to help protect this account.",
+      });
+    } catch (error: any) {
+      if (error?.name === "NotAllowedError") {
+        toast.message("Device passkey setup was cancelled.");
+        return;
+      }
+      toast.error(error?.message ?? "Device passkey setup could not be completed.");
+    }
+  };
   const updateIdentity = trpc.profile.updateIdentity.useMutation({
     onSuccess: (data) => {
       utils.profile.get.invalidate();
@@ -289,7 +314,7 @@ export default function Profile() {
                 <h1 className="font-display font-bold text-2xl">{profile?.displayName || user?.name}</h1>
                 {deviceCheckComplete && (
                   <Badge className="bg-green-100 text-green-700 border-0 gap-1">
-                    <Shield className="w-3 h-3" /> Device check complete
+                    <Fingerprint className="w-3 h-3" /> Device passkey verified
                   </Badge>
                 )}
                 {cityCheckComplete && (
@@ -690,6 +715,17 @@ export default function Profile() {
             <VettingItem icon="✅" label="Profile Created" status="complete" />
             <VettingItem icon="🎤" label="Sally profile refresh" status={profile?.interviewCount ? "complete" : "pending"} desc={`${profile?.interviewCount || 0} session${profile?.interviewCount !== 1 ? "s" : ""} completed`} />
             <VettingItem icon="🔐" label="Device passkey" status={deviceCheckComplete ? "complete" : "pending"} desc={deviceCheckComplete ? "A passkey is set up on this device." : "Optional device security check."} />
+            {!deviceCheckComplete && (
+              <div className="ml-10 rounded-2xl border border-primary/20 bg-primary/5 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs leading-relaxed text-muted-foreground">Set up a device passkey any time. Your device handles the biometric check; Just Putzit receives only the passkey proof.</p>
+                  <Button type="button" size="sm" className="shrink-0 rounded-xl" onClick={handlePasskeyEnrollment} disabled={verifyPasskeyRegistration.isPending || markPasskeyVerified.isPending}>
+                    <Fingerprint className="mr-1.5 h-3.5 w-3.5" />
+                    {verifyPasskeyRegistration.isPending || markPasskeyVerified.isPending ? "Setting up…" : "Set up passkey"}
+                  </Button>
+                </div>
+              </div>
+            )}
             <VettingItem icon="📍" label="City check" status={cityCheckComplete ? "complete" : "pending"} desc={cityCheckComplete ? `Optional city check completed${profile?.city ? ` for ${profile.city}` : ""}.` : "Optional city check is not complete."} />
             <VettingItem icon="📸" label="Photo city check" status={photos && photos.some((p: any) => p.cityVerified) ? "complete" : "pending"} desc={photos && photos.length > 0 ? `${photos.filter((p: any) => p.cityVerified).length}/${photos.length} photos include a city check` : "No photos uploaded"} />
           </div>

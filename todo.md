@@ -202,8 +202,8 @@
 ## Phase 16b: Biometric Polish (post-delivery follow-up)
 - [x] Persist WebAuthn challenges in DB (webauthn_challenges table) instead of in-memory Map for serverless safety
 - [ ] Build BiometricEnroll component shown post-login (prompt to register Face ID/fingerprint)
-- [ ] Fix biometric login hook usage in Login.tsx (move trpc utils to component scope)
-- [ ] Add passkey badge to profile page (shows "Biometric verified" when passkey registered)
+- [x] Fix biometric login hook usage in Login.tsx (move trpc utils to component scope)
+- [x] Add passkey badge to profile page (shows "Biometric verified" when passkey registered)
 - [ ] Add login ads todo items
 - [ ] Login Ads section in Vendor Portal (upload clip, set budget, view impressions) - DONE
 - [ ] Seed a demo login ad for testing
@@ -1286,8 +1286,12 @@
 - [x] Consume challenges after use and add regression coverage for challenge lifecycle rules
 
 ## Biometric Enrollment and Sign-in Polish
-- [ ] Verify post-login biometric enrollment is offered at an appropriate member entry point
-- [ ] Verify passkey sign-in hook usage is stable and add regression coverage for the member-facing flow
+- [x] Verify post-login biometric enrollment is offered at an appropriate member entry point
+- [x] Verify passkey sign-in hook usage is stable and add regression coverage for the member-facing flow
+
+## Distinct Profile Passkey Badge
+- [x] Render a clear Biometric verified badge only after a member has a verified device passkey
+- [x] Add regression coverage for conditional profile passkey badge rendering
 
 ## AccountVerify Render-Safety Repair
 - [x] Move verification-status state updates and redirect logic out of the AccountVerify render path
