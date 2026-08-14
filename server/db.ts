@@ -91,6 +91,7 @@ import { shouldAutoSuspendForReports } from "../shared/reportEscalationPolicy";
 import { getWebauthnChallengeExpiry } from "../shared/webauthnChallengePolicy";
 import { canCreateEventIntroduction, getEventIntroductionPair } from "../shared/eventIntroductionPolicy";
 import { getArchivableEventIds } from "../shared/eventRetentionPolicy";
+import { selectCurrentSavedActivityEvents } from "../shared/savedActivityEvents";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -757,6 +758,28 @@ export async function getActivityBookmarksForUser(userId: number) {
     .from(activityBookmarks)
     .where(eq(activityBookmarks.userId, userId));
   return rows.map((row) => row.activityId);
+}
+
+export async function getSavedActivityEventsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({
+    id: activityListings.id,
+    title: activityListings.title,
+    category: activityListings.category,
+    eventDate: activityListings.eventDate,
+    isRecurring: activityListings.isRecurring,
+    recurringSchedule: activityListings.recurringSchedule,
+    imageEmoji: activityListings.imageEmoji,
+    priceCents: activityListings.priceCents,
+    isActive: activityListings.isActive,
+    savedAt: activityBookmarks.createdAt,
+  })
+    .from(activityBookmarks)
+    .innerJoin(activityListings, eq(activityBookmarks.activityId, activityListings.id))
+    .where(eq(activityBookmarks.userId, userId));
+
+  return selectCurrentSavedActivityEvents(rows).slice(0, 6);
 }
 
 export async function toggleActivityBookmark(activityId: number, userId: number) {

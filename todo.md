@@ -593,6 +593,11 @@
 - [ ] Optimistic UI for bookmark toggle
 - [ ] Add Saved Events section to Profile page
 
+## Profile Saved Activity Events
+- [x] Return active or upcoming saved activity events without exposing unrelated member data
+- [x] Show concise saved-event cards on Profile with a direct details route and removal control
+- [x] Add regression coverage for current-event filtering and saved-event navigation
+
 ## Banner Ad System (Local Venue Geofenced Ads)
 - [x] Add banner fields to ad_partners DB table (banner_image_url, banner_link_url, banner_headline, banner_cta, banner_pages)
 - [x] Add venue_lat, venue_lng, banner_reach_miles to ad_partners DB table and schema.ts

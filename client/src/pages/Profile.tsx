@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft, Sparkles, Brain, Fingerprint } from "lucide-react";
+import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft, Sparkles, Brain, Fingerprint, Bookmark, CalendarDays, ExternalLink } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
@@ -25,6 +25,7 @@ export default function Profile() {
   const [, navigate] = useLocation();
   const { data: profile, isLoading, refetch: refetchProfile } = trpc.profile.get.useQuery();
   const { data: latestLearning } = trpc.profile.latestLearning.useQuery();
+  const { data: savedEvents, isLoading: savedEventsLoading } = trpc.activityBoard.savedEvents.useQuery();
   const { data: photos, refetch: refetchPhotos } = trpc.profile.getPhotos.useQuery();
   const { data: verificationStatus } = trpc.passkey.verificationStatus.useQuery();
   const deviceCheckComplete = verificationStatus?.passkeyVerified ?? false;
@@ -148,6 +149,14 @@ export default function Profile() {
       setConnectionOpen(false);
     },
     onError: (err) => toast.error("Couldn’t save connection settings", { description: err.message }),
+  });
+  const removeSavedEvent = trpc.activityBoard.toggleBookmark.useMutation({
+    onSuccess: (result) => {
+      void utils.activityBoard.savedEvents.invalidate();
+      void utils.activityBoard.bookmarks.invalidate();
+      toast.success(result.bookmarked ? "Event saved" : "Removed from saved events");
+    },
+    onError: () => toast.error("Couldn’t update saved events. Please try again."),
   });
 
   function openBioEdit() {
@@ -673,6 +682,35 @@ export default function Profile() {
             </div>
           </div>
         )}
+
+        <section className="mb-6 rounded-3xl bg-white p-6 shadow-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 font-display text-xl font-bold"><Bookmark className="h-5 w-5 text-primary" /> Saved events & activities</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Only upcoming, recurring, or evergreen plans appear here.</p>
+            </div>
+            <Button type="button" size="sm" variant="outline" className="shrink-0 rounded-full" onClick={() => navigate("/events")}>Browse</Button>
+          </div>
+          {savedEventsLoading ? (
+            <div className="mt-4 space-y-2"><div className="h-16 animate-pulse rounded-2xl bg-muted/50" /><div className="h-16 animate-pulse rounded-2xl bg-muted/50" /></div>
+          ) : savedEvents && savedEvents.length > 0 ? (
+            <div className="mt-4 space-y-2.5">
+              {savedEvents.map((event) => (
+                <div key={event.id} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg">{event.imageEmoji}</div>
+                  <button type="button" className="min-w-0 flex-1 text-left" onClick={() => navigate(`/events/${event.id}`)}>
+                    <p className="truncate text-sm font-semibold text-foreground">{event.title}</p>
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground"><CalendarDays className="h-3 w-3" />{event.isRecurring ? event.recurringSchedule || "Recurring activity" : event.eventDate ? new Date(event.eventDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Available anytime"}</p>
+                  </button>
+                  <Button type="button" size="icon" variant="ghost" aria-label={`View ${event.title}`} className="h-8 w-8 shrink-0 rounded-full" onClick={() => navigate(`/events/${event.id}`)}><ExternalLink className="h-4 w-4" /></Button>
+                  <Button type="button" size="icon" variant="ghost" aria-label={`Remove ${event.title} from saved events`} disabled={removeSavedEvent.isPending} className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-destructive" onClick={() => removeSavedEvent.mutate({ activityId: event.id })}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 rounded-2xl bg-muted/45 px-4 py-3 text-sm text-muted-foreground">Save an event from its details page to keep the plan handy here.</p>
+          )}
+        </section>
         {/* Traits */}
         {traits && Object.keys(traits).filter(k => k !== "aiSummary").length > 0 && (
           <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">

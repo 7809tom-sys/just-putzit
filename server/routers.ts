@@ -96,6 +96,7 @@ import {
   createActivityListing,
   rsvpToActivity,
   getActivityBookmarksForUser,
+  getSavedActivityEventsForUser,
   toggleActivityBookmark,
   getRsvpsForActivity,
   checkInToActivity,
@@ -1848,6 +1849,7 @@ Return JSON with questions array, each having optionA and optionB.`,
       };
     }),
     bookmarks: protectedProcedure.query(async ({ ctx }) => getActivityBookmarksForUser(ctx.user.id)),
+    savedEvents: protectedProcedure.query(async ({ ctx }) => getSavedActivityEventsForUser(ctx.user.id)),
     toggleBookmark: protectedProcedure
       .input(z.object({ activityId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
