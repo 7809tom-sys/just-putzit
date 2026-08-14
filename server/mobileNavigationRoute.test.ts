@@ -34,4 +34,15 @@ describe("mobile notification navigation", () => {
     expect(mobileNav).toContain('href="/admin"');
     expect(app).toContain('<Route path="/admin" component={Admin} />');
   });
+
+  it("keeps Family Network and Trip Planner reachable from the mobile More sheet", () => {
+    const root = resolve(__dirname, "..");
+    const app = readFileSync(resolve(root, "client/src/App.tsx"), "utf8");
+    const mobileNav = readFileSync(resolve(root, "client/src/components/MobileBottomNav.tsx"), "utf8");
+
+    expect(app).toContain('<Route path="/family" component={Family} />');
+    expect(app).toContain('<Route path="/trip-planner" component={TripPlanner} />');
+    expect(mobileNav).toContain('{ href: "/family", icon: Users2, label: "Family Network"');
+    expect(mobileNav).toContain('{ href: "/trip-planner", icon: Briefcase, label: "Trip Planner"');
+  });
 });

@@ -519,7 +519,7 @@
 - [ ] "Add to Trip" button on every activity card and event card throughout the app
 - [ ] .ics file generation on server (RFC 5545 compliant) with event title, date, location, URL
 - [ ] Google Calendar deep-link as alternative to .ics download
-- [ ] Add Family and Trip Planner links to navbar/More menu
+- [x] Add Family and Trip Planner links to navbar/More menu
 - [ ] TypeScript check, tests, checkpoint
 
 ## Voice-to-Text Profile Input
