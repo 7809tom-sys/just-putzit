@@ -1311,6 +1311,11 @@
 - [x] Prevent simultaneous mutual introduction requests from creating duplicate matches for the same event attendee pair
 - [x] Add regression coverage for pair-level idempotency in RSVP introduction creation
 
+## Safe Expired Event Retention
+- [x] Archive expired community events that have no RSVP, interest, or introduction history
+- [x] Preserve expired events referenced by member plans or connection history
+- [x] Add regression coverage for safe expired-event archival
+
 ## Expanded Public Venue Discovery
 - [x] Expand structured discovery coverage for public pools, courts, trails, beaches, recreation centers, and YMCA facilities
 - [x] Keep public-venue results city-aware and explain source freshness to members

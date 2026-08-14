@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { selectCurrentVerifiedEvents } from "./eventRecommendations";
 import { normalizeSavedLocationDraft } from "./savedLocationPolicy";
@@ -90,6 +90,7 @@ import { buildSponsoredAudienceSummary, SPONSORED_AUDIENCE_MIN_GROUP_SIZE } from
 import { shouldAutoSuspendForReports } from "../shared/reportEscalationPolicy";
 import { getWebauthnChallengeExpiry } from "../shared/webauthnChallengePolicy";
 import { canCreateEventIntroduction, getEventIntroductionPair } from "../shared/eventIntroductionPolicy";
+import { getArchivableEventIds } from "../shared/eventRetentionPolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -1843,6 +1844,46 @@ export async function getCommunityEvents(filters: {
     .where(and(...conditions))
     .orderBy(communityEvents.eventDate)
     .limit(filters.limit ?? 100);
+}
+
+/**
+ * Removes expired discovery rows only when no member RSVP, interest, saved plan,
+ * proposal, or private event-introduction record references the event. This
+ * preserves member history while keeping the discovery feed lean.
+ */
+export async function archiveExpiredUnreferencedCommunityEvents(cutoff: Date) {
+  const db = await getDb();
+  if (!db) return { archived: 0, preserved: 0 };
+
+  const expired = await db
+    .select({ id: communityEvents.id })
+    .from(communityEvents)
+    .where(lt(communityEvents.eventDate, cutoff));
+  const expiredIds = expired.map((event) => event.id);
+  if (expiredIds.length === 0) return { archived: 0, preserved: 0 };
+
+  const [rsvps, interests, plans, proposals, introductions] = await Promise.all([
+    db.select({ eventId: eventRsvps.eventId }).from(eventRsvps).where(inArray(eventRsvps.eventId, expiredIds)),
+    db.select({ eventId: eventInterests.eventId }).from(eventInterests).where(inArray(eventInterests.eventId, expiredIds)),
+    db.select({ eventId: todaysPlans.eventId }).from(todaysPlans).where(inArray(todaysPlans.eventId, expiredIds)),
+    db.select({ eventId: eventProposals.eventId }).from(eventProposals).where(inArray(eventProposals.eventId, expiredIds)),
+    db.select({ eventId: eventIntroductions.eventId }).from(eventIntroductions).where(inArray(eventIntroductions.eventId, expiredIds)),
+  ]);
+
+  const referencedIds = [
+    ...rsvps.map((row) => row.eventId),
+    ...interests.map((row) => row.eventId),
+    ...plans.map((row) => row.eventId),
+    ...proposals.map((row) => row.eventId),
+    ...introductions.map((row) => row.eventId),
+  ].filter((id): id is number => typeof id === "number");
+  const archivableIds = getArchivableEventIds(expiredIds, referencedIds);
+
+  if (archivableIds.length > 0) {
+    await db.delete(communityEvents).where(inArray(communityEvents.id, archivableIds));
+  }
+
+  return { archived: archivableIds.length, preserved: expiredIds.length - archivableIds.length };
 }
 
 export async function getSallyEventSuggestions(userId: number, city?: string, limit = 3) {

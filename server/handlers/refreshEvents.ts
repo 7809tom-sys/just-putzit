@@ -14,9 +14,9 @@
 
 import type { Request, Response } from "express";
 import { sdk } from "../_core/sdk";
-import { getDb } from "../db";
+import { archiveExpiredUnreferencedCommunityEvents, getDb } from "../db";
 import { communityEvents, seededCities } from "../../drizzle/schema";
-import { lt, gte, eq, count } from "drizzle-orm";
+import { gte, eq, count } from "drizzle-orm";
 import { crawlAllCitiesGeographic } from "../cityEventCrawler";
 import { autoSeedCityEvents } from "../cityEventSeeder";
 
@@ -43,16 +43,14 @@ export async function refreshEventsHandler(req: Request, res: Response) {
     results.eventsInserted = crawlCount;
     console.log(`[refreshEvents] Crawl complete: ${crawlCount} events inserted.`);
 
-    // ── Step 2: Purge past events (older than 3 days) ─────────────────────────
+    // ── Step 2: Archive unreferenced past events (older than 3 days) ──────────
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 3);
 
-    const deleteResult = await db
-      .delete(communityEvents)
-      .where(lt(communityEvents.eventDate, cutoff));
-
-    results.purgedEvents = (deleteResult as any).affectedRows ?? "unknown";
-    console.log(`[refreshEvents] Purged ${results.purgedEvents} past events (before ${cutoff.toISOString()})`);
+    const retention = await archiveExpiredUnreferencedCommunityEvents(cutoff);
+    results.archivedEvents = retention.archived;
+    results.preservedHistoricalEvents = retention.preserved;
+    console.log(`[refreshEvents] Archived ${retention.archived} unreferenced events and preserved ${retention.preserved} member-history events (before ${cutoff.toISOString()})`);
 
     // ── Step 3: Re-seed thin cities ───────────────────────────────────────────
     const seeded = await db.select().from(seededCities);
