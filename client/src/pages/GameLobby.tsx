@@ -21,13 +21,17 @@ const GAME_TYPE_LABELS: Record<string, { label: string; emoji: string; descripti
 };
 
 const ROOM_GAME_TYPES = ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence"] as const;
-const SOLO_GAME_ROUTES: Record<string, string> = {
+export const SOLO_GAME_ROUTES: Record<string, string> = {
   jeopardy: "/jeopardy",
   trivia_pursuit: "/trivia-pursuit",
   would_you_rather: "/would-you-rather",
   trivia: "/trivia",
   finish_sentence: "/finish-sentence",
 };
+
+export function getSoloGameRoute(gameId: string) {
+  return SOLO_GAME_ROUTES[gameId];
+}
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   waiting: { label: "Waiting for players", color: "bg-yellow-100 text-yellow-800" },
@@ -120,6 +124,16 @@ export default function GameLobby() {
     setGameMode(mode);
     const nextOptions = mode === "solo" ? Object.keys(SOLO_GAME_ROUTES) : ROOM_GAME_TYPES;
     if (!nextOptions.includes(newGameType as never)) setNewGameType("would_you_rather");
+  };
+  const openSoloGame = (gameId: string) => {
+    const route = getSoloGameRoute(gameId);
+    const game = GAME_TYPE_LABELS[gameId];
+    if (!route || !game) {
+      toast.error("This game is currently available in multiplayer rooms only.");
+      return;
+    }
+    toast.success(`Starting ${game.label} solo game...`);
+    navigate(route);
   };
 
   if (activeRoomId && activeRoom) {
@@ -429,15 +443,8 @@ export default function GameLobby() {
                     disabled={gameMode === "multiplayer" ? (!newRoomName.trim() || createRoomMutation.isPending) : createRoomMutation.isPending}
                     onClick={() => {
                       if (gameMode === "solo") {
-                        // For solo mode, navigate directly to the game
-                        toast.success(`Starting ${GAME_TYPE_LABELS[newGameType]?.label} solo game...`);
                         setCreateOpen(false);
-                        const route = SOLO_GAME_ROUTES[newGameType];
-                        if (route) {
-                          navigate(route);
-                        } else {
-                          toast.error("Game route not found");
-                        }
+                        openSoloGame(newGameType);
                       } else {
                         createRoomMutation.mutate({ name: newRoomName.trim(), gameType: newGameType as any, maxPlayers: newMaxPlayers });
                       }
@@ -458,17 +465,31 @@ export default function GameLobby() {
             {Object.entries(GAME_TYPE_LABELS).map(([gameId, gameInfo]) => (
               <Card
                 key={gameId}
-              className="group hover:shadow-lg transition-all cursor-pointer border-0 overflow-hidden"
-              onClick={() => {
-                setNewGameType(gameId);
-                setGameMode(ROOM_GAME_TYPES.includes(gameId as typeof ROOM_GAME_TYPES[number]) ? "multiplayer" : "solo");
-                setCreateOpen(true);
-              }}
+                className="group hover:shadow-lg transition-all cursor-pointer border-0 overflow-hidden"
+                onClick={() => {
+                  setNewGameType(gameId);
+                  setGameMode(ROOM_GAME_TYPES.includes(gameId as typeof ROOM_GAME_TYPES[number]) ? "multiplayer" : "solo");
+                  setCreateOpen(true);
+                }}
               >
                 <CardContent className="p-4 text-center bg-gradient-to-br from-primary/5 to-primary/10 group-hover:from-primary/10 group-hover:to-primary/20 transition-colors">
                   <div className="text-4xl mb-2">{gameInfo.emoji}</div>
                   <h3 className="font-bold text-gray-900 text-sm line-clamp-2">{gameInfo.label}</h3>
                   <p className="text-xs text-gray-500 mt-2 line-clamp-2">{gameInfo.description}</p>
+                  {getSoloGameRoute(gameId) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="mt-3 w-full rounded-full bg-white text-xs"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openSoloGame(gameId);
+                      }}
+                    >
+                      <Play className="mr-1.5 h-3.5 w-3.5" /> Play solo
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}

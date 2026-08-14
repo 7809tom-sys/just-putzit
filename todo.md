@@ -544,9 +544,14 @@
 - [x] Update game type selector to include all games
 - [x] Conditional UI for solo vs multiplayer (room name, max players, city info)
 - [x] Dynamic button text based on game mode
-- [ ] Implement solo game navigation
+- [x] Implement solo game navigation
 - [ ] Write vitest tests for GameLobby
 - [ ] Save checkpoint and deliver
+
+## Game Lobby Solo-Play Repair
+- [x] Add a direct solo-play launch control for games with playable solo routes
+- [x] Reuse one route-validation handler for dialog and game-card solo launches
+- [x] Add regression coverage for the Game Lobby solo routes
 
 ## Phase 28: Game Stats & Knowledge-Based Matching
 - [ ] Retry seeding 1000 questions into database
