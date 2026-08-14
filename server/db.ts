@@ -1770,7 +1770,14 @@ export async function getCommunityEvents(filters: {
 } = {}) {
   const db = await getDb();
   if (!db) return [];
-  const conditions = [eq(communityEvents.isActive, true)];
+  const currentEventCutoff = new Date();
+  const conditions = [
+    eq(communityEvents.isActive, true),
+    or(
+      gt(communityEvents.eventDate, currentEventCutoff),
+      and(sql`${communityEvents.endDate} IS NOT NULL`, gt(communityEvents.endDate, currentEventCutoff)),
+    ),
+  ];
 
   // Radius-based filtering: if lat/lng provided, use Haversine formula
   // Otherwise fall back to city-name match

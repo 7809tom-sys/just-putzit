@@ -1210,3 +1210,7 @@
 - [x] Add clear in-screen answer feedback and an accessible mobile category layout
 - [x] Add persistent multiplayer chat, a reliable end-game action, and final scoreboard
 - [x] Add regression coverage for Trivia Pursuit lifecycle and chat behavior
+
+## Current Event Discovery Repair
+- [x] Exclude expired event listings from the near-you discovery experience
+- [x] Add regression coverage for timezone-safe current and upcoming event filtering

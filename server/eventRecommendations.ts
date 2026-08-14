@@ -1,6 +1,9 @@
+import { isCurrentOrUpcomingEvent } from "../shared/currentEventFilter";
+
 export type EventRecommendationCandidate = {
   id: number;
   eventDate: Date;
+  endDate?: Date | null;
   externalUrl: string | null;
 };
 
@@ -17,7 +20,7 @@ export function selectCurrentVerifiedEvents<T extends EventRecommendationCandida
 ): T[] {
   return events
     .filter((event) => (
-      event.eventDate >= now
+      isCurrentOrUpcomingEvent(event.eventDate, event.endDate, now)
       && Boolean(event.externalUrl)
       && responses.get(event.id) !== "not_for_me"
     ))
