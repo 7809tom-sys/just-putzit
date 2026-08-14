@@ -10,6 +10,7 @@ import {
   gameSessions,
   interviewSessions,
   matches,
+  eventProposals,
   notifications,
   userProfiles,
   users,
@@ -312,6 +313,85 @@ export async function getChatMessages(matchId: number, limit = 50) {
     .limit(limit);
 }
 
+// ─── Public Event Proposals ────────────────────────────────────────────────────
+
+export function isMatchParticipant(match: { user1Id: number; user2Id: number } | null, userId: number) {
+  return !!match && (match.user1Id === userId || match.user2Id === userId);
+}
+
+export async function getEventProposalsForMatch(matchId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({ proposal: eventProposals, event: communityEvents })
+    .from(eventProposals)
+    .innerJoin(communityEvents, eq(eventProposals.eventId, communityEvents.id))
+    .where(eq(eventProposals.matchId, matchId))
+    .orderBy(desc(eventProposals.createdAt));
+}
+
+export async function createEventProposal(input: {
+  matchId: number;
+  eventId: number;
+  proposerId: number;
+  recipientId: number;
+  note?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+
+  const existing = await db
+    .select({ id: eventProposals.id })
+    .from(eventProposals)
+    .where(and(
+      eq(eventProposals.matchId, input.matchId),
+      eq(eventProposals.eventId, input.eventId),
+      eq(eventProposals.proposerId, input.proposerId),
+      eq(eventProposals.recipientId, input.recipientId),
+      eq(eventProposals.status, "pending"),
+    ))
+    .limit(1);
+  if (existing[0]) throw new Error("You already have a pending invitation for this event");
+
+  const [result] = await db.insert(eventProposals).values({
+    ...input,
+    note: input.note?.trim() || null,
+  });
+  const [proposal] = await db.select().from(eventProposals).where(eq(eventProposals.id, Number(result.insertId))).limit(1);
+  if (!proposal) throw new Error("Could not create invitation");
+
+  await db.insert(chatMessages).values({
+    matchId: input.matchId,
+    senderId: input.proposerId,
+    content: "Sent a public-event proposal.",
+    messageType: "event_proposal",
+    proposalId: proposal.id,
+  });
+  return proposal;
+}
+
+export async function respondToEventProposal(input: {
+  proposalId: number;
+  recipientId: number;
+  status: "accepted" | "declined";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [proposal] = await db.select().from(eventProposals).where(eq(eventProposals.id, input.proposalId)).limit(1);
+  if (!proposal || proposal.recipientId !== input.recipientId) throw new Error("Proposal not found");
+  if (proposal.status !== "pending") throw new Error("This invitation has already been answered");
+
+  await db.update(eventProposals).set({ status: input.status, respondedAt: new Date() }).where(eq(eventProposals.id, proposal.id));
+  if (input.status === "accepted") {
+    await Promise.all([
+      markEventInterest(proposal.eventId, proposal.proposerId, "going"),
+      markEventInterest(proposal.eventId, proposal.recipientId, "going"),
+    ]);
+  }
+  const [updated] = await db.select().from(eventProposals).where(eq(eventProposals.id, proposal.id)).limit(1);
+  return updated ?? proposal;
+}
+
 // ─── Game Sessions ────────────────────────────────────────────────────────────
 
 export async function createGameSession(
@@ -361,7 +441,7 @@ export async function getGameSessionsForMatch(matchId: number) {
 
 export async function createNotification(
   userId: number,
-  type: "new_match" | "game_ready" | "new_message" | "interview_reminder" | "pickup_invite",
+  type: "new_match" | "game_ready" | "new_message" | "interview_reminder" | "pickup_invite" | "event_proposal",
   title: string,
   body: string,
   relatedId?: number

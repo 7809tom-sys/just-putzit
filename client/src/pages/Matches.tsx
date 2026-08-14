@@ -4,10 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Heart, MessageCircle, Gamepad2, Sparkles, Users, Shield, Calendar } from "lucide-react";
+import { EventProposalDialog } from "@/components/EventProposalDialog";
 
 export default function Matches() {
   const [, navigate] = useLocation();
   const { data: myMatches, isLoading, refetch } = trpc.matchmaking.getMyMatches.useQuery();
+  const { data: profile } = trpc.profile.get.useQuery();
   const findMatches = trpc.matchmaking.findMatches.useMutation({
     onSuccess: data => {
       if (data.matches.length > 0) {
@@ -48,7 +50,7 @@ export default function Matches() {
         ) : myMatches && myMatches.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {myMatches.map(match => (
-              <MatchCard key={match.id} match={match} navigate={navigate} />
+              <MatchCard key={match.id} match={match} navigate={navigate} city={profile?.city} />
             ))}
           </div>
         ) : (
@@ -77,7 +79,7 @@ export default function Matches() {
   );
 }
 
-function MatchCard({ match, navigate }: { match: any; navigate: any }) {
+function MatchCard({ match, navigate, city }: { match: any; navigate: any; city?: string | null }) {
   const profile = match.otherProfile;
   const traits = profile?.traits as any;
 
@@ -153,6 +155,12 @@ function MatchCard({ match, navigate }: { match: any; navigate: any }) {
           <Gamepad2 className="w-3.5 h-3.5" /> Games
         </Button>
       </div>
+      <EventProposalDialog
+        matchId={match.id}
+        matchName={profile?.displayName || "your match"}
+        city={city}
+        trigger={<Button size="sm" variant="outline" className="mt-2 w-full rounded-xl border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100"><Calendar className="mr-1.5 h-3.5 w-3.5" />Want to go together?</Button>}
+      />
     </div>
   );
 }

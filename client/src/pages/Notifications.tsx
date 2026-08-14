@@ -48,7 +48,7 @@ export default function Notifications() {
         ) : (
           <div className="space-y-3">
             {notifications.map((notification) => {
-              const destination = getNotificationDestination(notification.type);
+              const destination = getNotificationDestination(notification.type, notification.relatedId);
               const actionLabel = getNotificationActionLabel(notification.type);
               return (
               <article key={notification.id} className={`rounded-2xl border p-4 shadow-sm ${notification.isRead ? "border-border bg-white" : "border-primary/25 bg-primary/5"}`}>

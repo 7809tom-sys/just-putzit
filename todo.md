@@ -859,11 +859,11 @@
 - [ ] Add "Want to go to [Event] together?" quick action button
 
 ### Proposal & Chat Flow
-- [ ] Add "Want to go together?" button to match card and chat header
-- [ ] Create proposal modal: select event + optional message
-- [ ] Send proposal as special message type in chat
-- [ ] Show proposal status in chat (pending / accepted / declined)
-- [ ] Accept proposal → auto-add to calendar + show "You're going together!"
+- [x] Add "Want to go together?" button to match card and chat header
+- [x] Create proposal modal: select event + optional message
+- [x] Send proposal as special message type in chat
+- [x] Show proposal status in chat (pending / accepted / declined)
+- [x] Accept proposal → auto-add to calendar + show "You're going together!"
 
 ### Milwaukee Event Seeding
 - [ ] Seed Summerfest (multi-week festival, major anchor)

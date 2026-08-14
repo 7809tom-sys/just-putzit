@@ -27,6 +27,7 @@ import { getPartnerTrendRangeError, parsePartnerTrendDate } from "./partnerImpac
 import { getPickupSafetyError, PICKUP_ACTIVITY_TYPES, pickupTemplate, selectSimilarActivities } from "../shared/pickupActivityPolicy";
 import { getSponsoredPlacementEligibility, getSponsoredPlacementPackage, type SponsoredPlacementPackage } from "../shared/sponsoredPlacementPolicy";
 import { selectSimilarEventDetails } from "../shared/similarEventDetails";
+import { isEligiblePublicEventProposal } from "../shared/eventProposalPolicy";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -51,6 +52,10 @@ import {
   existingMatch,
   sendChatMessage,
   getChatMessages,
+  isMatchParticipant,
+  getEventProposalsForMatch,
+  createEventProposal,
+  respondToEventProposal,
   createGameSession,
   updateGameSession,
   getGameSession,
@@ -932,6 +937,7 @@ Return a JSON object with:
       .query(async ({ ctx, input }) => {
         const match = await getMatchById(input.matchId);
         if (!match) throw new Error("Match not found");
+        if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This match is not available to you" });
         const otherUserId = match.user1Id === ctx.user.id ? match.user2Id : match.user1Id;
         const otherProfile = await getProfileByUserId(otherUserId);
         return { match, otherProfile, otherUserId };
@@ -942,21 +948,66 @@ Return a JSON object with:
   chat: router({
     getMessages: protectedProcedure
       .input(z.object({ matchId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        const match = await getMatchById(input.matchId);
+        if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This conversation is not available to you" });
         return getChatMessages(input.matchId);
       }),
 
     send: protectedProcedure
       .input(z.object({ matchId: z.number(), content: z.string().max(1000) }))
       .mutation(async ({ ctx, input }) => {
-        const msg = await sendChatMessage(input.matchId, ctx.user.id, input.content);
-        // Notify the other user
         const match = await getMatchById(input.matchId);
-        if (match) {
-          const otherId = match.user1Id === ctx.user.id ? match.user2Id : match.user1Id;
-          await createNotification(otherId, "new_message", "New message! 💬", "Your match sent you a message", input.matchId);
-        }
+        if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This conversation is not available to you" });
+        const msg = await sendChatMessage(input.matchId, ctx.user.id, input.content);
+        const otherId = match!.user1Id === ctx.user.id ? match!.user2Id : match!.user1Id;
+        await createNotification(otherId, "new_message", "New message! 💬", "Your match sent you a message", input.matchId);
         return msg;
+      }),
+  }),
+
+  // ─── Public Event Proposals ────────────────────────────────────────────────
+  eventProposals: router({
+    getForMatch: protectedProcedure
+      .input(z.object({ matchId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const match = await getMatchById(input.matchId);
+        if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This match is not available to you" });
+        return getEventProposalsForMatch(input.matchId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({ matchId: z.number(), eventId: z.number(), note: z.string().trim().max(500).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const match = await getMatchById(input.matchId);
+        if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This match is not available to you" });
+
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Event data is unavailable" });
+        const [event] = await db.select().from(communityEvents).where(and(eq(communityEvents.id, input.eventId), eq(communityEvents.isActive, true))).limit(1);
+        if (!isEligiblePublicEventProposal(event)) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an upcoming public event" });
+
+        const recipientId = match!.user1Id === ctx.user.id ? match!.user2Id : match!.user1Id;
+        const proposal = await createEventProposal({ ...input, proposerId: ctx.user.id, recipientId });
+        await createNotification(recipientId, "event_proposal", "A match invited you to a public event", `${event.title} — choose accept or decline in your chat.`, input.matchId);
+        return { proposal, event };
+      }),
+
+    respond: protectedProcedure
+      .input(z.object({ proposalId: z.number(), status: z.enum(["accepted", "declined"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const proposal = await respondToEventProposal({ ...input, recipientId: ctx.user.id });
+        const [event] = (await getEventProposalsForMatch(proposal.matchId)).filter((entry) => entry.proposal.id === proposal.id);
+        const title = event?.event.title ?? "the public event";
+        const accepted = input.status === "accepted";
+        await createNotification(
+          proposal.proposerId,
+          "event_proposal",
+          accepted ? "You’re going together!" : "Your invitation was declined",
+          accepted ? `Your match accepted ${title}. Both of you can add it to your calendars.` : `Your match declined ${title}. No further action is needed.`,
+          proposal.matchId,
+        );
+        return { proposal, event: event?.event ?? null };
       }),
   }),
 

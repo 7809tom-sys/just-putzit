@@ -147,11 +147,30 @@ export const chatMessages = mysqlTable("chat_messages", {
   matchId: int("matchId").notNull(),
   senderId: int("senderId").notNull(),
   content: text("content").notNull(),
+  messageType: mysqlEnum("messageType", ["text", "event_proposal"]).notNull().default("text"),
+  proposalId: int("proposalId"),
   isRead: boolean("isRead").notNull().default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// ─── Public event proposals ────────────────────────────────────────────────────
+// Proposals are only available between existing matches and always point to a
+// public community event. They do not expose contact information or locations.
+export const eventProposals = mysqlTable("event_proposals", {
+  id: int("id").autoincrement().primaryKey(),
+  matchId: int("matchId").notNull(),
+  eventId: int("eventId").notNull(),
+  proposerId: int("proposerId").notNull(),
+  recipientId: int("recipientId").notNull(),
+  note: varchar("note", { length: 500 }),
+  status: mysqlEnum("status", ["pending", "accepted", "declined", "withdrawn"]).notNull().default("pending"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  respondedAt: timestamp("respondedAt"),
+});
+
+export type EventProposal = typeof eventProposals.$inferSelect;
 
 // ─── Match game question type (used for newlywed/two-truths/this-or-that games) ─
 export type MatchGameQuestion = {
@@ -192,7 +211,7 @@ export type GameSession = typeof gameSessions.$inferSelect;
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["new_match", "game_ready", "new_message", "interview_reminder", "pickup_invite"]).notNull(),
+  type: mysqlEnum("type", ["new_match", "game_ready", "new_message", "interview_reminder", "pickup_invite", "event_proposal"]).notNull(),
   title: varchar("title", { length: 200 }).notNull(),
   body: text("body").notNull(),
   isRead: boolean("isRead").notNull().default(false),
