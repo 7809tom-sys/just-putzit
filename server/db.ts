@@ -2405,6 +2405,23 @@ export async function approveSuspendedUser(userId: number) {
   });
 }
 
+export async function createSallyBehaviorReviewFlag(userId: number, reason: string) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db
+    .select({ id: adminFlags.id })
+    .from(adminFlags)
+    .where(and(eq(adminFlags.userId, userId), eq(adminFlags.flagType, "bot_behavior"), sql`${adminFlags.resolvedAt} IS NULL`))
+    .limit(1);
+  if (existing[0]) return;
+  await db.insert(adminFlags).values({
+    userId,
+    flagType: "bot_behavior",
+    severity: "low",
+    notes: `Sally interview review cue: ${reason}. Review only; no account action was taken automatically.`,
+  });
+}
+
 // ─── Admin: Enhanced Stats ────────────────────────────────────────────────────
 
 export async function getAdminStatsEnhanced() {

@@ -1296,3 +1296,8 @@
 ## AccountVerify Render-Safety Repair
 - [x] Move verification-status state updates and redirect logic out of the AccountVerify render path
 - [x] Add regression coverage for safe verification status synchronization
+
+## Cautious Sally Behavioral Review
+- [x] Detect repeated low-signal interview responses and create a review-only administrator flag
+- [x] Keep behavioral review flags private, non-punitive, and free of automatic suspension
+- [x] Add regression coverage for behavioral review eligibility and duplicate prevention

@@ -261,6 +261,7 @@ import { and, eq, ne, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { getUserByEmail, getUserById, createEmailUser, verifyUserEmail, checkGpsMatchesCity, saveLocationVerification, getDb } from "./db";
 import type { AuthenticatorTransport } from "@simplewebauthn/server";
+import { getSallyBehaviorReviewCue } from "../shared/sallyBehaviorReviewPolicy";
 
 export const appRouter = router({
   system: systemRouter,
@@ -769,6 +770,12 @@ Rules:
           messages,
           ...(isComplete ? { completedAt: new Date() } : {}),
         });
+
+        const behaviorReviewCue = getSallyBehaviorReviewCue(messages);
+        if (behaviorReviewCue) {
+          const { createSallyBehaviorReviewFlag } = await import("./db");
+          await createSallyBehaviorReviewFlag(ctx.user.id, behaviorReviewCue);
+        }
 
         // ── Continuous profile enrichment: run after EVERY user message ──────────
         // Extract whatever new info was shared in this exchange and MERGE into profile
