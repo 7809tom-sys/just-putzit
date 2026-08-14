@@ -33,11 +33,17 @@ const SCHEDULE_SLOTS = [
   "Lunch (11 AM–1 PM)", "Afternoon (1–4 PM)", "Evening (4–7 PM)", "Night (7–10 PM)",
 ];
 
+const FITNESS_LEVELS = [
+  { value: "beginner", label: "Beginner", description: "Building a consistent routine" },
+  { value: "intermediate", label: "Intermediate", description: "Comfortable with regular workouts" },
+  { value: "advanced", label: "Advanced", description: "Training with experience and focus" },
+] as const;
+
 function BuddyCard({ buddy, onMessage }: {
   buddy: {
     userId: number; displayName: string | null; avatarEmoji: string | null;
     avatarColor: string | null; workoutStyles: string[]; schedulePrefs?: string[]; schedule?: string[];
-    bio: string | null; isVerified: boolean; city: string | null;
+    bio: string | null; isVerified: boolean; city: string | null; fitnessLevel?: string | null; goals?: string | null;
   };
   onMessage: (userId: number, name: string) => void;
 }) {
@@ -68,6 +74,12 @@ function BuddyCard({ buddy, onMessage }: {
             </div>
             {buddy.bio && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{buddy.bio}</p>
+            )}
+            {(buddy.fitnessLevel || buddy.goals) && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {buddy.fitnessLevel && <Badge variant="outline" className="border-orange-500/25 bg-orange-500/5 text-[10px] font-medium capitalize text-orange-500">{buddy.fitnessLevel}</Badge>}
+                {buddy.goals && <span className="line-clamp-1 text-xs text-muted-foreground">Goal: {buddy.goals}</span>}
+              </div>
             )}
             {buddy.workoutStyles.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
@@ -271,6 +283,7 @@ export default function GymPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const id = parseInt(gymId || "0", 10);
+  const utils = trpc.useUtils();
 
   const { data: gym, isLoading: gymLoading } = trpc.gym.getGym.useQuery({ gymId: id }, { enabled: id > 0 });
   const { data: buddies, isLoading: buddiesLoading, refetch: refetchBuddies } = trpc.gym.findBuddies.useQuery({ gymId: id }, { enabled: id > 0 && !!user });
@@ -278,7 +291,7 @@ export default function GymPage() {
   const { data: myProfile } = trpc.gym.getMyBuddyProfile.useQuery({ gymId: id }, { enabled: id > 0 && !!user });
   const { data: myRsvps = [] } = trpc.gym.getMyRsvps.useQuery(undefined, { enabled: !!user });
   const upsertProfile = trpc.gym.saveBuddyProfile.useMutation({
-    onSuccess: () => { refetchBuddies(); setShowProfileDialog(false); toast.success("Profile updated!"); },
+    onSuccess: () => { refetchBuddies(); void utils.gym.getMyBuddyProfile.invalidate({ gymId: id }); setShowProfileDialog(false); toast.success("Gym Buddy profile updated!"); },
     onError: (e: { message: string }) => toast.error(e.message),
   });
   const createSession = trpc.gym.createSession.useMutation({
@@ -301,6 +314,8 @@ export default function GymPage() {
   const [selectedStyles, setSelectedStyles] = useState<string[]>(myProfile?.workoutStyles ?? []);
   const [selectedSchedule, setSelectedSchedule] = useState<string[]>(myProfile?.schedule ?? []);
   const [bio, setBio] = useState(myProfile?.bio ?? "");
+  const [fitnessLevel, setFitnessLevel] = useState<"beginner" | "intermediate" | "advanced">("intermediate");
+  const [goals, setGoals] = useState("");
   const [sessionTitle, setSessionTitle] = useState("");
   const [sessionDesc, setSessionDesc] = useState("");
   const [sessionType, setSessionType] = useState("general");
@@ -324,7 +339,7 @@ export default function GymPage() {
 
   const handleSaveProfile = () => {
     if (!user) { toast.error("Sign in to save your profile"); return; }
-    upsertProfile.mutate({ gymId: id, workoutStyles: selectedStyles, schedule: selectedSchedule, bio: bio || undefined });
+    upsertProfile.mutate({ gymId: id, workoutStyles: selectedStyles, schedule: selectedSchedule, fitnessLevel, goals: goals.trim() || undefined, bio: bio || undefined });
   };
 
   const handleCreateSession = () => {
@@ -543,7 +558,7 @@ export default function GymPage() {
               </p>
               {user && (
                 <Button size="sm" variant="outline" className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
-                  onClick={() => { setSelectedStyles(myProfile?.workoutStyles ?? []); setSelectedSchedule(myProfile?.schedule ?? []); setBio(myProfile?.bio ?? ""); setShowProfileDialog(true); }}>
+                  onClick={() => { setSelectedStyles(myProfile?.workoutStyles ?? []); setSelectedSchedule(myProfile?.schedule ?? []); setFitnessLevel((myProfile?.fitnessLevel as "beginner" | "intermediate" | "advanced") ?? "intermediate"); setGoals(myProfile?.goals ?? ""); setBio(myProfile?.bio ?? ""); setShowProfileDialog(true); }}>
                   <Dumbbell className="w-3.5 h-3.5 mr-1.5" />
                   {myProfile ? "Edit Profile" : "Join Here"}
                 </Button>
@@ -637,6 +652,19 @@ export default function GymPage() {
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Fitness Level</Label>
+              <Select value={fitnessLevel} onValueChange={(value) => setFitnessLevel(value as "beginner" | "intermediate" | "advanced")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FITNESS_LEVELS.map((level) => <SelectItem key={level.value} value={level.value}>{level.label} — {level.description}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Workout Goal <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Textarea placeholder="e.g. Build strength, train for a 5K, stay consistent..." value={goals} onChange={(e) => setGoals(e.target.value)} className="text-sm resize-none" rows={2} maxLength={500} />
             </div>
             <div>
               <Label className="text-sm font-medium mb-2 block">About You (optional)</Label>

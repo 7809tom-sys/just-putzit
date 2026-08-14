@@ -300,6 +300,16 @@
 - [x] Preserve the optional “Any day” selection as no assigned day instead of submitting an invalid value
 - [x] Add regression coverage for custom exercise day normalization
 
+## Gym Buddy Fitness Goals
+- [x] Add fitness-level and workout-goal controls to the Gym Buddy profile dialog
+- [x] Persist the existing profile fields and hydrate them when members edit their profile
+- [x] Show concise, member-provided fitness details on matched Gym Buddy cards
+- [x] Add regression coverage for fitness-level and goal rendering
+
+## Gym Detail Route Compatibility
+- [x] Support direct `/gym/:gymId` links alongside the existing Gym Buddy detail route
+- [x] Add regression coverage for both Gym detail route patterns
+
 ## Admin Email Outreach
 - [ ] Add venueOutreach DB table (id, venueId, toEmail, subject, body, sentAt, status)
 - [ ] Add sendOutreachEmail tRPC procedure (admin only) using built-in email or SMTP

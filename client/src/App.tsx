@@ -138,6 +138,7 @@ function Router() {
         <Route path="/sports/live-scores" component={LiveScores} />
         <Route path="/gym-buddy" component={GymBuddy} />
         <Route path="/gym-buddy/:gymId" component={GymPage} />
+        <Route path="/gym/:gymId" component={GymPage} />
         <Route path="/gym-pitch" component={GymPitch} />
         <Route path="/my-workout" component={MyWorkout} />
         <Route path="/sports/watch-party/:roomId" component={WatchParty} />
