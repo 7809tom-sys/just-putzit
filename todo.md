@@ -1271,3 +1271,7 @@
 ## Sally Competitive Game Context
 - [x] Give Sally factual summaries of completed Jeopardy and Trivia Pursuit participation without exposing answers
 - [x] Add regression coverage that prevents game outcomes from becoming unsupported personality claims
+
+## Member Event Refresh Repair
+- [x] Make the member-facing event refresh action perform a real safe refresh or explain its current status clearly
+- [x] Add regression coverage and responsive verification for event refresh feedback

@@ -22,6 +22,7 @@ import { Calendar,
   Star,
   CheckCircle2,
   Search,
+  RefreshCw,
 } from "lucide-react";
 import { useUserCity } from "@/hooks/useUserCity";
 import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
@@ -272,6 +273,7 @@ export default function Events() {
   const [rsvpingId, setRsvpingId] = useState<number | null>(null);
   const [interestingId, setInterestingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const activeCity = city ?? detectedCity;
   const cityFilter = activeCity === "All Cities" ? undefined : activeCity;
@@ -279,7 +281,7 @@ export default function Events() {
   const userLng = detectedLocation?.lng;
   const hasGps = userLat !== undefined && userLng !== undefined && cityFilter !== undefined;
 
-  const { data: ebEvents = [] } = trpc.events.getEventbrite.useQuery(
+  const { data: ebEvents = [], refetch: refetchEventbrite } = trpc.events.getEventbrite.useQuery(
     { city: cityFilter ?? "Milwaukee" },
     { enabled: true }
   );
@@ -324,6 +326,18 @@ export default function Events() {
       setRsvpingId(null);
     },
   });
+
+  async function handleRefreshList() {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetch(), refetchEventbrite()]);
+      toast.success("Event list refreshed with the latest saved listings.");
+    } catch {
+      toast.error("We could not refresh the event list. Please try again.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
 
   function handleRsvp(eventId: number) {
     if (!user) {
@@ -401,14 +415,20 @@ export default function Events() {
       <div className="relative overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-transparent to-amber-500/10 pointer-events-none" />
         <div className="max-w-5xl mx-auto px-4 py-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-lg">
-              🗓️
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-lg">
+                🗓️
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold text-white">Free & Fun Near You</h1>
+                <p className="text-sm text-gray-400">Milwaukee &amp; Waukesha community events</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Free & Fun Near You</h1>
-              <p className="text-sm text-gray-400">Milwaukee &amp; Waukesha community events</p>
-            </div>
+            <Button type="button" variant="outline" size="sm" onClick={handleRefreshList} disabled={isRefreshing} className="shrink-0 rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+              <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              {isRefreshing ? "Refreshing" : "Refresh list"}
+            </Button>
           </div>
 
           {/* Sally tip */}
