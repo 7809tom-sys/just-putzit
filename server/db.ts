@@ -530,6 +530,16 @@ export async function getBlockedUserIds(userId: number): Promise<number[]> {
   return result.map(b => b.blockedUserId);
 }
 
+export async function isBlockInEffect(userAId: number, userBId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select({ id: blocks.id }).from(blocks).where(or(
+    and(eq(blocks.blockerId, userAId), eq(blocks.blockedUserId, userBId)),
+    and(eq(blocks.blockerId, userBId), eq(blocks.blockedUserId, userAId)),
+  )).limit(1);
+  return Boolean(result[0]);
+}
+
 export async function getAdminFlags() {
   const db = await getDb();
   if (!db) return [];

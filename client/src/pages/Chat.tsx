@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Send, Gamepad2, ArrowLeft, Clock, Phone, PhoneOff, PhoneCall, MicOff, Mic, CalendarHeart, CalendarPlus, MapPin } from "lucide-react";
 import { VoiceMessageRecorder, VoiceMessagePlayer } from "@/components/VoiceMessage";
 import { EventProposalDialog } from "@/components/EventProposalDialog";
+import { MemberSafetyActions } from "@/components/MemberSafetyActions";
 import { buildBookingCalendarEvent, getBookingIcs } from "@/lib/bookingCalendar";
 import { showCalendarDownloadToast } from "@/components/CalendarDownloadToast";
 
@@ -326,6 +327,7 @@ export default function Chat() {
             onSent={() => { refetch(); refetchProposals(); }}
             trigger={<Button size="sm" variant="outline" className="h-9 rounded-full border-orange-200 bg-orange-50 px-2.5 text-orange-800 hover:bg-orange-100 sm:px-3"><CalendarHeart className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline">Invite</span></Button>}
           />}
+          {otherUserId && <MemberSafetyActions targetUserId={otherUserId} targetName={otherProfile?.displayName || "this member"} compact onBlocked={() => navigate("/matches")} />}
           {/* Voice call button */}
           {callState === "idle" && (
             <Button

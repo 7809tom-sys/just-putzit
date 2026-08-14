@@ -1147,3 +1147,8 @@
 - [x] Store explicit community, friendship, and dating preference choices with private defaults
 - [x] Add clear, editable preference choices to onboarding and the member profile
 - [x] Add regression coverage and responsive verification for opt-in connection preferences
+
+## Member Safety Controls
+- [x] Add accessible report and block actions to match cards and chat interactions
+- [x] Explain private reporting, blocking, and moderation follow-up without exposing reporter identity
+- [x] Add regression coverage and responsive verification for member safety controls

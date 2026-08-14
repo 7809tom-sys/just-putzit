@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Heart, MessageCircle, Gamepad2, Sparkles, Users, Shield, Calendar } from "lucide-react";
 import { EventProposalDialog } from "@/components/EventProposalDialog";
+import { MemberSafetyActions } from "@/components/MemberSafetyActions";
 
 export default function Matches() {
   const [, navigate] = useLocation();
@@ -52,7 +53,7 @@ export default function Matches() {
         ) : myMatches && myMatches.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {myMatches.map(match => (
-              <MatchCard key={match.id} match={match} navigate={navigate} city={profile?.city} />
+              <MatchCard key={match.id} match={match} navigate={navigate} city={profile?.city} onBlocked={refetch} />
             ))}
           </div>
         ) : (
@@ -81,12 +82,13 @@ export default function Matches() {
   );
 }
 
-function MatchCard({ match, navigate, city }: { match: any; navigate: any; city?: string | null }) {
+function MatchCard({ match, navigate, city, onBlocked }: { match: any; navigate: any; city?: string | null; onBlocked: () => void }) {
   const profile = match.otherProfile;
   const traits = profile?.traits as any;
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-border p-6 card-hover">
+    <div className="relative bg-white rounded-3xl shadow-sm border border-border p-6 card-hover">
+      {match.otherUserId && <div className="absolute right-3 top-3"><MemberSafetyActions targetUserId={match.otherUserId} targetName={profile?.displayName || "this member"} compact onBlocked={onBlocked} /></div>}
       {/* Avatar + name */}
       <div className="flex items-center gap-4 mb-4">
         <div

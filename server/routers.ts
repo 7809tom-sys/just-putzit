@@ -29,6 +29,7 @@ import { getSponsoredPlacementEligibility, getSponsoredPlacementPackage, type Sp
 import { selectSimilarEventDetails } from "../shared/similarEventDetails";
 import { isEligiblePublicEventProposal } from "../shared/eventProposalPolicy";
 import { hasSharedConnectionIntent, normalizeConnectionPreferences } from "../shared/connectionPreferences";
+import { BLOCKED_CONVERSATION_MESSAGE, isValidMemberSafetyTarget } from "../shared/memberSafetyPolicy";
 
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
@@ -73,6 +74,7 @@ import {
   updateReportStatus,
   blockUser,
   getBlockedUserIds,
+  isBlockInEffect,
   getAdminFlags,
   resolveAdminFlag,
   suspendUser,
@@ -880,12 +882,13 @@ Rules:
       const enriched = await Promise.all(
         myMatches.map(async match => {
           const otherUserId = match.user1Id === ctx.user.id ? match.user2Id : match.user1Id;
+          if (await isBlockInEffect(ctx.user.id, otherUserId)) return null;
           const otherProfile = await getProfileByUserId(otherUserId);
           const otherUser = await getUserByOpenId("").catch(() => null);
           return { ...match, otherProfile, otherUserId };
         })
       );
-      return enriched;
+      return enriched.filter((match): match is NonNullable<typeof match> => match !== null);
     }),
 
     findMatches: protectedProcedure.mutation(async ({ ctx }) => {
@@ -897,9 +900,12 @@ Rules:
       }
 
       const allProfiles = await getAllProfiles();
-      const candidates = allProfiles.filter(
+      const eligibleProfiles = allProfiles.filter(
         p => p.userId !== ctx.user.id && p.onboardingComplete && p.interviewCount > 0 && hasSharedConnectionIntent(myPreferences, (p.traits as ProfileTraits | null)?.connectionPreferences)
       );
+      const candidates = (await Promise.all(eligibleProfiles.map(async (profile) => (
+        await isBlockInEffect(ctx.user.id, profile.userId) ? null : profile
+      )))).filter((profile): profile is typeof eligibleProfiles[number] => profile !== null);
 
       if (candidates.length === 0) return { matches: [], preferenceRequired: false };
 
@@ -966,6 +972,7 @@ Return a JSON object with:
         if (!match) throw new Error("Match not found");
         if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This match is not available to you" });
         const otherUserId = match.user1Id === ctx.user.id ? match.user2Id : match.user1Id;
+        if (await isBlockInEffect(ctx.user.id, otherUserId)) throw new TRPCError({ code: "FORBIDDEN", message: "This match is no longer available" });
         const otherProfile = await getProfileByUserId(otherUserId);
         return { match, otherProfile, otherUserId };
       }),
@@ -978,6 +985,8 @@ Return a JSON object with:
       .query(async ({ ctx, input }) => {
         const match = await getMatchById(input.matchId);
         if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This conversation is not available to you" });
+        const otherUserId = match!.user1Id === ctx.user.id ? match!.user2Id : match!.user1Id;
+        if (await isBlockInEffect(ctx.user.id, otherUserId)) throw new TRPCError({ code: "FORBIDDEN", message: BLOCKED_CONVERSATION_MESSAGE });
         return getChatMessages(input.matchId);
       }),
 
@@ -986,8 +995,9 @@ Return a JSON object with:
       .mutation(async ({ ctx, input }) => {
         const match = await getMatchById(input.matchId);
         if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This conversation is not available to you" });
-        const msg = await sendChatMessage(input.matchId, ctx.user.id, input.content);
         const otherId = match!.user1Id === ctx.user.id ? match!.user2Id : match!.user1Id;
+        if (await isBlockInEffect(ctx.user.id, otherId)) throw new TRPCError({ code: "FORBIDDEN", message: BLOCKED_CONVERSATION_MESSAGE });
+        const msg = await sendChatMessage(input.matchId, ctx.user.id, input.content);
         await createNotification(otherId, "new_message", "New message! 💬", "Your match sent you a message", input.matchId);
         return msg;
       }),
@@ -1000,6 +1010,8 @@ Return a JSON object with:
       .query(async ({ ctx, input }) => {
         const match = await getMatchById(input.matchId);
         if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This match is not available to you" });
+        const otherUserId = match!.user1Id === ctx.user.id ? match!.user2Id : match!.user1Id;
+        if (await isBlockInEffect(ctx.user.id, otherUserId)) throw new TRPCError({ code: "FORBIDDEN", message: "This match is no longer available" });
         return getEventProposalsForMatch(input.matchId);
       }),
 
@@ -1008,13 +1020,15 @@ Return a JSON object with:
       .mutation(async ({ ctx, input }) => {
         const match = await getMatchById(input.matchId);
         if (!isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "This match is not available to you" });
+        const potentialRecipientId = match!.user1Id === ctx.user.id ? match!.user2Id : match!.user1Id;
+        if (await isBlockInEffect(ctx.user.id, potentialRecipientId)) throw new TRPCError({ code: "FORBIDDEN", message: "This match is no longer available" });
 
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Event data is unavailable" });
         const [event] = await db.select().from(communityEvents).where(and(eq(communityEvents.id, input.eventId), eq(communityEvents.isActive, true))).limit(1);
         if (!isEligiblePublicEventProposal(event)) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an upcoming public event" });
 
-        const recipientId = match!.user1Id === ctx.user.id ? match!.user2Id : match!.user1Id;
+        const recipientId = potentialRecipientId;
         const proposal = await createEventProposal({ ...input, proposerId: ctx.user.id, recipientId });
         await createNotification(recipientId, "event_proposal", "A match invited you to a public event", `${event.title} — choose accept or decline in your chat.`, input.matchId);
         return { proposal, event };
@@ -1472,6 +1486,7 @@ Return JSON with questions array, each having optionA and optionB.`,
         details: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        if (!isValidMemberSafetyTarget(ctx.user.id, input.reportedUserId)) throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot report yourself" });
         await createReport(ctx.user.id, input.reportedUserId, input.reason, input.details);
         return { success: true };
       }),
@@ -1479,6 +1494,7 @@ Return JSON with questions array, each having optionA and optionB.`,
     block: protectedProcedure
       .input(z.object({ blockedUserId: z.number() }))
       .mutation(async ({ ctx, input }) => {
+        if (!isValidMemberSafetyTarget(ctx.user.id, input.blockedUserId)) throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot block yourself" });
         await blockUser(ctx.user.id, input.blockedUserId);
         return { success: true };
       }),
