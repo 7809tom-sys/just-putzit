@@ -165,7 +165,7 @@ export default function CityLanding() {
             </a>
           </div>
           <div className="flex items-center gap-6 mt-2 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-primary" /> Verified Profiles</span>
+            <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-primary" /> Safety Tools</span>
             <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-primary" /> AI-Matched</span>
             <span className="flex items-center gap-1.5"><Heart className="w-4 h-4 text-primary" /> Free to Join</span>
           </div>

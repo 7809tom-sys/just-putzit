@@ -927,7 +927,7 @@ function LandingPage() {
               </Button>
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-green-500" /> Verified Profiles</span>
+              <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-green-500" /> Safety Tools</span>
               <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-yellow-500" /> AI-Matched</span>
               <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-blue-500" /> Local Events</span>
             </div>
@@ -937,7 +937,7 @@ function LandingPage() {
           <div className="flex-shrink-0 w-full max-w-xs">
             <div className="bg-white rounded-3xl shadow-xl p-6 relative">
               <div className="absolute -top-3 -right-3 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                ❤️ 98% Match!
+                ✨ Match Insights
               </div>
               <div className="w-20 h-20 rounded-full gradient-sally mx-auto mb-4 flex items-center justify-center text-4xl">🤖</div>
               <h3 className="font-bold text-center text-lg mb-1">Hi! I'm Sally</h3>
@@ -946,7 +946,7 @@ function LandingPage() {
                 <span className="font-semibold text-primary">Sally:</span> "Tell me — what's your idea of a perfect Sunday? ☀️"
               </div>
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground justify-center">
-                <Shield className="w-3 h-3 text-green-500" /> Verified
+                <Shield className="w-3 h-3 text-green-500" /> Safety & Trust
               </div>
             </div>
           </div>

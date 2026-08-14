@@ -1218,3 +1218,7 @@
 ## Accurate Member Trust Signals
 - [x] Replace unsupported blanket verification claims with clear descriptions of optional account and location verification
 - [x] Add regression coverage for accurate verification and safety-label copy
+
+## Accurate Public Trust Messaging
+- [x] Replace unsupported public verification labels on the landing page with truthful safety and privacy language
+- [x] Add regression coverage for accurate landing-page trust copy
