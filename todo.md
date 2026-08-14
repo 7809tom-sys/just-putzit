@@ -296,6 +296,10 @@
 - [x] Validate the participant limit before submission and reset form state after success
 - [x] Add regression coverage for the Gym Buddy capacity contract
 
+## Custom Workout Exercise Day Repair
+- [x] Preserve the optional “Any day” selection as no assigned day instead of submitting an invalid value
+- [x] Add regression coverage for custom exercise day normalization
+
 ## Admin Email Outreach
 - [ ] Add venueOutreach DB table (id, venueId, toEmail, subject, body, sentAt, status)
 - [ ] Add sendOutreachEmail tRPC procedure (admin only) using built-in email or SMTP

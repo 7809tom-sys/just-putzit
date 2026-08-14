@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Trash2, CheckCircle2, Dumbbell, ChevronLeft, Pencil } from "lucide-react";
 import { useLocation } from "wouter";
+import { normalizeWorkoutDay } from "../../../shared/workoutDay";
 
 // ─── Day order & colours ──────────────────────────────────────────────────────
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -65,7 +66,7 @@ function AddExerciseDialog({ onAdded }: { onAdded: () => void }) {
       sets: parseInt(form.sets) || 3,
       reps: form.reps || "10",
       notes: form.notes || undefined,
-      dayOfWeek: (form.dayOfWeek as Day) || undefined,
+      dayOfWeek: normalizeWorkoutDay(form.dayOfWeek),
     });
   };
 
@@ -125,12 +126,12 @@ function AddExerciseDialog({ onAdded }: { onAdded: () => void }) {
           </div>
           <div>
             <Label>Day of Week (optional)</Label>
-            <Select value={form.dayOfWeek} onValueChange={v => setForm(f => ({ ...f, dayOfWeek: v as Day }))}>
+            <Select value={form.dayOfWeek || "any"} onValueChange={v => setForm(f => ({ ...f, dayOfWeek: v === "any" ? "" : v as Day }))}>
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Any day" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value=" ">Any day</SelectItem>
+                <SelectItem value="any">Any day</SelectItem>
                 {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
               </SelectContent>
             </Select>
