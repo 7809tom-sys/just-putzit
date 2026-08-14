@@ -702,7 +702,7 @@ export const gameRooms = mysqlTable("game_rooms", {
   id: int("id").autoincrement().primaryKey(),
   hostUserId: int("hostUserId").notNull(),
   name: varchar("name", { length: 120 }).notNull(),
-  gameType: mysqlEnum("gameType", ["would_you_rather", "trivia", "icebreaker", "two_truths"]).notNull().default("would_you_rather"),
+  gameType: mysqlEnum("gameType", ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence"]).notNull().default("would_you_rather"),
   city: varchar("city", { length: 120 }),
   maxPlayers: int("maxPlayers").notNull().default(6),
   status: mysqlEnum("status", ["waiting", "in_progress", "finished"]).notNull().default("waiting"),

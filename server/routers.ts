@@ -1387,7 +1387,7 @@ Return JSON with questions array, each having optionA and optionB.`,
     createRoom: protectedProcedure
       .input(z.object({
         name: z.string().min(2).max(80),
-        gameType: z.enum(["would_you_rather", "trivia", "icebreaker", "two_truths"]),
+        gameType: z.enum(["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence"]),
         city: z.string().optional(),
         maxPlayers: z.number().min(2).max(12).optional(),
       }))
@@ -1402,6 +1402,8 @@ Return JSON with questions array, each having optionA and optionB.`,
           ? `Generate 8 fun icebreaker questions for adults getting to know each other. Questions should be open-ended and reveal personality. Return JSON with a questions array, each having: id (number), text (string).`
           : input.gameType === "two_truths"
           ? `Generate 8 "Two Truths and a Lie" prompts/topics for adults. Each prompt is a category/topic for players to create their own statements. Return JSON with a questions array, each having: id (number), text (string, the topic/prompt).`
+          : input.gameType === "finish_sentence"
+          ? `Generate 8 warm, open-ended "Finish My Sentence" prompts for adults getting to know each other. Keep every prompt short, playful, and safe for a community setting. Prompts should invite a personal answer without asking for private contact details, sensitive identity information, or sexual content. Return JSON with a questions array, each having: id (number), text (string, ending with an ellipsis).`
           : `Generate 8 fun trivia questions about pop culture, food, travel, or fun facts. Return JSON with a questions array, each having: id (number), text (string), optionA (string), optionB (string), optionC (string), optionD (string), correctAnswer (string).`;
 
         const response = await invokeLLM({

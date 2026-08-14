@@ -50,6 +50,7 @@ import Family from "@/pages/Family";
 import TripPlanner from "@/pages/TripPlanner";
 import Jeopardy from "@/pages/Jeopardy";
 import TriviaPursuit from "@/pages/TriviaPursuit";
+import FinishSentence from "@/pages/FinishSentence";
 import Bullgerdash from "@/pages/Bullgerdash";
 import Sports from "@/pages/Sports";
 import WatchParty from "@/pages/WatchParty";
@@ -128,6 +129,7 @@ function Router() {
         <Route path="/trivia" component={TriviaGame} />
         <Route path="/jeopardy" component={Jeopardy} />
         <Route path="/trivia-pursuit" component={TriviaPursuit} />
+        <Route path="/finish-sentence" component={FinishSentence} />
         <Route path="/bullgerdash/:matchId" component={Bullgerdash} />
         <Route path="/games-hub" component={GamesHub} />
         <Route path="/games-hub/:gameId" component={GamesHub} />

@@ -1168,3 +1168,7 @@
 - [x] Replace unsupported safety guarantees with accurate descriptions of implemented controls
 - [x] Add practical report, block, public-meeting, and emergency guidance to the Safety page
 - [x] Add regression coverage and responsive verification for revised Safety & Trust content
+
+## Finish My Sentence Repair
+- [x] Diagnose and repair the core Finish My Sentence play flow
+- [x] Add regression coverage and responsive verification for Finish My Sentence
