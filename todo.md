@@ -1316,6 +1316,10 @@
 - [x] Preserve expired events referenced by member plans or connection history
 - [x] Add regression coverage for safe expired-event archival
 
+## City-Scoped Refresh Reseeding Repair
+- [x] Count upcoming events per seeded city before deciding whether that city needs reseeding
+- [x] Add regression coverage for city-specific reseeding decisions
+
 ## Expanded Public Venue Discovery
 - [x] Expand structured discovery coverage for public pools, courts, trails, beaches, recreation centers, and YMCA facilities
 - [x] Keep public-venue results city-aware and explain source freshness to members

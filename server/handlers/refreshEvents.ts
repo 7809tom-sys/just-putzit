@@ -16,9 +16,10 @@ import type { Request, Response } from "express";
 import { sdk } from "../_core/sdk";
 import { archiveExpiredUnreferencedCommunityEvents, getDb } from "../db";
 import { communityEvents, seededCities } from "../../drizzle/schema";
-import { gte, eq, count } from "drizzle-orm";
+import { and, gte, eq, count } from "drizzle-orm";
 import { crawlAllCitiesGeographic } from "../cityEventCrawler";
 import { autoSeedCityEvents } from "../cityEventSeeder";
+import { shouldReseedCity } from "../../shared/cityRefreshPolicy";
 
 export async function refreshEventsHandler(req: Request, res: Response) {
   try {
@@ -62,13 +63,14 @@ export async function refreshEventsHandler(req: Request, res: Response) {
       const [{ cnt }] = await db
         .select({ cnt: count() })
         .from(communityEvents)
-        .where(
-          // upcoming events only
-          gte(communityEvents.eventDate, now)
-        );
+        .where(and(
+          gte(communityEvents.eventDate, now),
+          eq(communityEvents.city, cityRow.city),
+          ...(cityRow.state ? [eq(communityEvents.state, cityRow.state)] : []),
+        ));
 
       // If fewer than 10 upcoming events, re-seed
-      if ((cnt ?? 0) < 10) {
+      if (shouldReseedCity(Number(cnt ?? 0))) {
         console.log(`[refreshEvents] City ${cityRow.city} has only ${cnt} upcoming events — re-seeding...`);
         autoSeedCityEvents(cityRow.city, cityRow.state ?? "WI").catch(() => {});
         reseeded.push(cityRow.city);
