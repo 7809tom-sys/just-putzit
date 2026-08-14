@@ -43,6 +43,7 @@ import {
   pickupSessions,
   pickupParticipants,
   passkeyCredentials,
+  webauthnChallenges,
   loginAds,
   profilePhotos,
   venueOutreach,
@@ -86,6 +87,7 @@ import { isActiveSponsoredPlacement } from "../shared/sponsoredPlacementPolicy";
 import { getSponsoredPerformanceRates } from "../shared/sponsoredPerformance";
 import { buildSponsoredAudienceSummary, SPONSORED_AUDIENCE_MIN_GROUP_SIZE } from "../shared/sponsoredAudienceSummary";
 import { shouldAutoSuspendForReports } from "../shared/reportEscalationPolicy";
+import { getWebauthnChallengeExpiry } from "../shared/webauthnChallengePolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -2045,6 +2047,38 @@ export async function deletePasskey(id: number, userId: number) {
   await db
     .delete(passkeyCredentials)
     .where(and(eq(passkeyCredentials.id, id), eq(passkeyCredentials.userId, userId)));
+}
+
+export async function storeWebAuthnChallenge(
+  userId: number,
+  purpose: "registration" | "authentication",
+  challenge: string,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const now = new Date();
+  const expiresAt = getWebauthnChallengeExpiry(now);
+  await db.insert(webauthnChallenges).values({ userId, purpose, challenge, expiresAt }).onDuplicateKeyUpdate({
+    set: { challenge, expiresAt, consumedAt: null, createdAt: now },
+  });
+}
+
+export async function consumeWebAuthnChallenge(
+  userId: number,
+  purpose: "registration" | "authentication",
+) {
+  const db = await getDb();
+  if (!db) return null;
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(webauthnChallenges)
+    .where(and(eq(webauthnChallenges.userId, userId), eq(webauthnChallenges.purpose, purpose), gt(webauthnChallenges.expiresAt, now)))
+    .limit(1);
+  const record = rows[0];
+  if (!record || record.consumedAt) return null;
+  await db.update(webauthnChallenges).set({ consumedAt: now }).where(eq(webauthnChallenges.id, record.id));
+  return record.challenge;
 }
 
 // ─── Login Ads ─────────────────────────────────────────────────────────────────

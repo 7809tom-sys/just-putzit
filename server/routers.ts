@@ -262,9 +262,6 @@ import bcrypt from "bcryptjs";
 import { getUserByEmail, getUserById, createEmailUser, verifyUserEmail, checkGpsMatchesCity, saveLocationVerification, getDb } from "./db";
 import type { AuthenticatorTransport } from "@simplewebauthn/server";
 
-// Temporary in-memory challenge store (keyed by userId; cleared after use)
-const passkeyChallengeTempStore = new Map<number, string>();
-
 export const appRouter = router({
   system: systemRouter,
 
@@ -2685,8 +2682,8 @@ Return JSON with questions array, each having optionA and optionB.`,
           userVerification: "preferred",
         },
       });
-      // Store challenge in session via a temp mechanism — we'll use a simple in-memory map keyed by userId
-      passkeyChallengeTempStore.set(ctx.user.id, options.challenge);
+      const { storeWebAuthnChallenge } = await import("./db");
+      await storeWebAuthnChallenge(ctx.user.id, "registration", options.challenge);
       return options;
     }),
 
@@ -2694,7 +2691,8 @@ Return JSON with questions array, each having optionA and optionB.`,
       .input(z.object({ response: z.any() }))
       .mutation(async ({ ctx, input }) => {
         const { verifyRegistrationResponse } = await import("@simplewebauthn/server");
-        const expectedChallenge = passkeyChallengeTempStore.get(ctx.user.id);
+        const { consumeWebAuthnChallenge } = await import("./db");
+        const expectedChallenge = await consumeWebAuthnChallenge(ctx.user.id, "registration");
         if (!expectedChallenge) throw new TRPCError({ code: "BAD_REQUEST", message: "No challenge found. Start registration again." });
         const verification = await verifyRegistrationResponse({
           response: input.response,
@@ -2715,7 +2713,6 @@ Return JSON with questions array, each having optionA and optionB.`,
           transports: JSON.stringify(credential.transports ?? []),
           aaguid,
         });
-        passkeyChallengeTempStore.delete(ctx.user.id);
         return { verified: true };
       }),
 
@@ -2736,7 +2733,8 @@ Return JSON with questions array, each having optionA and optionB.`,
           })),
           userVerification: "preferred",
         });
-        passkeyChallengeTempStore.set(user.id, options.challenge);
+        const { storeWebAuthnChallenge } = await import("./db");
+        await storeWebAuthnChallenge(user.id, "authentication", options.challenge);
         return { options, userId: user.id };
       }),
 
@@ -2744,7 +2742,8 @@ Return JSON with questions array, each having optionA and optionB.`,
       .input(z.object({ userId: z.number().int(), response: z.any() }))
       .mutation(async ({ ctx, input }) => {
         const { verifyAuthenticationResponse } = await import("@simplewebauthn/server");
-        const expectedChallenge = passkeyChallengeTempStore.get(input.userId);
+        const { consumeWebAuthnChallenge } = await import("./db");
+        const expectedChallenge = await consumeWebAuthnChallenge(input.userId, "authentication");
         if (!expectedChallenge) throw new TRPCError({ code: "BAD_REQUEST", message: "Challenge expired. Try again." });
         const passkey = await getPasskeyByCredentialId(input.response.id);
         if (!passkey || passkey.userId !== input.userId) {
@@ -2766,7 +2765,6 @@ Return JSON with questions array, each having optionA and optionB.`,
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Biometric verification failed" });
         }
         await updatePasskeyCounter(passkey.credentialId, verification.authenticationInfo.newCounter);
-        passkeyChallengeTempStore.delete(input.userId);
         // Issue session cookie same as email/password login
         const user = await getUserById(input.userId);
         if (!user) throw new TRPCError({ code: "NOT_FOUND" });

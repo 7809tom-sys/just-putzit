@@ -677,6 +677,20 @@ export const passkeyCredentials = mysqlTable("passkey_credentials", {
 export type PasskeyCredential = typeof passkeyCredentials.$inferSelect;
 export type InsertPasskeyCredential = typeof passkeyCredentials.$inferInsert;
 
+// ─── One-time WebAuthn Challenges ────────────────────────────────────────────
+export const webauthnChallenges = mysqlTable("webauthn_challenges", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  purpose: mysqlEnum("purpose", ["registration", "authentication"]).notNull(),
+  challenge: varchar("challenge", { length: 512 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  consumedAt: timestamp("consumedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("webauthn_challenges_user_purpose_unique").on(table.userId, table.purpose),
+]);
+export type WebauthnChallenge = typeof webauthnChallenges.$inferSelect;
+
 // ─── Login Ads ────────────────────────────────────────────────────────────────
 export const loginAds = mysqlTable("login_ads", {
   id: int("id").autoincrement().primaryKey(),

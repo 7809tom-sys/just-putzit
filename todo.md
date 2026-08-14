@@ -200,7 +200,7 @@
 - [x] Tests, checkpoint, deliver
 
 ## Phase 16b: Biometric Polish (post-delivery follow-up)
-- [ ] Persist WebAuthn challenges in DB (webauthn_challenges table) instead of in-memory Map for serverless safety
+- [x] Persist WebAuthn challenges in DB (webauthn_challenges table) instead of in-memory Map for serverless safety
 - [ ] Build BiometricEnroll component shown post-login (prompt to register Face ID/fingerprint)
 - [ ] Fix biometric login hook usage in Login.tsx (move trpc utils to component scope)
 - [ ] Add passkey badge to profile page (shows "Biometric verified" when passkey registered)
@@ -1280,3 +1280,7 @@
 - [x] Add a protected member profile photo upload, replacement, and removal flow
 - [x] Explain profile photo visibility and moderation constraints in the member UI
 - [x] Add regression coverage for photo validation and profile photo controls
+
+## Durable WebAuthn Challenges
+- [x] Persist one-time WebAuthn registration and authentication challenges with expiration
+- [x] Consume challenges after use and add regression coverage for challenge lifecycle rules
