@@ -338,6 +338,33 @@ const WAUKESHA_CURATED_SEEDS: PublicVenueSeed[] = [
   },
 ];
 
+const MADISON_CURATED_SEEDS: PublicVenueSeed[] = [
+  {
+    venueName: "Irwin A. and Robert D. Goodman Pool",
+    category: "swimming_pool",
+    title: "Open swim at Goodman Pool",
+    description: "Plan an open swim, lap swim, class, or casual pool day at Madison's municipal Goodman Pool.",
+    address: "325 W. Olin Avenue",
+    city: "Madison",
+    state: "WI",
+    website: "https://www.cityofmadison.com/parks/pool",
+    emoji: "🏊",
+    accessNotes: "City-operated seasonal pool. Admission, hours, the visitor waiver, and program availability can change; confirm the official pool checklist before you go.",
+  },
+  {
+    venueName: "Warner Park Community Recreation Center",
+    category: "public_gym",
+    title: "Community recreation at Warner Park",
+    description: "Explore public gymnasiums, fitness, pickleball, programs, and community activities at Madison's Warner Park Community Recreation Center.",
+    address: "1625 Northport Drive",
+    city: "Madison",
+    state: "WI",
+    website: "https://www.cityofmadison.com/parks/wpcrc",
+    emoji: "🏋️",
+    accessNotes: "City-operated recreation center. Hours, program eligibility, facility access, reservations, and pickleball or gym availability vary; confirm details directly with the center.",
+  },
+];
+
 export function normalizeDiscoveryCity(city: string): string {
   return city.trim().replace(/,\s*[A-Z]{2}$/i, "");
 }
@@ -346,6 +373,7 @@ export function getCuratedPublicSeedsForCity(city: string): PublicVenueSeed[] {
   const normalizedCity = normalizeDiscoveryCity(city).toLowerCase();
   if (normalizedCity === "milwaukee") return MILWAUKEE_CURATED_SEEDS;
   if (normalizedCity === "waukesha") return WAUKESHA_CURATED_SEEDS;
+  if (normalizedCity === "madison") return MADISON_CURATED_SEEDS;
   return [];
 }
 
@@ -403,7 +431,7 @@ async function upsertPublicActivity(seed: PublicVenueSeed): Promise<boolean> {
   const existing = await db
     .select({ id: activityListings.id })
     .from(activityListings)
-    .where(and(eq(activityListings.venueId, venueId), eq(activityListings.title, seed.title)))
+    .where(and(eq(activityListings.venueId, venueId), eq(activityListings.category, seed.category)))
     .limit(1);
 
   if (existing[0]) return false;

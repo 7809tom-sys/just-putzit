@@ -1306,3 +1306,12 @@
 - [x] Let attendees explicitly opt in to a Sally introduction with another attendee of the same public event
 - [ ] Require mutual consent and preserve block/report safeguards before creating an event connection
 - [x] Add regression coverage for RSVP introduction eligibility and privacy
+
+## Expanded Public Venue Discovery
+- [x] Expand structured discovery coverage for public pools, courts, trails, beaches, recreation centers, and YMCA facilities
+- [x] Keep public-venue results city-aware and explain source freshness to members
+- [x] Add regression coverage for public-venue category and location filtering
+
+## Public Venue Duplicate Repair
+- [x] Prevent map discovery from creating a second activity for an already curated venue/category
+- [x] Remove the duplicate seeded Madison Goodman Pool activity and add regression coverage
