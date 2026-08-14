@@ -11,4 +11,13 @@ describe("mobile notification navigation", () => {
     expect(app).toContain('path={APP_ROUTES.notifications}');
     expect(mobileNav).toContain('href={APP_ROUTES.notifications}');
   });
+
+  it("keeps Refer as a primary direct tab to the registered Shout-Out route", () => {
+    const root = resolve(__dirname, "..");
+    const app = readFileSync(resolve(root, "client/src/App.tsx"), "utf8");
+    const mobileNav = readFileSync(resolve(root, "client/src/components/MobileBottomNav.tsx"), "utf8");
+
+    expect(app).toContain('<Route path="/shout-out" component={ShoutOut} />');
+    expect(mobileNav).toContain('{ href: "/shout-out", icon: Megaphone, label: "Refer" }');
+  });
 });

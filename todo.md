@@ -403,8 +403,8 @@
 
 ## Recommend a Friend (Prominent Referral Button)
 - [ ] Add a highly visible "Recommend a Friend" floating button / banner on Home dashboard
-- [ ] Add Recommend button to mobile bottom nav bar (primary tab, not buried in More)
-- [ ] Add Recommend button to Profile page sidebar
+- [x] Add Recommend button to mobile bottom nav bar (primary tab, not buried in More)
+- [x] Add Recommend button to Profile page sidebar
 - [ ] Clicking opens ShoutOut page with pre-filled message
 
 ## Authenticated Home Referral Entry Point
@@ -419,7 +419,7 @@
 ## Identity Save Android Fix & Refer-a-Friend
 - [x] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
 - [ ] Add prominent Refer-a-Friend floating button on Home dashboard
-- [ ] Add Refer-a-Friend as a primary tab in mobile bottom nav
+- [x] Add Refer-a-Friend as a primary tab in mobile bottom nav
 - [ ] Create standalone /refer page with shareable link and contact picker
 
 ## Mandatory Account Verification Gate
