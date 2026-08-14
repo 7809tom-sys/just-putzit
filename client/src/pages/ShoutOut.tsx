@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { buildJustPutzitReferralMessage } from "../../../shared/referralCopy";
 import {
   Users,
   Phone,
@@ -146,7 +147,7 @@ export default function ShoutOut() {
   };
 
   const shareLink = (invite: SentInvite) => {
-    const text = `Hey! I'm on Just Putzit — a fun local dating app. Come join me! ${invite.link}`;
+    const text = buildJustPutzitReferralMessage(invite.link);
     if (navigator.share) {
       navigator.share({ title: "Join me on Just Putzit!", text, url: invite.link });
     } else {
@@ -155,9 +156,7 @@ export default function ShoutOut() {
   };
 
   const smsLink = (invite: SentInvite, phone?: string) => {
-    const text = encodeURIComponent(
-      `Hey! I'm on Just Putzit — a fun local dating app in Waukesha. Come join me! ${invite.link}`
-    );
+    const text = encodeURIComponent(buildJustPutzitReferralMessage(invite.link));
     window.open(`sms:${phone ?? ""}?body=${text}`, "_blank");
   };
 

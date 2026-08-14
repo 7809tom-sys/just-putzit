@@ -416,6 +416,11 @@
 - [x] Add an accessible invite-friends action to the member profile header
 - [x] Add regression coverage for Profile-to-Shout-Out navigation
 
+## Community-First Referral Copy
+- [x] Replace dating-first Shout-Out share and SMS copy with activity- and event-based community language
+- [x] Keep invite copy geographically neutral so it is accurate in every supported city
+- [x] Add regression coverage for accurate referral messaging
+
 ## Identity Save Android Fix & Refer-a-Friend
 - [x] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
 - [ ] Add prominent Refer-a-Friend floating button on Home dashboard
