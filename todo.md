@@ -1275,3 +1275,8 @@
 ## Member Event Refresh Repair
 - [x] Make the member-facing event refresh action perform a real safe refresh or explain its current status clearly
 - [x] Add regression coverage and responsive verification for event refresh feedback
+
+## Secure Profile Photo Controls
+- [x] Add a protected member profile photo upload, replacement, and removal flow
+- [x] Explain profile photo visibility and moderation constraints in the member UI
+- [x] Add regression coverage for photo validation and profile photo controls
