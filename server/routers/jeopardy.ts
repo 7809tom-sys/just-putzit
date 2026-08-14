@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { jeopardyRooms, jeopardyRoomPlayers, jeopardyAnswers, jeopardyQuestions, jeopardyCategories } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { answeredJeopardyClueIds } from "../../shared/jeopardyAnswerPolicy";
 
 // Generate a unique game code
 function generateGameCode(): string {
@@ -121,13 +122,17 @@ export const jeopardyRouter = router({
             sql`${jeopardyQuestions.categoryId} IN (${sql.join(categoryIds.map((id) => sql`${id}`), sql`, `)})`
           )
         : [];
+      const answers = await db.select({ questionId: jeopardyAnswers.questionId })
+        .from(jeopardyAnswers)
+        .where(eq(jeopardyAnswers.roomId, room.id));
+      const answeredClueIds = answeredJeopardyClueIds(answers);
 
       return {
         id: room.id,
         gameCode: room.gameCode,
         status: room.status,
         players: players.map((p) => ({ userId: p.userId, score: p.score, isReady: p.isReady })),
-        clues: clues.map((c) => ({ id: c.id, categoryId: c.categoryId, clue: c.clue, value: c.value, answered: false })),
+        clues: clues.map((c) => ({ id: c.id, categoryId: c.categoryId, clue: c.clue, value: c.value, answered: answeredClueIds.has(c.id) })),
         currentClueIndex: room.currentClueIndex,
       };
     }),
@@ -139,12 +144,23 @@ export const jeopardyRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
+      const [room] = await db.select().from(jeopardyRooms).where(eq(jeopardyRooms.id, input.roomId)).limit(1);
+      if (!room || room.status !== "in_progress") throw new TRPCError({ code: "BAD_REQUEST", message: "This game is not ready for a clue yet" });
+      const [player] = await db.select().from(jeopardyRoomPlayers)
+        .where(and(eq(jeopardyRoomPlayers.roomId, input.roomId), eq(jeopardyRoomPlayers.userId, ctx.user.id))).limit(1);
+      if (!player) throw new TRPCError({ code: "FORBIDDEN", message: "Join this game before selecting a clue" });
+
       const clues = await db.select().from(jeopardyQuestions).where(eq(jeopardyQuestions.id, input.clueId)).limit(1);
       const clue = clues[0];
 
       if (!clue) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Clue not found" });
       }
+      const categoryIds = room.categoryIds as number[];
+      if (!categoryIds.includes(clue.categoryId)) throw new TRPCError({ code: "BAD_REQUEST", message: "That clue is not on this board" });
+      const existingAnswer = await db.select({ id: jeopardyAnswers.id }).from(jeopardyAnswers)
+        .where(and(eq(jeopardyAnswers.roomId, input.roomId), eq(jeopardyAnswers.questionId, input.clueId))).limit(1);
+      if (existingAnswer.length > 0) throw new TRPCError({ code: "BAD_REQUEST", message: "That clue has already been answered" });
 
       return {
         clueId: clue.id,
@@ -166,12 +182,23 @@ export const jeopardyRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
+      const [room] = await db.select().from(jeopardyRooms).where(eq(jeopardyRooms.id, input.roomId)).limit(1);
+      if (!room || room.status !== "in_progress") throw new TRPCError({ code: "BAD_REQUEST", message: "This game is not accepting answers yet" });
+      const [player] = await db.select().from(jeopardyRoomPlayers)
+        .where(and(eq(jeopardyRoomPlayers.roomId, input.roomId), eq(jeopardyRoomPlayers.userId, ctx.user.id))).limit(1);
+      if (!player) throw new TRPCError({ code: "FORBIDDEN", message: "Join this game before answering" });
+
       const clues = await db.select().from(jeopardyQuestions).where(eq(jeopardyQuestions.id, input.clueId)).limit(1);
       const clue = clues[0];
 
       if (!clue) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Clue not found" });
       }
+      const categoryIds = room.categoryIds as number[];
+      if (!categoryIds.includes(clue.categoryId)) throw new TRPCError({ code: "BAD_REQUEST", message: "That clue is not on this board" });
+      const existingAnswer = await db.select({ id: jeopardyAnswers.id }).from(jeopardyAnswers)
+        .where(and(eq(jeopardyAnswers.roomId, input.roomId), eq(jeopardyAnswers.questionId, input.clueId))).limit(1);
+      if (existingAnswer.length > 0) throw new TRPCError({ code: "BAD_REQUEST", message: "That clue has already been answered" });
 
       // Simple answer matching (can be improved with fuzzy matching)
       const correctAns = clue.answer ?? "";
@@ -191,11 +218,6 @@ export const jeopardyRouter = router({
 
       // Update player score
       if (isCorrect) {
-        const players = await db.select().from(jeopardyRoomPlayers)
-          .where(and(eq(jeopardyRoomPlayers.roomId, input.roomId), eq(jeopardyRoomPlayers.userId, ctx.user.id)))
-          .limit(1);
-        const player = players[0];
-
         if (player) {
           await db.update(jeopardyRoomPlayers)
             .set({ score: player.score + pointsAwarded })

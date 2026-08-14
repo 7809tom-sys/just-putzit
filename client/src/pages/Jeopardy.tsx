@@ -11,6 +11,7 @@ import {
   Trophy, Users, Play, Volume2, Send, Copy, Check, Crown, Star,
 } from "lucide-react";
 import { toast } from "sonner";
+import { canSubmitJeopardyAnswer } from "@shared/jeopardyAnswerPolicy";
 
 type GamePhase = "lobby" | "waiting" | "playing" | "results";
 
@@ -181,7 +182,8 @@ export default function Jeopardy() {
 
   // Submit answer
   const handleSubmitAnswer = async () => {
-    if (!userAnswer.trim() || !currentClue) { toast.error("Enter an answer"); return; }
+    if (!currentClue) { toast.error("Choose a clue before checking an answer."); return; }
+    if (!userAnswer.trim()) { toast.error("Type your answer before checking it."); return; }
     try {
       const result = await submitAnswerMutation.mutateAsync({ roomId: roomId!, clueId: currentClue.clueId, answer: userAnswer });
       setAnswerRevealed(true);
@@ -192,8 +194,8 @@ export default function Jeopardy() {
       } else {
         toast.error(`Incorrect. Answer: ${result.correctAnswer}`);
       }
-    } catch {
-      toast.error("Failed to submit answer");
+    } catch (error: any) {
+      toast.error(error.message || "We couldn't check that answer. Please try again.");
     }
   };
 
@@ -407,8 +409,8 @@ export default function Jeopardy() {
                     </div>
                     {!answerRevealed && (
                       <div className="space-y-3">
-                        <Input placeholder="What is...?" value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSubmitAnswer()} />
-                        <Button onClick={handleSubmitAnswer} disabled={submitAnswerMutation.isPending} className="w-full bg-purple-600 hover:bg-purple-700">Submit Answer</Button>
+                        <Input placeholder="What is...?" value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSubmitAnswer(); } }} />
+                        <Button onClick={handleSubmitAnswer} disabled={!canSubmitJeopardyAnswer(userAnswer, Boolean(currentClue), submitAnswerMutation.isPending)} className="w-full bg-purple-600 hover:bg-purple-700">{submitAnswerMutation.isPending ? "Checking answer…" : "Check answer"}</Button>
                       </div>
                     )}
                     {answerRevealed && (
