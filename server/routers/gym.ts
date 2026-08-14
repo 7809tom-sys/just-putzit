@@ -229,7 +229,7 @@ export const gymRouter = router({
       gymId: z.number(),
       title: z.string().min(3).max(150),
       workoutType: z.string().optional(),
-      scheduledAt: z.number(), // unix ms
+      scheduledAt: z.number().int().positive().refine((value) => value > Date.now(), { message: "Workout sessions must be scheduled in the future" }), // unix ms
       durationMinutes: z.number().default(60),
       maxParticipants: z.number().min(2).max(20).default(6),
       notes: z.string().optional(),

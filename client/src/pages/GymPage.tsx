@@ -15,6 +15,7 @@ import { ArrowLeft, MapPin, Phone, Globe, Users, Calendar, Dumbbell, CheckCircle
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
+import { parseGymSessionDraft } from "../../../shared/gymSessionDraft";
 
 const WORKOUT_STYLES = [
   { value: "cardio", label: "🏃 Cardio", desc: "Running, cycling, HIIT" },
@@ -281,7 +282,7 @@ export default function GymPage() {
     onError: (e: { message: string }) => toast.error(e.message),
   });
   const createSession = trpc.gym.createSession.useMutation({
-    onSuccess: () => { refetchSessions(); setShowSessionDialog(false); toast.success("Session created!"); },
+    onSuccess: () => { refetchSessions(); resetSessionForm(); setShowSessionDialog(false); toast.success("Session created!"); },
     onError: (e: { message: string }) => toast.error(e.message),
   });
   const rsvpSession = trpc.gym.rsvpSession.useMutation({
@@ -307,6 +308,15 @@ export default function GymPage() {
   const [sessionTime, setSessionTime] = useState("");
   const [sessionMax, setSessionMax] = useState("10");
 
+  const resetSessionForm = () => {
+    setSessionTitle("");
+    setSessionDesc("");
+    setSessionType("general");
+    setSessionDate("");
+    setSessionTime("");
+    setSessionMax("10");
+  };
+
   const toggleStyle = (v: string) =>
     setSelectedStyles((prev) => prev.includes(v) ? prev.filter((s) => s !== v) : [...prev, v]);
   const toggleSchedule = (v: string) =>
@@ -319,11 +329,16 @@ export default function GymPage() {
 
   const handleCreateSession = () => {
     if (!user) { toast.error("Sign in to create a session"); return; }
-    if (!sessionTitle || !sessionDate || !sessionTime) { toast.error("Please fill in all required fields"); return; }
-    const scheduledAt = new Date(`${sessionDate}T${sessionTime}`).toISOString();
+    const parsed = parseGymSessionDraft({
+      title: sessionTitle,
+      date: sessionDate,
+      time: sessionTime,
+      maxParticipants: sessionMax,
+    });
+    if (!parsed.ok) { toast.error(parsed.message); return; }
     createSession.mutate({
       gymId: id, title: sessionTitle, notes: sessionDesc || undefined,
-      workoutType: sessionType, scheduledAt: scheduledAt as unknown as number,
+      workoutType: sessionType, scheduledAt: parsed.scheduledAt, maxParticipants: parsed.maxParticipants,
     });
   };
 
@@ -556,7 +571,7 @@ export default function GymPage() {
               <p className="text-sm text-muted-foreground">Upcoming group workouts</p>
               {user && (
                 <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white"
-                  onClick={() => setShowSessionDialog(true)}>
+                  onClick={() => { resetSessionForm(); setShowSessionDialog(true); }}>
                   <Plus className="w-3.5 h-3.5 mr-1.5" /> Schedule
                 </Button>
               )}
@@ -680,7 +695,7 @@ export default function GymPage() {
             </div>
             <div>
               <Label className="text-sm mb-1.5 block">Max Participants</Label>
-              <Input type="number" min="2" max="50" value={sessionMax} onChange={(e) => setSessionMax(e.target.value)} />
+                <Input type="number" min="2" max="20" value={sessionMax} onChange={(e) => setSessionMax(e.target.value)} />
             </div>
             <div>
               <Label className="text-sm mb-1.5 block">Description (optional)</Label>

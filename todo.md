@@ -291,6 +291,11 @@
 - [x] Include churches and church-hosted activities in city-aware community discovery
 - [x] Include high-school and community-theater productions with attendance, audition, volunteer, class, and membership pathways
 
+## Gym Buddy Session Capacity Repair
+- [x] Send the member-selected group size to the gym session creation procedure
+- [x] Validate the participant limit before submission and reset form state after success
+- [x] Add regression coverage for the Gym Buddy capacity contract
+
 ## Admin Email Outreach
 - [ ] Add venueOutreach DB table (id, venueId, toEmail, subject, body, sentAt, status)
 - [ ] Add sendOutreachEmail tRPC procedure (admin only) using built-in email or SMTP
