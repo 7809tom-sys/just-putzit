@@ -527,9 +527,15 @@
 - [ ] Mic button shows recording state (pulsing red), transcribes in real time, stops on tap
 - [ ] Wire VoiceBio into profile bio field on Profile edit page
 - [ ] Wire VoiceBio into family profile bio field on Family Network setup
-- [ ] Wire VoiceBio into Sally interview text input (speak answers instead of typing)
+- [x] Wire VoiceBio into Sally interview text input (speak answers instead of typing)
 - [ ] Show "AI-written" vs "Voice-recorded" badge on bio so other users know it's authentic
 - [ ] TypeScript check, tests, checkpoint
+
+## Sally Interview Voice Responses
+- [x] Add a browser-supported speech-recognition control beside the Sally interview response field
+- [x] Preserve typed input and append speech transcripts without auto-sending a response
+- [x] Gracefully hide the control when browser speech recognition is unavailable
+- [x] Add regression coverage for voice-response availability and input handling
 
 ## Games Suite (Multiplayer + Profile-Building)
 - [ ] Schema: trivia_questions table (question, optionA-D, correctAnswer, category, difficulty)

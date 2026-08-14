@@ -4,8 +4,9 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { toast } from "sonner";
-import { Send, Clock, CheckCircle2, CalendarDays, Heart, ThumbsDown, MapPin } from "lucide-react";
+import { Send, Clock, CheckCircle2, CalendarDays, Heart, ThumbsDown, MapPin, Mic, MicOff } from "lucide-react";
 
 const INTERVIEW_SECONDS = 90;
 
@@ -29,6 +30,9 @@ export default function Interview() {
   }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { isSupported: speechSupported, isListening, error: speechError, startListening, stopListening } = useSpeechRecognition((transcript) => {
+    setInput((current) => current ? `${current} ${transcript}` : transcript);
+  });
 
   const startInterview = trpc.interview.start.useMutation({
     onSuccess: data => {
@@ -102,6 +106,10 @@ export default function Interview() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (speechError) toast.error(speechError);
+  }, [speechError]);
 
   const handleSend = () => {
     if (!input.trim() || !sessionId || isSending || isComplete) return;
@@ -256,7 +264,9 @@ export default function Interview() {
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t flex gap-2">
+        <div className="border-t p-4">
+          <p className="mb-2 text-xs text-muted-foreground">{speechSupported ? "You can speak your answer, then review your words before sending." : "Type your answer, then send it when you are ready."}</p>
+          <div className="flex gap-2">
           <Textarea
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -271,6 +281,19 @@ export default function Interview() {
             }}
             disabled={isSending || isComplete}
           />
+          {speechSupported && (
+            <Button
+              type="button"
+              variant={isListening ? "destructive" : "outline"}
+              onClick={isListening ? stopListening : startListening}
+              disabled={isSending || isComplete}
+              className="self-end rounded-xl px-3"
+              aria-label={isListening ? "Stop listening" : "Speak your answer"}
+              title={isListening ? "Stop listening" : "Speak your answer"}
+            >
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </Button>
+          )}
           <Button
             onClick={handleSend}
             disabled={!input.trim() || isSending || isComplete}
@@ -278,6 +301,7 @@ export default function Interview() {
           >
             <Send className="w-4 h-4" />
           </Button>
+          </div>
         </div>
       </div>
     </div>
