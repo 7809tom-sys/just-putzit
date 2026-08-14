@@ -556,13 +556,13 @@ export async function resolveAdminFlag(flagId: number) {
 export async function suspendUser(userId: number) {
   const db = await getDb();
   if (!db) return;
-  await db.update(users).set({ role: "user" }).where(eq(users.id, userId));
-  // Flag as manually reviewed
+  await db.update(users).set({ role: "banned" as any }).where(eq(users.id, userId));
+  // Record the suspension decision for admin audit history.
   await db.insert(adminFlags).values({
     userId,
     flagType: "manual_review",
     severity: "high",
-    notes: "Account suspended by admin",
+    notes: "Account suspended by admin pending review",
   });
 }
 

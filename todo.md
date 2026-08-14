@@ -1222,3 +1222,8 @@
 ## Accurate Public Trust Messaging
 - [x] Replace unsupported public verification labels on the landing page with truthful safety and privacy language
 - [x] Add regression coverage for accurate landing-page trust copy
+
+## Enforceable Safety Suspension
+- [x] Add a genuine suspended-account state and prevent suspended members from using protected features
+- [x] Make administrator suspend and restore actions update real account access state
+- [x] Add regression coverage for the suspension workflow
