@@ -303,7 +303,7 @@
 - [ ] Sally system prompt should track what profile fields are still missing and ask about them naturally
 - [ ] Profile traits, hobbies, dream vacation, personality tags all accumulate across sessions
 - [ ] Identity fields (gender, orientation, age) extracted if mentioned in any conversation
-- [ ] Profile completeness score shown to user to encourage more chatting
+- [x] Profile completeness score shown to user to encourage more chatting
 - [x] During Sally interviews, offer current local events and capture interested/not-for-me feedback for future recommendations
 - [x] During Sally interviews, offer current local events and capture interested/not-for-me feedback for future recommendations
 - [x] Show a “What Sally learned recently” profile indicator sourced from the latest completed interview

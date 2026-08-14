@@ -16,6 +16,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Pencil, Check, X } from "lucide-react";
+import { ProfileCompletenessCard } from "@/components/ProfileCompletenessCard";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -388,6 +389,16 @@ export default function Profile() {
               {!connectionPreferences.friendship && !connectionPreferences.dating && <Badge variant="outline" className="rounded-full border-teal-200 bg-white text-teal-800">Community only</Badge>}
             </div>
           </div>
+
+          <ProfileCompletenessCard
+            bio={profile?.bio}
+            aiSummary={traits?.aiSummary}
+            city={profile?.city}
+            interviewCount={profile?.interviewCount}
+            onAddBio={openBioEdit}
+            onSetLocation={() => navigate("/")}
+            onChatWithSally={() => navigate("/interview")}
+          />
 
           {/* AI Summary */}
           {traits?.aiSummary && (
