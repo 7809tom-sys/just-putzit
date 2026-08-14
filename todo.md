@@ -1239,3 +1239,11 @@
 ## Moderation Account Approval
 - [x] Add an explicit administrator action to clear a suspended account for normal access after review
 - [x] Add regression coverage for the account approval workflow
+
+## Honest Profile Verification Status
+- [x] Show distinct optional device and city verification statuses on member profiles
+- [x] Add regression coverage that prevents unsupported identity-verification claims
+
+## Profile Birth-date Display Repair
+- [x] Prevent invalid stored birth dates from rendering as NaN years old or Invalid Date
+- [x] Add regression coverage for safe profile age and date display

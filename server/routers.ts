@@ -31,7 +31,7 @@ import { selectSimilarEventDetails } from "../shared/similarEventDetails";
 import { isEligiblePublicEventProposal } from "../shared/eventProposalPolicy";
 import { hasSharedConnectionIntent, normalizeConnectionPreferences } from "../shared/connectionPreferences";
 import { BLOCKED_CONVERSATION_MESSAGE, isValidMemberSafetyTarget } from "../shared/memberSafetyPolicy";
-
+import { parseProfileBirthDate } from "../shared/profileBirthDate";
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
   "cooking_class", "escape_room", "wine_tasting", "hiking", "park",
@@ -573,6 +573,9 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        if (input.birthDate && !parseProfileBirthDate(input.birthDate)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Please enter a valid birth date." });
+        }
         await getOrCreateProfile(ctx.user.id);
         await updateProfileIdentity(ctx.user.id, {
           gender: input.gender,

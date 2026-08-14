@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Pencil, Check, X } from "lucide-react";
 import { ProfileCompletenessCard } from "@/components/ProfileCompletenessCard";
+import { formatProfileBirthday, getProfileAge, parseProfileBirthDate } from "../../../shared/profileBirthDate";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -24,6 +25,9 @@ export default function Profile() {
   const { data: profile, isLoading, refetch: refetchProfile } = trpc.profile.get.useQuery();
   const { data: latestLearning } = trpc.profile.latestLearning.useQuery();
   const { data: photos, refetch: refetchPhotos } = trpc.profile.getPhotos.useQuery();
+  const { data: verificationStatus } = trpc.passkey.verificationStatus.useQuery();
+  const deviceCheckComplete = verificationStatus?.passkeyVerified ?? false;
+  const cityCheckComplete = verificationStatus?.gpsPhotoVerified ?? false;
   const setPrimary = trpc.profile.setPrimaryPhoto.useMutation({
     onSuccess: () => {
       refetchPhotos();
@@ -181,10 +185,8 @@ export default function Profile() {
   const profileAny = profile as any;
   const connectionPreferences = traits?.connectionPreferences ?? { community: true, friendship: false, dating: false };
 
-  // Compute age from birth_date (YYYY-MM-DD string)
-  const age = profileAny?.birthDate
-    ? Math.floor((Date.now() - new Date(profileAny.birthDate + 'T12:00:00Z').getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-    : null;
+  const age = getProfileAge(profileAny?.birthDate);
+  const birthdayLabel = formatProfileBirthday(profileAny?.birthDate);
 
   const genderLabel: Record<string, string> = {
     man: "Man", woman: "Woman", non_binary: "Non-binary", other: "Other", prefer_not_to_say: "Prefer not to say",
@@ -236,6 +238,10 @@ export default function Profile() {
     const monthNum = String(parseInt(birthMonth)).padStart(2, '0');
     const dayNum = String(parseInt(birthDay)).padStart(2, '0');
     const birthDateStr = `${birthYear}-${monthNum}-${dayNum}`;
+    if (!parseProfileBirthDate(birthDateStr)) {
+      toast.error("Please enter a real calendar date that is not in the future");
+      return;
+    }
     updateBirthday.mutate({
       birthDate: birthDateStr,
     });
@@ -281,13 +287,19 @@ export default function Profile() {
             <div className="flex-1 text-center sm:text-left">
               <div className="flex items-center gap-2 justify-center sm:justify-start mb-1">
                 <h1 className="font-display font-bold text-2xl">{profile?.displayName || user?.name}</h1>
-                {profile?.isVerified ? (
+                {deviceCheckComplete && (
                   <Badge className="bg-green-100 text-green-700 border-0 gap-1">
-                    <Shield className="w-3 h-3" /> Verified
+                    <Shield className="w-3 h-3" /> Device check complete
                   </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-amber-600 border-amber-300 gap-1">
-                    <Shield className="w-3 h-3" /> Verification pending
+                )}
+                {cityCheckComplete && (
+                  <Badge className="bg-sky-100 text-sky-700 border-0 gap-1">
+                    <MapPin className="w-3 h-3" /> City check complete
+                  </Badge>
+                )}
+                {!deviceCheckComplete && !cityCheckComplete && (
+                  <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30 gap-1">
+                    <Shield className="w-3 h-3" /> Checks are optional
                   </Badge>
                 )}
               </div>
@@ -332,9 +344,9 @@ export default function Profile() {
                   <Edit2 className="w-3 h-3 mr-1" />
                   {(!profileAny?.gender || !profileAny?.sexualOrientation) ? "Add identity info" : "Edit identity"}
                 </Button>
-                {profileAny?.birthDate && (
+                {birthdayLabel && (
                   <Badge className="rounded-full bg-pink-50 text-pink-700 border-0">
-                    🎂 {new Date(profileAny.birthDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                    🎂 {birthdayLabel}
                   </Badge>
                 )}
                 <Button
@@ -342,17 +354,21 @@ export default function Profile() {
                   size="sm"
                   className="h-6 px-2 text-xs text-muted-foreground rounded-full"
                   onClick={() => {
-                    if (profileAny?.birthDate) {
+                    if (parseProfileBirthDate(profileAny?.birthDate)) {
                       const [y, m, d] = profileAny.birthDate.split('-');
                       setBirthYear(y || '');
                       setBirthMonth(String(parseInt(m || '0')));
                       setBirthDay(String(parseInt(d || '0')));
+                    } else {
+                      setBirthYear('');
+                      setBirthMonth('');
+                      setBirthDay('');
                     }
                     setBirthdayOpen(true);
                   }}
                 >
                   <Edit2 className="w-3 h-3 mr-1" />
-                  {!profileAny?.birthDate ? "Add birthday" : "Edit birthday"}
+                  {!birthdayLabel ? "Add birthday" : "Edit birthday"}
                 </Button>
               </div>
             </div>
@@ -665,17 +681,17 @@ export default function Profile() {
           </div>
         )}
 
-        {/* Vetting status */}
+        {/* Account and location checks */}
         <div className="bg-white rounded-3xl shadow-xl p-6">
           <h2 className="font-display font-bold text-xl mb-4 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" /> Continuous Vetting Status
+            <Shield className="w-5 h-5 text-primary" /> Account & location checks
           </h2>
           <div className="space-y-3">
             <VettingItem icon="✅" label="Profile Created" status="complete" />
-            <VettingItem icon="🎤" label="Dynamic Re-Interview" status={profile?.interviewCount ? "complete" : "pending"} desc={`${profile?.interviewCount || 0} session${profile?.interviewCount !== 1 ? "s" : ""} completed`} />
-            <VettingItem icon="🔒" label="Live Background Audit" status="pending" desc="Coming soon" />
-            <VettingItem icon="📍" label="GPS Location Verification" status={profile?.latitude ? "complete" : "pending"} desc={profile?.city || "Not set"} />
-            <VettingItem icon="📸" label="Photo Verification" status={photos && photos.some((p: any) => p.cityVerified) ? "complete" : "pending"} desc={photos && photos.length > 0 ? `${photos.filter((p: any) => p.cityVerified).length}/${photos.length} photos city-verified` : "No photos uploaded"} />
+            <VettingItem icon="🎤" label="Sally profile refresh" status={profile?.interviewCount ? "complete" : "pending"} desc={`${profile?.interviewCount || 0} session${profile?.interviewCount !== 1 ? "s" : ""} completed`} />
+            <VettingItem icon="🔐" label="Device passkey" status={deviceCheckComplete ? "complete" : "pending"} desc={deviceCheckComplete ? "A passkey is set up on this device." : "Optional device security check."} />
+            <VettingItem icon="📍" label="City check" status={cityCheckComplete ? "complete" : "pending"} desc={cityCheckComplete ? `Optional city check completed${profile?.city ? ` for ${profile.city}` : ""}.` : "Optional city check is not complete."} />
+            <VettingItem icon="📸" label="Photo city check" status={photos && photos.some((p: any) => p.cityVerified) ? "complete" : "pending"} desc={photos && photos.length > 0 ? `${photos.filter((p: any) => p.cityVerified).length}/${photos.length} photos include a city check` : "No photos uploaded"} />
           </div>
         </div>
       </div>
