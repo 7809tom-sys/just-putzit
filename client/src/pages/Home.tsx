@@ -41,7 +41,7 @@ const ALL_MODULES: ModuleDef[] = [
   { id: "marketplace",label: "Marketplace",         emoji: "🛍️", description: "Local deals & services",        defaultPinned: false, defaultPosition: 7 },
   { id: "family",     label: "Family Connect",      emoji: "👨‍👩‍👧", description: "Meet families nearby",         defaultPinned: false, defaultPosition: 8 },
   { id: "trip",       label: "Trip Planner",        emoji: "✈️", description: "Plan adventures together",       defaultPinned: false, defaultPosition: 9 },
-  { id: "shoutout",   label: "Shout Out",           emoji: "📣", description: "Refer friends & earn rewards",   defaultPinned: false, defaultPosition: 10 },
+  { id: "shoutout",   label: "Shout Out",           emoji: "📣", description: "Refer friends & earn rewards",   defaultPinned: true,  defaultPosition: 10 },
   { id: "localevents",label: "Local Events",         emoji: "🏙️", description: "Museum, library & community events", defaultPinned: false, defaultPosition: 11 },
 ];
 
@@ -738,7 +738,7 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
     <div className="min-h-screen gradient-warm">
       <div className="container py-8">
         {/* Welcome header */}
-        <div className="mb-6 flex items-start justify-between">
+        <div className="mb-6 flex items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground mb-1">
               Welcome back, {profile?.displayName || user?.name?.split(" ")[0]}! 👋
@@ -749,14 +749,27 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
                 : `You've had ${profile?.interviewCount} chat${profile?.interviewCount !== 1 ? "s" : ""} with Sally`}
             </p>
           </div>
-          <button
-            onClick={() => setShowCustomize(true)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-full px-3 py-1.5 transition-colors hover:bg-muted/50 flex-shrink-0 mt-1"
-            title="Customize your home"
-          >
-            <Settings2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Customize</span>
-          </button>
+          <div className="mt-1 flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => navigate("/shout-out")}
+              className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-100"
+              aria-label="Recommend Just Putzit to a friend"
+              title="Recommend a friend"
+            >
+              <Megaphone className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Refer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCustomize(true)}
+              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              title="Customize your home"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Customize</span>
+            </button>
+          </div>
         </div>
 
         <div className="mb-6 max-w-xl">

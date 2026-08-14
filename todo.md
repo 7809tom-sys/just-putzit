@@ -407,6 +407,11 @@
 - [ ] Add Recommend button to Profile page sidebar
 - [ ] Clicking opens ShoutOut page with pre-filled message
 
+## Authenticated Home Referral Entry Point
+- [x] Add a compact, always-available referral action beside Home customization controls
+- [x] Keep the fuller Shout-Out referral module enabled in default home layouts
+- [x] Add regression coverage for accessible referral navigation
+
 ## Identity Save Android Fix & Refer-a-Friend
 - [ ] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
 - [ ] Add prominent Refer-a-Friend floating button on Home dashboard
