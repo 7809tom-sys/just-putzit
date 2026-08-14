@@ -1263,3 +1263,7 @@
 - [x] Aggregate member game starts, completions, wins, and score totals
 - [x] Show a truthful game-achievement summary on the member dashboard
 - [x] Add regression coverage for game-result and player-stat aggregation
+
+## Mobile Install Prompt Layout Repair
+- [x] Keep the install prompt from covering mobile bottom navigation or page actions
+- [x] Add regression coverage and mobile verification for install prompt placement
