@@ -511,6 +511,75 @@ type UWMadisonCalendarEvent = {
   tags?: string[];
 };
 
+type UWMArtsCalendarEvent = {
+  id: number | string;
+  title?: string;
+  description?: string;
+  url?: string;
+  start_date?: string;
+  end_date?: string;
+  cost?: string;
+  venue?: {
+    venue?: string;
+    address?: string;
+    city?: string;
+  };
+};
+
+function plainText(value: string | undefined) {
+  if (!value) return "";
+  return cheerio.load(value).text().replace(/\s+/g, " ").trim();
+}
+
+function parseApiDate(value: string | undefined) {
+  if (!value) return null;
+  const normalized = value.replace(" ", "T");
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function parseUWMArtsCalendarEvents(events: UWMArtsCalendarEvent[], now = new Date()): ScrapedEvent[] {
+  const normalized = events.flatMap((event) => {
+    const title = plainText(event.title);
+    const eventDate = parseApiDate(event.start_date);
+    if (!title || !eventDate) return [];
+    const description = plainText(event.description).slice(0, 1000) || null;
+    const cost = plainText(event.cost);
+    const venue = event.venue;
+    return [{
+      title,
+      description,
+      eventDate,
+      endDate: parseApiDate(event.end_date),
+      venueName: venue?.venue?.trim() || "UW–Milwaukee Peck School of the Arts",
+      venueAddress: venue?.address?.trim() || null,
+      venueCity: venue?.city?.trim() ? `${venue.city.trim()}, WI` : "Milwaukee, WI",
+      category: "arts",
+      sourceUrl: event.url?.startsWith("http") ? event.url : "https://uwm.edu/arts/events/",
+      sourceName: "UW–Milwaukee Peck School of the Arts",
+      isFree: !cost || /free|no charge|\$0(?:\.00)?\b/i.test(cost),
+      isOnCampus: true,
+    } satisfies ScrapedEvent];
+  });
+  return futureEvents(dedupeScrapedEvents(normalized), 60).filter((event) => event.eventDate && event.eventDate.getTime() >= now.getTime() - 6 * 60 * 60 * 1000);
+}
+
+// ─── UW–Milwaukee Peck School of the Arts ─────────────────────────────────────
+export async function scrapeUWMArtsPerformingEvents(): Promise<ScrapedEvent[]> {
+  const url = "https://uwm.edu/arts/wp-json/tribe/events/v1/events?per_page=60";
+  try {
+    const response = await axios.get<{ events?: UWMArtsCalendarEvent[] }>(url, {
+      headers: { ...HEADERS, Accept: "application/json" },
+      timeout: 15000,
+      maxRedirects: 5,
+    });
+    return parseUWMArtsCalendarEvents(response.data.events ?? []);
+  } catch (err: any) {
+    console.warn(`[communityScraper] Failed to fetch ${url}: ${err.message}`);
+    return [];
+  }
+}
+
 export function isLocalMadisonCampusEvent(event: UWMadisonCalendarEvent) {
   const location = (event.location ?? "").toLowerCase();
   if (location.includes("online") || location.includes("virtual")) return false;
@@ -579,6 +648,7 @@ export async function scrapeAllMilwaukeeEventsWithHealth() {
     { sourceKey: "milwaukee_library", sourceLabel: "Milwaukee Public Library", city: "Milwaukee", run: scrapeMilwaukeeLibrary },
     { sourceKey: "waukesha_library", sourceLabel: "Waukesha Public Library", city: "Waukesha", run: scrapeWaukeshaLibrary },
     { sourceKey: "uwm", sourceLabel: "UW–Milwaukee", city: "Milwaukee", run: scrapeUWMilwaukee },
+    { sourceKey: "uwm_arts", sourceLabel: "UW–Milwaukee Peck School of the Arts", city: "Milwaukee", run: scrapeUWMArtsPerformingEvents },
     { sourceKey: "marquette", sourceLabel: "Marquette University", city: "Milwaukee", run: scrapeMarquette },
     { sourceKey: "onmilwaukee", sourceLabel: "OnMilwaukee", city: "Milwaukee", run: scrapeOnMilwaukee },
   ]);

@@ -477,6 +477,12 @@
 - [x] Community sources sidebar panel showing all 5 scraped sources
 - [x] 29 tests passing, 0 TypeScript errors
 
+## Official College Performing-Arts Discovery
+- [x] Add the official UW–Milwaukee Peck School of the Arts event API as a scheduled source
+- [x] Normalize official theatre, music, and dance events with campus location and source links
+- [x] Surface source health for the performing-arts calendar alongside existing city sources
+- [x] Add regression coverage for official arts event parsing and future-event filtering
+
 ## Family Network
 - [ ] Schema: family_profiles table (userId, familyName, bio, neighborhoodCity, interests JSON, isActive)
 - [ ] Schema: family_children table (familyProfileId, ageYears, gender optional)
