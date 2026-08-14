@@ -1132,3 +1132,8 @@
 - [x] Add stable personalized, date, and distance sorting for similar-event recommendations
 - [x] Add an accessible sorting dropdown to event-detail recommendations
 - [x] Add regression coverage and responsive verification for similar-event sorting
+
+## Similar Event Category Filtering
+- [x] Add stable category filtering for similar-event recommendations
+- [x] Add an accessible category filter beside sorting controls with a clear empty state
+- [x] Add regression coverage and responsive verification for category filtering

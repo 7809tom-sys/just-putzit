@@ -15,6 +15,7 @@ import { getLoginUrl } from "@/const";
 import { formatSimilarEventDistance } from "@shared/similarEventDetails";
 import { getActivityBookmarkFeedback, isActivityBookmarked } from "@shared/activityBookmarks";
 import { sortSimilarEvents, type SimilarEventSort } from "@shared/similarEventSorting";
+import { filterSimilarEventsByCategory, SIMILAR_EVENT_CATEGORY_FILTERS, type SimilarEventCategoryFilter } from "@shared/similarEventCategoryFilter";
 import { toast } from "sonner";
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -29,6 +30,7 @@ export default function EventDetail() {
   const [, navigate] = useLocation();
   const id = parseInt(activityId ?? "0", 10);
   const [similarSort, setSimilarSort] = useState<SimilarEventSort>("personalized");
+  const [similarCategory, setSimilarCategory] = useState<SimilarEventCategoryFilter>("all");
 
   const { data: activity, isLoading, error } = trpc.activityBoard.publicGetById.useQuery(
     { activityId: id },
@@ -53,9 +55,13 @@ export default function EventDetail() {
     { activityId: id },
     { enabled: Boolean(viewer) && id > 0 },
   );
+  const filteredSimilarEvents = useMemo(
+    () => filterSimilarEventsByCategory(similarEvents?.activities ?? [], similarCategory),
+    [similarEvents?.activities, similarCategory],
+  );
   const sortedSimilarEvents = useMemo(
-    () => sortSimilarEvents(similarEvents?.activities ?? [], similarSort),
-    [similarEvents?.activities, similarSort],
+    () => sortSimilarEvents(filteredSimilarEvents, similarSort),
+    [filteredSimilarEvents, similarSort],
   );
 
   // Build SEO data from activity
@@ -199,6 +205,12 @@ export default function EventDetail() {
                   <p className="mt-1 text-sm text-muted-foreground">{similarEvents.basedOnPreferences ? "Based on activities you’ve saved, RSVP’d to, or attended." : "More nearby activities in this area to explore."}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Select value={similarCategory} onValueChange={(value) => setSimilarCategory(value as SimilarEventCategoryFilter)}>
+                    <SelectTrigger aria-label="Filter similar events by category" className="h-9 w-[148px] rounded-full bg-white text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {SIMILAR_EVENT_CATEGORY_FILTERS.map((filter) => <SelectItem key={filter.value} value={filter.value}>{filter.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                   <Select value={similarSort} onValueChange={(value) => setSimilarSort(value as SimilarEventSort)}>
                     <SelectTrigger aria-label="Sort similar events" className="h-9 w-[142px] rounded-full bg-white text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -210,7 +222,9 @@ export default function EventDetail() {
                   <Button variant="ghost" size="sm" className="shrink-0 rounded-full" onClick={() => navigate("/activities")}>Browse all <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
                 </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              {sortedSimilarEvents.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border bg-white/70 px-5 py-6 text-sm text-muted-foreground">No similar events match this type yet. Try <button type="button" className="font-semibold text-primary underline underline-offset-4" onClick={() => setSimilarCategory("all")}>All types</button>.</div>
+              ) : <div className="grid gap-3 sm:grid-cols-3">
                 {sortedSimilarEvents.map((event) => {
                   const eventDate = event.eventDate ? new Date(event.eventDate) : null;
                   const bookmarked = isActivityBookmarked(bookmarkedActivityIds, event.id);
@@ -223,7 +237,7 @@ export default function EventDetail() {
                     </button>
                   </div>;
                 })}
-              </div>
+              </div>}
             </section>
           )}
 
