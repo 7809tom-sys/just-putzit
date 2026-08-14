@@ -17,6 +17,7 @@ import { autoSeedCityEvents } from "./cityEventSeeder";
 import { crawlAllCities } from "./museumLibraryCrawler";
 import { getLatestInterviewLearnings } from "./profileLearning";
 import { mergeProfileTraits } from "../shared/profileTraitMerge";
+import { buildProfileSummaryEvidence, isEvidenceGroundedProfileSummary } from "../shared/profileSummaryEvidence";
 import { formatCompetitiveGameContext } from "../shared/competitiveGameContext";
 import { refreshPublicActivitiesForCity } from "./publicVenueDiscovery";
 import { getAdminRoleChangeBlock } from "./adminRolePolicy";
@@ -792,7 +793,12 @@ Rules:
 
           // Regenerate AI summary if we have enough data
           if (Object.keys(mergedTraits).length > 2) {
-            mergedTraits.aiSummary = await generateProfileSummary(mergedTraits, userName, messages);
+            mergedTraits.aiSummary = await generateProfileSummary(
+              mergedTraits,
+              userName,
+              messages,
+              existingTraits.aiSummary,
+            );
           }
 
           await updateProfile(ctx.user.id, {
@@ -829,7 +835,7 @@ Rules:
         const extractedTraits = await extractTraitsFromInterview(messages, existingTraits);
         const mergedTraits = { ...existingTraits, ...extractedTraits };
         const userName = profile?.displayName || ctx.user.name || "friend";
-        mergedTraits.aiSummary = await generateProfileSummary(mergedTraits, userName);
+        mergedTraits.aiSummary = await generateProfileSummary(mergedTraits, userName, messages, existingTraits.aiSummary);
 
         await updateInterviewSession(input.sessionId, { extractedTraits, completedAt: new Date() });
         await updateProfile(ctx.user.id, {
@@ -3705,28 +3711,23 @@ async function extractIdentityFromInterview(messages: InterviewMessage[]): Promi
   }
 }
 
-async function generateProfileSummary(traits: ProfileTraits, userName: string, interviewMessages?: InterviewMessage[]): Promise<string> {
-  let interviewContext = "";
-  if (interviewMessages && interviewMessages.length > 0) {
-    const userResponses = interviewMessages
-      .filter((m) => m.role === "user")
-      .map((m) => m.content)
-      .join(" | ");
-    interviewContext = `Interview responses: ${userResponses.substring(0, 1500)}`;
-  }
+async function generateProfileSummary(
+  traits: ProfileTraits,
+  userName: string,
+  interviewMessages?: InterviewMessage[],
+  priorSummary?: string,
+): Promise<string> {
+  const interviewResponses = (interviewMessages ?? [])
+    .filter((message) => message.role === "user")
+    .map((message) => message.content);
+  const evidence = buildProfileSummaryEvidence(traits, interviewResponses);
+  if (evidence.facts.length === 0) return priorSummary ?? "";
 
-  const systemPrompt = `You are Sally from Just Putzit. Write a SHORT, AUTHENTIC 2-3 sentence personality summary for ${userName}.
+  const systemPrompt = `You are Sally from Just Putzit. Write an honest 1-3 sentence profile summary for ${userName}.
 
-IMPORTANT RULES:
-- Be SPECIFIC and REAL, not generic
-- Capture actual personality signals from their interviews
-- AVOID clichés: no "vibrant connections", "infectious energy", "adventure", "blast"
-- If they mention specific interests (cabinetry, songwriting, humor, directness), INCLUDE THEM
-- Sound like a friend describing them, not a dating app template
-- Be honest about quirks and personality
-- Max 3 sentences`;
+You may use ONLY the factual member evidence supplied below. The summary must include at least two concrete details or phrases from that evidence whenever two are available. Do not invent traits, hobbies, relationships, activities, or personality claims. Avoid hype, generic praise, dating-app clichés, and unsupported labels such as "adventurous," "incredible," "vibrant," or "infectious." Write in a warm, straightforward voice that sounds like someone who actually listened. Output only the summary—no heading, label, quotation marks, or emoji.`;
 
-  const userContent = `${interviewContext}\n\nProfile traits: ${JSON.stringify(traits)}`;
+  const userContent = `Member evidence (use only these details):\n- ${evidence.facts.join("\n- ")}`;
 
   const response = await invokeLLM({
     messages: [
@@ -3734,7 +3735,14 @@ IMPORTANT RULES:
       { role: "user", content: userContent },
     ],
   });
-  return (response.choices[0]?.message?.content as string) || `${userName} is a genuine person!`;
+  const candidate = response.choices[0]?.message?.content as string | undefined;
+  const cleanCandidate = typeof candidate === "string" ? candidate.trim() : "";
+  if (isEvidenceGroundedProfileSummary(cleanCandidate, evidence)) {
+    return cleanCandidate;
+  }
+
+  // A weak draft must never replace a stronger existing member summary.
+  return priorSummary ?? "";
 }
 
 // ─── Game-to-Profile Intelligence ─────────────────────────────────────────────

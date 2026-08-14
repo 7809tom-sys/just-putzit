@@ -309,6 +309,12 @@
 - [x] Show a “What Sally learned recently” profile indicator sourced from the latest completed interview
 - [x] Animate newly learned profile traits with a subtle first-load highlight
 
+## Sally Evidence-Grounded Profile Summaries
+- [x] Build a deterministic evidence set from interview responses and accumulated profile traits
+- [x] Require Sally summaries to use supported specifics and avoid generic praise or invented details
+- [x] Refresh the summary from the completed interview transcript and retain the prior summary if quality checks fail
+- [x] Add regression tests covering unsupported generic summaries and evidence-based profile writing
+
 ## Personalized Homepage Sections
 - [x] Let members select homepage sections with checkboxes and automatically show their selections on Home
 - [x] Persist selected homepage sections per member and retain a recommended default set
