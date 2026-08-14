@@ -2119,6 +2119,15 @@ export async function toggleSponsoredEvent(eventId: number, isSponsored: boolean
   await db.update(communityEvents).set({ isSponsored }).where(eq(communityEvents.id, eventId));
 }
 
+export async function setThirdWheelHostForEvent(eventId: number, hasThirdWheelHost: boolean, thirdWheelHostNote?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(communityEvents).set({
+    hasThirdWheelHost,
+    thirdWheelHostNote: hasThirdWheelHost ? thirdWheelHostNote?.trim().slice(0, 280) || null : null,
+  }).where(eq(communityEvents.id, eventId));
+}
+
 export async function toggleSponsoredActivity(activityId: number, isSponsored: boolean) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");

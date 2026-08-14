@@ -619,6 +619,8 @@ export const communityEvents = mysqlTable("community_events", {
   postedByUserId: int("postedByUserId"),
   rsvpCount: int("rsvpCount").notNull().default(0),
   isSponsored: boolean("isSponsored").notNull().default(false),
+  hasThirdWheelHost: boolean("hasThirdWheelHost").notNull().default(false),
+  thirdWheelHostNote: varchar("thirdWheelHostNote", { length: 280 }),
   isActive: boolean("isActive").notNull().default(true),
   lat: double("lat"),
   lng: double("lng"),

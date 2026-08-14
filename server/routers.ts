@@ -170,6 +170,7 @@ import {
   getLoginAdsForVendor,
   updateLoginAdStatus,
   toggleSponsoredEvent,
+  setThirdWheelHostForEvent,
   toggleSponsoredActivity,
   getRevenueSummary,
   getProfilePhotos,
@@ -2881,6 +2882,14 @@ Return JSON with questions array, each having optionA and optionB.`,
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         await toggleSponsoredEvent(input.eventId, input.isSponsored);
+        return { success: true };
+      }),
+
+    setThirdWheelHost: protectedProcedure
+      .input(z.object({ eventId: z.number().int(), hasThirdWheelHost: z.boolean(), thirdWheelHostNote: z.string().max(280).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await setThirdWheelHostForEvent(input.eventId, input.hasThirdWheelHost, input.thirdWheelHostNote);
         return { success: true };
       }),
 

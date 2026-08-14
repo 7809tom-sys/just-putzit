@@ -1247,3 +1247,8 @@
 ## Profile Birth-date Display Repair
 - [x] Prevent invalid stored birth dates from rendering as NaN years old or Invalid Date
 - [x] Add regression coverage for safe profile age and date display
+
+## Third Wheel Event Safety Indicator
+- [x] Add an accurate Third Wheel event-host label for partner-managed public community events
+- [x] Add member guidance explaining what the label does and does not provide
+- [x] Add regression coverage for Third Wheel indicator eligibility and copy

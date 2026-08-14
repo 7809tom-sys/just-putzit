@@ -89,6 +89,8 @@ interface EventCardProps {
     rsvpCount: number;
     source?: string;
     isSponsored?: boolean;
+    hasThirdWheelHost?: boolean;
+    thirdWheelHostNote?: string | null;
   };
   onRsvp?: (id: number) => void;
   rsvpLoading?: boolean;
@@ -124,6 +126,14 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0,
                 Sponsored
               </span>
             )}
+            {event.hasThirdWheelHost && (
+              <span
+                title="A listed event host is scheduled to be on site. This is not emergency support."
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-sky-500/15 text-sky-200 border border-sky-400/30"
+              >
+                🛡️ Host on site
+              </span>
+            )}
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${categoryColor(event.category)}`}>
               <CatIcon className="w-3 h-3" />
               {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
@@ -147,6 +157,11 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, interestedCount = 0,
         <h3 className="font-semibold text-white text-base leading-snug mb-2 group-hover:text-orange-200 transition-colors">
           {event.title}
         </h3>
+        {event.hasThirdWheelHost && (
+          <p className="mb-2 text-xs leading-relaxed text-sky-100/90">
+            A listed event host can help with event logistics. This does not replace emergency services.
+          </p>
+        )}
 
         {/* Description */}
         {event.description && (

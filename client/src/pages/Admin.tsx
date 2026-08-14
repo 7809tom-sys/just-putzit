@@ -483,6 +483,10 @@ export default function Admin() {
     onSuccess: () => { toast.success("Event sponsorship updated!"); refetchEvents(); refetchRevenue(); },
     onError: () => toast.error("Failed to update"),
   });
+  const toggleThirdWheelHost = trpc.events.setThirdWheelHost.useMutation({
+    onSuccess: () => { toast.success("Third Wheel host setting updated"); refetchEvents(); },
+    onError: () => toast.error("Failed to update host setting"),
+  });
   const toggleActivitySponsored = trpc.activities.toggleSponsored.useMutation({
     onSuccess: () => { toast.success("Activity sponsorship updated!"); refetchRevenue(); },
     onError: () => toast.error("Failed to update"),
@@ -748,23 +752,35 @@ export default function Admin() {
                     <p className="text-sm text-muted-foreground py-4 text-center">No events yet. Post events in the Events tab first.</p>
                   ) : (
                     <div className="space-y-2">
-                      {(allEvents as Array<{ id: number; title: string; city: string; eventDate: Date | string; isSponsored: boolean }>).map((ev) => (
+                      {(allEvents as Array<{ id: number; title: string; city: string; eventDate: Date | string; isSponsored: boolean; hasThirdWheelHost?: boolean }>).map((ev) => (
                         <div key={ev.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border hover:bg-muted/30 transition-colors">
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{ev.title}</p>
                             <p className="text-xs text-muted-foreground">{ev.city} · {new Date(ev.eventDate).toLocaleDateString()}</p>
                           </div>
-                          <button
-                            onClick={() => toggleEventSponsored.mutate({ eventId: ev.id, isSponsored: !ev.isSponsored })}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                              ev.isSponsored
-                                ? "bg-amber-500/20 border-amber-500/40 text-amber-700"
-                                : "bg-muted border-border text-muted-foreground hover:border-amber-500/40 hover:text-amber-700"
-                            }`}
-                          >
-                            <Star className={`w-3 h-3 ${ev.isSponsored ? "fill-amber-500 text-amber-500" : ""}`} />
-                            {ev.isSponsored ? "Sponsored" : "Set Sponsored"}
-                          </button>
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button
+                              onClick={() => toggleEventSponsored.mutate({ eventId: ev.id, isSponsored: !ev.isSponsored })}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                ev.isSponsored
+                                  ? "bg-amber-500/20 border-amber-500/40 text-amber-700"
+                                  : "bg-muted border-border text-muted-foreground hover:border-amber-500/40 hover:text-amber-700"
+                              }`}
+                            >
+                              <Star className={`w-3 h-3 ${ev.isSponsored ? "fill-amber-500 text-amber-500" : ""}`} />
+                              {ev.isSponsored ? "Sponsored" : "Set Sponsored"}
+                            </button>
+                            <button
+                              onClick={() => toggleThirdWheelHost.mutate({ eventId: ev.id, hasThirdWheelHost: !ev.hasThirdWheelHost })}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                ev.hasThirdWheelHost
+                                  ? "bg-sky-100 border-sky-300 text-sky-700"
+                                  : "bg-muted border-border text-muted-foreground hover:border-sky-300 hover:text-sky-700"
+                              }`}
+                            >
+                              🛡️ {ev.hasThirdWheelHost ? "Host on site" : "Add event host"}
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
