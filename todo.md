@@ -1181,3 +1181,11 @@
 ## Jeopardy Confirmation Button Repair
 - [x] Diagnose and repair Jeopardy answer selection and confirmation-button behavior
 - [x] Add regression coverage and responsive verification for the Jeopardy confirmation flow
+
+## Jeopardy Mobile Category Layout Repair
+- [x] Prevent mobile category labels and emoji icons from overlapping in the Jeopardy create-game card
+- [x] Add responsive regression coverage and verify the repaired mobile category controls
+
+## Jeopardy Live Answer Flow Repair
+- [x] Trace and repair the live Jeopardy answer submission, result feedback, and next-clue progression
+- [x] Add regression coverage and verify the full answer-result flow at mobile size

@@ -19,6 +19,7 @@ const JEOPARDY_VALUES = [200, 400, 600, 800, 1000];
 
 type BoardClue = { id: number; categoryId: number; clue: string; value: number; answered: boolean };
 type BoardCategory = { id: number; name: string; clues: BoardClue[] };
+type AnswerResult = { isCorrect: boolean; pointsAwarded: number; correctAnswer: string | null };
 
 type Player = {
   userId: number;
@@ -46,6 +47,7 @@ export default function Jeopardy() {
   const [currentClue, setCurrentClue] = useState<{ clueId: number; clue: string; value: number } | null>(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [answerRevealed, setAnswerRevealed] = useState(false);
+  const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [prevPlayerIds, setPrevPlayerIds] = useState<Set<number>>(new Set());
   const [chatMessages, setChatMessages] = useState<Array<{ userId: number; displayName: string; content: string }>>([]);
@@ -175,6 +177,7 @@ export default function Jeopardy() {
       setCurrentClue({ clueId, clue: result.clue ?? "", value });
       setUserAnswer("");
       setAnswerRevealed(false);
+      setAnswerResult(null);
     } catch {
       toast.error("Failed to select clue");
     }
@@ -186,6 +189,7 @@ export default function Jeopardy() {
     if (!userAnswer.trim()) { toast.error("Type your answer before checking it."); return; }
     try {
       const result = await submitAnswerMutation.mutateAsync({ roomId: roomId!, clueId: currentClue.clueId, answer: userAnswer });
+      setAnswerResult({ isCorrect: result.isCorrect, pointsAwarded: result.pointsAwarded, correctAnswer: result.correctAnswer ?? null });
       setAnswerRevealed(true);
       // Mark clue as answered
       if (currentClue) setAnsweredClueIds((prev) => { const next = new Set(prev); next.add(currentClue.clueId); return next; });
@@ -197,6 +201,13 @@ export default function Jeopardy() {
     } catch (error: any) {
       toast.error(error.message || "We couldn't check that answer. Please try again.");
     }
+  };
+
+  const handleNextClue = () => {
+    setCurrentClue(null);
+    setUserAnswer("");
+    setAnswerResult(null);
+    setAnswerRevealed(false);
   };
 
   // Copy game code
@@ -266,12 +277,12 @@ export default function Jeopardy() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-purple-200">Select Categories</label>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="grid grid-cols-1 gap-2 mt-2 sm:grid-cols-2">
                     {(categories.length > 0 ? categories : [1,2,3,4,5].map((id) => ({ id, name: `Category ${id}`, emoji: "❓" }))).map((cat) => (
                       <Button
                         key={cat.id}
                         variant={selectedCategories.includes(cat.id) ? "default" : "outline"}
-                        className={selectedCategories.includes(cat.id) ? "bg-purple-500 border-purple-400" : "border-white/30 text-white hover:bg-white/10"}
+                        className={`min-h-12 h-auto justify-start whitespace-normal px-3 py-2 text-left text-sm leading-tight sm:text-base ${selectedCategories.includes(cat.id) ? "bg-purple-500 border-purple-400" : "border-white/30 text-white hover:bg-white/10"}`}
                         onClick={() => setSelectedCategories((prev) => prev.includes(cat.id) ? prev.filter((c) => c !== cat.id) : [...prev, cat.id])}
                       >
                         {"emoji" in cat ? cat.emoji : "❓"} {cat.name}
@@ -410,11 +421,15 @@ export default function Jeopardy() {
                     {!answerRevealed && (
                       <div className="space-y-3">
                         <Input placeholder="What is...?" value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSubmitAnswer(); } }} />
-                        <Button onClick={handleSubmitAnswer} disabled={!canSubmitJeopardyAnswer(userAnswer, Boolean(currentClue), submitAnswerMutation.isPending)} className="w-full bg-purple-600 hover:bg-purple-700">{submitAnswerMutation.isPending ? "Checking answer…" : "Check answer"}</Button>
+                        <Button onClick={handleSubmitAnswer} disabled={!canSubmitJeopardyAnswer(userAnswer, Boolean(currentClue), submitAnswerMutation.isPending)} className="w-full bg-purple-600 hover:bg-purple-700">{submitAnswerMutation.isPending ? "Checking answer…" : "Check Answer"}</Button>
                       </div>
                     )}
                     {answerRevealed && (
-                      <Button onClick={() => setCurrentClue(null)} className="w-full">Next Clue</Button>
+                      <div className={`rounded-xl border p-4 text-center ${answerResult?.isCorrect ? "border-green-200 bg-green-50 text-green-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
+                        <p className="font-bold">{answerResult?.isCorrect ? `Correct! +$${answerResult.pointsAwarded}` : "Not quite this time."}</p>
+                        {!answerResult?.isCorrect && answerResult?.correctAnswer && <p className="mt-1 text-sm">Correct response: <span className="font-semibold">{answerResult.correctAnswer}</span></p>}
+                        <Button onClick={handleNextClue} className="mt-4 w-full" variant={answerResult?.isCorrect ? "default" : "secondary"}>Next Clue</Button>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -439,7 +454,7 @@ export default function Jeopardy() {
                             boardCategories.map((cat) => {
                               const clue = cat.clues.find((c) => c.value === val);
                               if (!clue) return <div key={`${cat.id}-${val}`} className="h-16" />;
-                              const isAnswered = answeredClueIds.has(clue.id);
+                              const isAnswered = clue.answered || answeredClueIds.has(clue.id);
                               return (
                                 <Button
                                   key={clue.id}

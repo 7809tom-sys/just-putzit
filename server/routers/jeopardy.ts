@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { jeopardyRooms, jeopardyRoomPlayers, jeopardyAnswers, jeopardyQuestions, jeopardyCategories } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { answeredJeopardyClueIds } from "../../shared/jeopardyAnswerPolicy";
+import { isJeopardyAnswerCorrect } from "../../shared/jeopardyAnswerMatching";
 
 // Generate a unique game code
 function generateGameCode(): string {
@@ -200,9 +201,9 @@ export const jeopardyRouter = router({
         .where(and(eq(jeopardyAnswers.roomId, input.roomId), eq(jeopardyAnswers.questionId, input.clueId))).limit(1);
       if (existingAnswer.length > 0) throw new TRPCError({ code: "BAD_REQUEST", message: "That clue has already been answered" });
 
-      // Simple answer matching (can be improved with fuzzy matching)
+      // Accept standard Jeopardy phrasing such as “Who is Gene Sarazen?”
       const correctAns = clue.answer ?? "";
-      const isCorrect = input.answer.toLowerCase().trim() === correctAns.toLowerCase().trim();
+      const isCorrect = isJeopardyAnswerCorrect(input.answer, correctAns);
       const pointsAwarded = isCorrect ? (clue.value ?? 400) : 0;
 
       // Save answer
