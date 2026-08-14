@@ -880,16 +880,35 @@ export default function Home() {
     );
   }
 
+  // A member may have an authenticated navigation session before their profile
+  // query resolves. Do not briefly show public sign-in or onboarding CTAs in
+  // that state; wait for the profile decision instead.
+  if (isAuthenticated && profile === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full gradient-sally mx-auto mb-4 flex items-center justify-center animate-pulse">
+            <span className="text-2xl">🤖</span>
+          </div>
+          <p className="text-muted-foreground">Preparing your home…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isAuthenticated && profile?.onboardingComplete) {
     return <AuthenticatedHome user={user} profile={profile} />;
   }
-  return <LandingPage />;
+  return <LandingPage isAuthenticated={isAuthenticated} />;
 }
 
 // ─── Landing page (public) ────────────────────────────────────────────────────
 
-function LandingPage() {
+function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
   const [, navigate] = useLocation();
+  const primaryAction = isAuthenticated
+    ? { label: "Continue setup", destination: "/onboarding" }
+    : { label: "Get Started", destination: "/signup" };
   return (
     <div className="min-h-screen overflow-x-hidden">
       {/* Hero Section */}
@@ -900,8 +919,8 @@ function LandingPage() {
             <img src="/manus-storage/justputzit-logo-transparent_2e545ffa.png" alt="Just Putzit" className="h-10 w-auto object-contain" />
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/login")}>Sign in</Button>
-            <Button size="sm" className="gradient-primary text-white border-0 rounded-full" onClick={() => navigate("/signup")}>Get Started</Button>
+            {!isAuthenticated && <Button variant="ghost" size="sm" onClick={() => navigate("/login")}>Sign in</Button>}
+            <Button size="sm" className="gradient-primary text-white border-0 rounded-full" onClick={() => navigate(primaryAction.destination)}>{primaryAction.label}</Button>
           </div>
         </div>
 
@@ -919,8 +938,8 @@ function LandingPage() {
               Just Putzit connects you with real people for real experiences — powered by Sally, your AI guide who gets to know the real you.
             </p>
             <div className="flex flex-wrap gap-3 mb-8">
-              <Button size="lg" className="gradient-primary text-white border-0 rounded-full gap-2 btn-scale" onClick={() => navigate("/signup")}>
-                <Sparkles className="w-5 h-5" /> Start Your Journey
+              <Button size="lg" className="gradient-primary text-white border-0 rounded-full gap-2 btn-scale" onClick={() => navigate(primaryAction.destination)}>
+                <Sparkles className="w-5 h-5" /> {isAuthenticated ? "Continue Your Setup" : "Start Your Journey"}
               </Button>
               <Button size="lg" variant="outline" className="rounded-full" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}>
                 Learn More

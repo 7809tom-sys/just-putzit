@@ -1320,6 +1320,10 @@
 - [x] Count upcoming events per seeded city before deciding whether that city needs reseeding
 - [x] Add regression coverage for city-specific reseeding decisions
 
+## Authenticated Landing CTA Repair
+- [x] Hide redundant public sign-in and onboarding calls to action for authenticated members
+- [x] Add regression coverage for account-aware landing actions
+
 ## Expanded Public Venue Discovery
 - [x] Expand structured discovery coverage for public pools, courts, trails, beaches, recreation centers, and YMCA facilities
 - [x] Keep public-venue results city-aware and explain source freshness to members
