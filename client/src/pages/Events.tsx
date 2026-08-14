@@ -99,6 +99,8 @@ interface EventCardProps {
   introductionOptIn?: boolean;
   onToggleIntroductionOptIn?: (id: number, nextValue: boolean) => void;
   introductionLoading?: boolean;
+  onRequestSallyIntroduction?: (id: number) => void;
+  introductionRequestLoading?: boolean;
   interestedCount?: number;
   isInterested?: boolean;
   onToggleInterest?: (id: number) => void;
@@ -107,7 +109,7 @@ interface EventCardProps {
   userLng?: number;
 }
 
-function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, introductionOptIn = false, onToggleIntroductionOptIn, introductionLoading, interestedCount = 0, isInterested = false, onToggleInterest, interestLoading, userLat, userLng }: EventCardProps) {
+function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, introductionOptIn = false, onToggleIntroductionOptIn, introductionLoading, onRequestSallyIntroduction, introductionRequestLoading, interestedCount = 0, isInterested = false, onToggleInterest, interestLoading, userLat, userLng }: EventCardProps) {
   const CatIcon = CATEGORIES.find((c) => c.value === event.category)?.icon ?? Star;
   const numericId = typeof event.id === "string" ? parseInt(event.id.replace("eb_", ""), 10) : event.id;
 
@@ -202,7 +204,7 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, introductionOptIn = 
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {onToggleInterest && typeof event.id === "number" ? (
             <button
               onClick={() => onToggleInterest(numericId)}
@@ -252,6 +254,17 @@ function EventCard({ event, onRsvp, rsvpLoading, hasRsvped, introductionOptIn = 
               }`}
             >
               {introductionOptIn ? "Sally intro on" : "Open to an intro"}
+            </button>
+          ) : null}
+          {hasRsvped && introductionOptIn && onRequestSallyIntroduction && typeof event.id === "number" ? (
+            <button
+              type="button"
+              title="Sally creates a private match only when another attendee independently opted in and neither person blocked the other."
+              onClick={() => onRequestSallyIntroduction(numericId)}
+              disabled={introductionRequestLoading}
+              className="inline-flex items-center gap-1 rounded-lg border border-teal-400/40 bg-teal-500/15 px-3 py-1.5 text-xs font-semibold text-teal-100 transition-all hover:bg-teal-500/25 disabled:opacity-60"
+            >
+              {introductionRequestLoading ? "Checking…" : "Ask Sally"}
             </button>
           ) : null}
           {event.externalUrl && (
@@ -357,6 +370,21 @@ export default function Events() {
     onError: (error) => toast.error(error.message || "Could not update your introduction setting."),
   });
 
+  const introductionRequestMutation = trpc.events.requestSallyIntroduction.useMutation({
+    onSuccess: (data) => {
+      if (data.status === "created") {
+        toast.success("Sally introduction ready", {
+          description: "A private match was created with another attendee who independently opted in. Find it in Matches.",
+        });
+      } else {
+        toast.info("No mutual introduction yet", {
+          description: "You are opted in. Sally keeps attendee identities private unless another eligible attendee is ready too.",
+        });
+      }
+    },
+    onError: (error) => toast.error(error.message || "Could not check for a Sally introduction."),
+  });
+
   async function handleRefreshList() {
     setIsRefreshing(true);
     try {
@@ -384,6 +412,14 @@ export default function Events() {
       return;
     }
     introductionOptInMutation.mutate({ eventId, openToSallyIntroduction });
+  }
+
+  function handleRequestSallyIntroduction(eventId: number) {
+    if (!user) {
+      toast.error("Sign in to request a Sally introduction.");
+      return;
+    }
+    introductionRequestMutation.mutate({ eventId });
   }
 
   const interestMutation = trpc.events.markInterest.useMutation({
@@ -654,6 +690,8 @@ export default function Events() {
                 introductionOptIn={introductionOptInIds.has(event.id)}
                 onToggleIntroductionOptIn={user ? handleIntroductionOptIn : undefined}
                 introductionLoading={introductionOptInMutation.isPending}
+                onRequestSallyIntroduction={user ? handleRequestSallyIntroduction : undefined}
+                introductionRequestLoading={introductionRequestMutation.isPending}
                 onToggleInterest={user ? handleToggleInterest : undefined}
                 isInterested={interestedIds.has(event.id)}
                 interestLoading={interestingId === event.id}

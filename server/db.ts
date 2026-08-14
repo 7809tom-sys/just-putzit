@@ -88,6 +88,7 @@ import { getSponsoredPerformanceRates } from "../shared/sponsoredPerformance";
 import { buildSponsoredAudienceSummary, SPONSORED_AUDIENCE_MIN_GROUP_SIZE } from "../shared/sponsoredAudienceSummary";
 import { shouldAutoSuspendForReports } from "../shared/reportEscalationPolicy";
 import { getWebauthnChallengeExpiry } from "../shared/webauthnChallengePolicy";
+import { canCreateEventIntroduction } from "../shared/eventIntroductionPolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -1957,6 +1958,82 @@ export async function setEventIntroductionOptIn(eventId: number, userId: number,
     .set({ openToSallyIntroduction })
     .where(eq(eventRsvps.id, existing[0].id));
   return { openToSallyIntroduction };
+}
+
+/**
+ * Creates one private match for a member who has RSVP'd and opted in to Sally
+ * introductions. Candidate identities remain undisclosed until the mutual opt-in
+ * produces the normal private match card. Existing blocks and matches always win.
+ */
+export async function createMutualEventIntroduction(eventId: number, requesterUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  const requester = await db
+    .select({ id: eventRsvps.id, openToSallyIntroduction: eventRsvps.openToSallyIntroduction })
+    .from(eventRsvps)
+    .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, requesterUserId)))
+    .limit(1);
+
+  if (!requester[0]?.openToSallyIntroduction) {
+    throw new Error("RSVP and turn on Sally introductions before requesting an event introduction");
+  }
+
+  const candidates = await db
+    .select({ userId: eventRsvps.userId })
+    .from(eventRsvps)
+    .where(and(
+      eq(eventRsvps.eventId, eventId),
+      eq(eventRsvps.openToSallyIntroduction, true),
+      sql`${eventRsvps.userId} <> ${requesterUserId}`,
+    ))
+    .orderBy(eventRsvps.createdAt);
+
+  for (const candidate of candidates) {
+    const [isBlocked, alreadyMatched] = await Promise.all([
+      isBlockInEffect(requesterUserId, candidate.userId),
+      existingMatch(requesterUserId, candidate.userId),
+    ]);
+
+    if (!canCreateEventIntroduction({
+      requesterUserId,
+      candidateUserId: candidate.userId,
+      requesterOptedIn: Boolean(requester[0].openToSallyIntroduction),
+      candidateOptedIn: true,
+      isBlocked,
+      alreadyMatched: Boolean(alreadyMatched),
+    })) continue;
+
+    const match = await createMatch(
+      requesterUserId,
+      candidate.userId,
+      72,
+      "You both opted in to a Sally introduction for the same public event.",
+    );
+
+    if (!match) throw new Error("Could not create the private event introduction");
+
+    await Promise.all([
+      createNotification(
+        requesterUserId,
+        "new_match",
+        "Sally introduction ready",
+        "A private connection is ready with another attendee who independently opted in for this public event.",
+        match.id,
+      ),
+      createNotification(
+        candidate.userId,
+        "new_match",
+        "Sally introduction ready",
+        "A private connection is ready with another attendee who independently opted in for this public event.",
+        match.id,
+      ),
+    ]);
+
+    return { status: "created" as const, matchId: match.id };
+  }
+
+  return { status: "unavailable" as const };
 }
 
 export async function getUserEventRsvps(userId: number) {

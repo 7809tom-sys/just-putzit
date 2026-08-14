@@ -1304,7 +1304,7 @@
 
 ## RSVP-based Sally Introductions
 - [x] Let attendees explicitly opt in to a Sally introduction with another attendee of the same public event
-- [ ] Require mutual consent and preserve block/report safeguards before creating an event connection
+- [x] Require mutual consent and preserve block/report safeguards before creating an event connection
 - [x] Add regression coverage for RSVP introduction eligibility and privacy
 
 ## Expanded Public Venue Discovery
