@@ -30,6 +30,17 @@ export function getProfileAge(value: unknown, now = new Date()): number | null {
   return age >= 0 && age <= 125 ? age : null;
 }
 
+/**
+ * Birthday celebrations are rendered only in the signed-in member's own
+ * profile. Compare month/day in the member's current browser locale so the
+ * greeting arrives on their local calendar day.
+ */
+export function isProfileBirthdayToday(value: unknown, now = new Date()): boolean {
+  const birthDate = parseProfileBirthDate(value);
+  if (!birthDate) return false;
+  return birthDate.getUTCMonth() === now.getMonth() && birthDate.getUTCDate() === now.getDate();
+}
+
 export function formatProfileBirthday(value: unknown): string | null {
   const birthDate = parseProfileBirthDate(value);
   return birthDate

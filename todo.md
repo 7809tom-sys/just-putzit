@@ -615,10 +615,15 @@
 - [x] Display full birthday on profile card (e.g., "Birthday: June 15, 1967")
 - [x] Calculate and display age automatically from full date
 - [ ] Add birthday notifications for matches
-- [ ] Add birthday badges and celebration UI
+- [x] Add birthday badges and celebration UI
 - [ ] Create birthday events feature in Activities
 - [x] Write vitest tests for birthday feature
 - [ ] Save checkpoint
+
+## Private Birthday Celebration Badge
+- [x] Add deterministic birthday-today logic that only uses the member’s saved birthday
+- [x] Show a warm celebration badge only on the member’s own Profile page
+- [x] Add regression coverage for birthday-today handling and invalid dates
 
 ## Event Bookmarks Feature
 - [ ] Create event_bookmarks table (userId, eventId, createdAt)

@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Pencil, Check, X } from "lucide-react";
 import { ProfileCompletenessCard } from "@/components/ProfileCompletenessCard";
-import { formatProfileBirthday, getProfileAge, parseProfileBirthDate } from "../../../shared/profileBirthDate";
+import { formatProfileBirthday, getProfileAge, isProfileBirthdayToday, parseProfileBirthDate } from "../../../shared/profileBirthDate";
 import { startRegistration } from "@simplewebauthn/browser";
 
 export default function Profile() {
@@ -221,6 +221,7 @@ export default function Profile() {
 
   const age = getProfileAge(profileAny?.birthDate);
   const birthdayLabel = formatProfileBirthday(profileAny?.birthDate);
+  const birthdayToday = isProfileBirthdayToday(profileAny?.birthDate);
 
   const genderLabel: Record<string, string> = {
     man: "Man", woman: "Woman", non_binary: "Non-binary", other: "Other", prefer_not_to_say: "Prefer not to say",
@@ -381,6 +382,11 @@ export default function Profile() {
                 {birthdayLabel && (
                   <Badge className="rounded-full bg-pink-50 text-pink-700 border-0">
                     🎂 {birthdayLabel}
+                  </Badge>
+                )}
+                {birthdayToday && (
+                  <Badge className="rounded-full border-0 bg-amber-100 text-amber-900" aria-label="Happy birthday celebration">
+                    🎉 Happy birthday!
                   </Badge>
                 )}
                 <Button

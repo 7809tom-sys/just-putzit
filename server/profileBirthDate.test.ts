@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatProfileBirthday, getProfileAge, parseProfileBirthDate } from "../shared/profileBirthDate";
+import { formatProfileBirthday, getProfileAge, isProfileBirthdayToday, parseProfileBirthDate } from "../shared/profileBirthDate";
 
 describe("profile birth-date safeguards", () => {
   it("accepts real calendar dates and formats them safely", () => {
@@ -14,5 +14,11 @@ describe("profile birth-date safeguards", () => {
       expect(formatProfileBirthday(value)).toBeNull();
       expect(getProfileAge(value)).toBeNull();
     }
+  });
+
+  it("recognizes the member's local birthday while rejecting invalid dates", () => {
+    expect(isProfileBirthdayToday("1970-08-14", new Date(2026, 7, 14, 9))).toBe(true);
+    expect(isProfileBirthdayToday("1970-08-15", new Date(2026, 7, 14, 9))).toBe(false);
+    expect(isProfileBirthdayToday("not-a-date", new Date(2026, 7, 14, 9))).toBe(false);
   });
 });
