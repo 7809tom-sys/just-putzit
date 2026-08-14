@@ -1174,9 +1174,9 @@
 - [x] Add regression coverage and responsive verification for Finish My Sentence
 
 ## Game Lobby Route Reliability
-- [ ] Show only games with a supported public-room flow in the room creator
-- [ ] Route solo games only to verified playable pages and explain availability clearly
-- [ ] Add regression coverage and responsive verification for Game Lobby game choices
+- [x] Show only games with a supported public-room flow in the room creator
+- [x] Route solo games only to verified playable pages and explain availability clearly
+- [x] Add regression coverage and responsive verification for Game Lobby game choices
 
 ## Jeopardy Confirmation Button Repair
 - [x] Diagnose and repair Jeopardy answer selection and confirmation-button behavior

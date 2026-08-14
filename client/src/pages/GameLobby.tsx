@@ -17,9 +17,16 @@ const GAME_TYPE_LABELS: Record<string, { label: string; emoji: string; descripti
   trivia: { label: "Trivia Challenge", emoji: "🧠", description: "Test your knowledge with pop culture & fun facts!" },
   icebreaker: { label: "Icebreaker", emoji: "🧊", description: "Open-ended questions to spark real conversations." },
   two_truths: { label: "Two Truths & a Lie", emoji: "🎭", description: "Share statements and guess which one is the lie!" },
-  hot_takes: { label: "Hot Takes", emoji: "🔥", description: "Rapid-fire agree/disagree on spicy statements." },
   finish_sentence: { label: "Finish My Sentence", emoji: "✍️", description: "Complete open-ended prompts and reveal your personality." },
-  compatibility: { label: "Compatibility Quiz", emoji: "💕", description: "Answer the same 10 questions. Sally scores how aligned you are." },
+};
+
+const ROOM_GAME_TYPES = ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence"] as const;
+const SOLO_GAME_ROUTES: Record<string, string> = {
+  jeopardy: "/jeopardy",
+  trivia_pursuit: "/trivia-pursuit",
+  would_you_rather: "/would-you-rather",
+  trivia: "/trivia",
+  finish_sentence: "/finish-sentence",
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -33,7 +40,7 @@ export default function GameLobby() {
   const [activeRoomId, setActiveRoomId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
-  const [newGameType, setNewGameType] = useState<string>("jeopardy");
+  const [newGameType, setNewGameType] = useState<string>("would_you_rather");
   const [gameMode, setGameMode] = useState<"solo" | "multiplayer">("multiplayer");
   const [newMaxPlayers, setNewMaxPlayers] = useState(6);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -108,6 +115,12 @@ export default function GameLobby() {
   const currentAnswers = (activeRoom?.answers as any[] ?? []).filter(
     (a: any) => a.questionIndex === (activeRoom?.currentQuestionIndex ?? 0)
   );
+  const selectableGameTypes = gameMode === "solo" ? Object.keys(SOLO_GAME_ROUTES) : ROOM_GAME_TYPES;
+  const setMode = (mode: "solo" | "multiplayer") => {
+    setGameMode(mode);
+    const nextOptions = mode === "solo" ? Object.keys(SOLO_GAME_ROUTES) : ROOM_GAME_TYPES;
+    if (!nextOptions.includes(newGameType as never)) setNewGameType("would_you_rather");
+  };
 
   if (activeRoomId && activeRoom) {
     const gameInfo = GAME_TYPE_LABELS[activeRoom.gameType] ?? GAME_TYPE_LABELS.would_you_rather;
@@ -350,14 +363,14 @@ export default function GameLobby() {
                       <Button
                         variant={gameMode === "solo" ? "default" : "outline"}
                         className="flex-1 rounded-lg"
-                        onClick={() => setGameMode("solo")}
+                        onClick={() => setMode("solo")}
                       >
                         Solo
                       </Button>
                       <Button
                         variant={gameMode === "multiplayer" ? "default" : "outline"}
                         className="flex-1 rounded-lg"
-                        onClick={() => setGameMode("multiplayer")}
+                        onClick={() => setMode("multiplayer")}
                       >
                         Multiplayer
                       </Button>
@@ -380,11 +393,10 @@ export default function GameLobby() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(GAME_TYPE_LABELS).map(([key, val]) => (
-                          <SelectItem key={key} value={key}>
-                            {val.emoji} {val.label}
-                          </SelectItem>
-                        ))}
+                        {selectableGameTypes.map((key) => {
+                          const game = GAME_TYPE_LABELS[key];
+                          return game ? <SelectItem key={key} value={key}>{game.emoji} {game.label}</SelectItem> : null;
+                        })}
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-gray-500 mt-1">{GAME_TYPE_LABELS[newGameType]?.description}</p>
@@ -409,7 +421,7 @@ export default function GameLobby() {
                   )}
                   {gameMode === "solo" && (
                     <p className="text-xs text-gray-500">
-                      Play solo to practice and improve your skills!
+                      Choose a ready-to-play game. Jeopardy and Trivia Pursuit open dedicated game rooms; the others are quick solo games.
                     </p>
                   )}
                   <Button
@@ -420,19 +432,7 @@ export default function GameLobby() {
                         // For solo mode, navigate directly to the game
                         toast.success(`Starting ${GAME_TYPE_LABELS[newGameType]?.label} solo game...`);
                         setCreateOpen(false);
-                        // Navigate to solo game page based on game type
-                        const gameRoutes: Record<string, string> = {
-                          jeopardy: "/jeopardy",
-                          trivia_pursuit: "/trivia-pursuit",
-                          would_you_rather: "/would-you-rather",
-                          trivia: "/trivia",
-                          icebreaker: "/icebreaker",
-                          two_truths: "/two-truths",
-                          hot_takes: "/hot-takes",
-                          finish_sentence: "/finish-sentence",
-                          compatibility: "/compatibility",
-                        };
-                        const route = gameRoutes[newGameType];
+                        const route = SOLO_GAME_ROUTES[newGameType];
                         if (route) {
                           navigate(route);
                         } else {
@@ -458,11 +458,12 @@ export default function GameLobby() {
             {Object.entries(GAME_TYPE_LABELS).map(([gameId, gameInfo]) => (
               <Card
                 key={gameId}
-                className="group hover:shadow-lg transition-all cursor-pointer border-0 overflow-hidden"
-                onClick={() => {
-                  setNewGameType(gameId);
-                  setCreateOpen(true);
-                }}
+              className="group hover:shadow-lg transition-all cursor-pointer border-0 overflow-hidden"
+              onClick={() => {
+                setNewGameType(gameId);
+                setGameMode(ROOM_GAME_TYPES.includes(gameId as typeof ROOM_GAME_TYPES[number]) ? "multiplayer" : "solo");
+                setCreateOpen(true);
+              }}
               >
                 <CardContent className="p-4 text-center bg-gradient-to-br from-primary/5 to-primary/10 group-hover:from-primary/10 group-hover:to-primary/20 transition-colors">
                   <div className="text-4xl mb-2">{gameInfo.emoji}</div>
