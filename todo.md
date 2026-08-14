@@ -412,6 +412,10 @@
 - [x] Keep the fuller Shout-Out referral module enabled in default home layouts
 - [x] Add regression coverage for accessible referral navigation
 
+## Profile Referral Entry Point
+- [x] Add an accessible invite-friends action to the member profile header
+- [x] Add regression coverage for Profile-to-Shout-Out navigation
+
 ## Identity Save Android Fix & Refer-a-Friend
 - [ ] Fix identity save on Android — replace shadcn Select with native select for mobile compatibility
 - [ ] Add prominent Refer-a-Friend floating button on Home dashboard

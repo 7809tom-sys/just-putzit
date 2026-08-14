@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft, Sparkles, Brain, Fingerprint, Bookmark, CalendarDays, ExternalLink } from "lucide-react";
+import { MessageCircle, Shield, Star, Zap, MapPin, Heart, Camera, Trash2, CheckCircle2, XCircle, ImagePlus, User, Edit2, Gamepad2, ArrowLeft, Sparkles, Brain, Fingerprint, Bookmark, CalendarDays, ExternalLink, Megaphone } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
@@ -403,6 +403,15 @@ export default function Profile() {
                 >
                   <Edit2 className="w-3 h-3 mr-1" />
                   {!birthdayLabel ? "Add birthday" : "Edit birthday"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-full border-orange-300 bg-orange-50 px-2.5 text-xs text-orange-700 hover:bg-orange-100 hover:text-orange-800"
+                  onClick={() => navigate("/shout-out")}
+                  aria-label="Invite friends to Just Putzit"
+                >
+                  <Megaphone className="mr-1 h-3 w-3" /> Invite friends
                 </Button>
               </div>
             </div>
