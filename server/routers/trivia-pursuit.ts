@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { getDb } from "../db";
+import { getDb, getTriviaPursuitChatMessages, sendTriviaPursuitChatMessage } from "../db";
 import { triviaPursuitRooms, triviaPursuitRoomPlayers, triviaPursuitAnswers, triviaPursuitQuestions } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -149,16 +149,18 @@ export const triviaPursuitRouter = router({
           )
         : [];
 
-      const nextIndex = room.currentQuestionIndex + 1;
-      if (nextIndex >= questions.length) {
+      if (room.hostUserId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the host can move to the next question" });
+      }
+      const servedQuestionIds = (room.questionIds ?? []) as number[];
+      const question = questions.find((candidate) => !servedQuestionIds.includes(candidate.id));
+      if (!question) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No more questions" });
       }
 
-      const question = questions[nextIndex];
-
       // Update room
       await db.update(triviaPursuitRooms)
-        .set({ currentQuestionIndex: nextIndex })
+        .set({ currentQuestionIndex: room.currentQuestionIndex + 1, questionIds: [...servedQuestionIds, question.id] })
         .where(eq(triviaPursuitRooms.id, room.id));
 
       return {
@@ -191,6 +193,13 @@ export const triviaPursuitRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Question not found" });
       }
 
+      const [player] = await db.select().from(triviaPursuitRoomPlayers)
+        .where(and(eq(triviaPursuitRoomPlayers.roomId, input.roomId), eq(triviaPursuitRoomPlayers.userId, ctx.user.id))).limit(1);
+      if (!player) throw new TRPCError({ code: "FORBIDDEN", message: "Join this game before answering" });
+      const priorAnswers = await db.select().from(triviaPursuitAnswers)
+        .where(and(eq(triviaPursuitAnswers.roomId, input.roomId), eq(triviaPursuitAnswers.userId, ctx.user.id), eq(triviaPursuitAnswers.questionId, input.questionId))).limit(1);
+      if (priorAnswers.length > 0) throw new TRPCError({ code: "BAD_REQUEST", message: "You already answered this question" });
+
       const isCorrect = input.answer === (question.correctAnswer ?? "");
       const pointsAwarded = isCorrect ? 100 : 0;
 
@@ -202,19 +211,9 @@ export const triviaPursuitRouter = router({
 
       // Update player score
       if (isCorrect) {
-        const players = await db.select().from(triviaPursuitRoomPlayers)
-          .where(and(eq(triviaPursuitRoomPlayers.roomId, input.roomId), eq(triviaPursuitRoomPlayers.userId, ctx.user.id)))
-          .limit(1);
-        const player = players[0];
-
-        if (player) {
-          await db.update(triviaPursuitRoomPlayers)
-            .set({
-              score: player.score + pointsAwarded,
-              correctAnswers: player.correctAnswers + 1,
-            })
-            .where(eq(triviaPursuitRoomPlayers.id, player.id));
-        }
+        await db.update(triviaPursuitRoomPlayers)
+          .set({ score: player.score + pointsAwarded, correctAnswers: player.correctAnswers + 1 })
+          .where(eq(triviaPursuitRoomPlayers.id, player.id));
       }
 
       return { isCorrect, pointsAwarded, correctAnswer: question.correctAnswer ?? null };
@@ -222,10 +221,25 @@ export const triviaPursuitRouter = router({
 
   // Send chat message
   chat: protectedProcedure
-    .input(z.object({ roomId: z.number(), message: z.string().max(500) }))
+    .input(z.object({ roomId: z.number(), message: z.string().trim().min(1).max(500) }))
     .mutation(async ({ ctx, input }) => {
-      // TODO: Save to gameChatMessages table
-      return { success: true };
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [player] = await db.select().from(triviaPursuitRoomPlayers)
+        .where(and(eq(triviaPursuitRoomPlayers.roomId, input.roomId), eq(triviaPursuitRoomPlayers.userId, ctx.user.id))).limit(1);
+      if (!player) throw new TRPCError({ code: "FORBIDDEN", message: "Join this game before using its chat" });
+      return sendTriviaPursuitChatMessage(input.roomId, ctx.user.id, input.message);
+    }),
+
+  getChat: protectedProcedure
+    .input(z.object({ roomId: z.number(), limit: z.number().min(1).max(100).optional() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [player] = await db.select().from(triviaPursuitRoomPlayers)
+        .where(and(eq(triviaPursuitRoomPlayers.roomId, input.roomId), eq(triviaPursuitRoomPlayers.userId, ctx.user.id))).limit(1);
+      if (!player) throw new TRPCError({ code: "FORBIDDEN", message: "Join this game before viewing its chat" });
+      return getTriviaPursuitChatMessages(input.roomId, input.limit ?? 50);
     }),
 
   // Get scoreboard

@@ -1205,3 +1205,8 @@
 ## Jeopardy Multiplayer Chat Repair
 - [x] Persist Jeopardy chat messages and load them for every room participant
 - [x] Add regression coverage for player-visible Jeopardy chat behavior
+
+## Trivia Pursuit Reliability Repair
+- [x] Add clear in-screen answer feedback and an accessible mobile category layout
+- [x] Add persistent multiplayer chat, a reliable end-game action, and final scoreboard
+- [x] Add regression coverage for Trivia Pursuit lifecycle and chat behavior

@@ -3035,6 +3035,27 @@ export async function getJeopardyChatMessages(roomId: number, limit = 50) {
     .limit(Math.min(Math.max(limit, 1), 100));
 }
 
+export async function sendTriviaPursuitChatMessage(roomId: number, userId: number, content: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const cleanContent = content.trim();
+  if (!cleanContent) return null;
+  await db.insert(gameChatMessagesUpdated).values({ roomId, userId, content: cleanContent, roomType: "trivia_pursuit" });
+  const result = await db.select().from(gameChatMessagesUpdated)
+    .where(and(eq(gameChatMessagesUpdated.roomId, roomId), eq(gameChatMessagesUpdated.roomType, "trivia_pursuit")))
+    .orderBy(desc(gameChatMessagesUpdated.createdAt)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getTriviaPursuitChatMessages(roomId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(gameChatMessagesUpdated)
+    .where(and(eq(gameChatMessagesUpdated.roomId, roomId), eq(gameChatMessagesUpdated.roomType, "trivia_pursuit")))
+    .orderBy(gameChatMessagesUpdated.createdAt)
+    .limit(Math.min(Math.max(limit, 1), 100));
+}
+
 // ─── Game Trait Extraction ────────────────────────────────────────────────────
 export async function mergeGameTraitsIntoProfile(userId: number, newTraits: Record<string, string>) {
   const db = await getDb();

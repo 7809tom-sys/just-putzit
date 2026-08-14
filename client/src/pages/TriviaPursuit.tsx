@@ -11,6 +11,7 @@ import { Trophy, Users, Play, Volume2, Send, Copy, Check, Crown, Star, CheckCirc
 import { toast } from "sonner";
 
 type GamePhase = "lobby" | "waiting" | "playing" | "results";
+type AnswerResult = { isCorrect: boolean; pointsAwarded: number; correctAnswer: string | null };
 
 type Player = {
   userId: number;
@@ -54,6 +55,7 @@ export default function TriviaPursuit() {
   } | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<"A" | "B" | "C" | "D" | null>(null);
   const [answerRevealed, setAnswerRevealed] = useState(false);
+  const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [prevPlayerIds, setPrevPlayerIds] = useState<Set<number>>(new Set());
   const [chatMessages, setChatMessages] = useState<Array<{ userId: number; displayName: string; content: string }>>([]);
@@ -67,10 +69,15 @@ export default function TriviaPursuit() {
   const nextQuestionMutation = trpc.triviaPursuit.nextQuestion.useMutation();
   const submitAnswerMutation = trpc.triviaPursuit.submitAnswer.useMutation();
   const startGameMutation = trpc.triviaPursuit.startGame.useMutation();
+  const endGameMutation = trpc.triviaPursuit.endGame.useMutation();
   const chatMutation = trpc.triviaPursuit.chat.useMutation();
 
   // Real-time player polling (every 3s)
   const { data: playersData } = trpc.triviaPursuit.getPlayers.useQuery(
+    { roomId: roomId! },
+    { enabled: !!roomId, refetchInterval: 3000 }
+  );
+  const { data: persistedChat, refetch: refetchChat } = trpc.triviaPursuit.getChat.useQuery(
     { roomId: roomId! },
     { enabled: !!roomId, refetchInterval: 3000 }
   );
@@ -95,7 +102,16 @@ export default function TriviaPursuit() {
     if (playersData.roomStatus === "in_progress" && phase === "waiting") {
       setPhase("playing");
     }
+    if (playersData.roomStatus === "completed" && phase === "playing") setPhase("results");
   }, [playersData]);
+
+  useEffect(() => {
+    if (!persistedChat) return;
+    setChatMessages(persistedChat.map((message) => {
+      const player = players.find((candidate) => candidate.userId === message.userId);
+      return { userId: message.userId, displayName: player?.displayName ?? `Player ${message.userId}`, content: message.content };
+    }));
+  }, [persistedChat, players]);
 
   // TTS
   const handleSpeakQuestion = (text: string) => {
@@ -160,8 +176,13 @@ export default function TriviaPursuit() {
       });
       setSelectedAnswer(null);
       setAnswerRevealed(false);
-    } catch {
-      toast.error("Failed to get next question");
+      setAnswerResult(null);
+    } catch (error: any) {
+      if (error.message?.includes("No more questions")) {
+        void handleEndGame();
+      } else {
+        toast.error(error.message || "Failed to get next question");
+      }
     }
   };
 
@@ -171,6 +192,7 @@ export default function TriviaPursuit() {
     try {
       const result = await submitAnswerMutation.mutateAsync({ roomId: roomId!, questionId: currentQuestion.questionId, answer });
       setSelectedAnswer(answer);
+      setAnswerResult({ isCorrect: result.isCorrect, pointsAwarded: result.pointsAwarded, correctAnswer: result.correctAnswer ?? null });
       setAnswerRevealed(true);
       if (result.isCorrect) {
         toast.success(`Correct! +${result.pointsAwarded} points`);
@@ -179,6 +201,16 @@ export default function TriviaPursuit() {
       }
     } catch {
       toast.error("Failed to submit answer");
+    }
+  };
+
+  const handleEndGame = async () => {
+    if (!roomId) return;
+    try {
+      await endGameMutation.mutateAsync({ roomId });
+      setPhase("results");
+    } catch (error: any) {
+      toast.error(error.message || "We couldn't finish this game. Please try again.");
     }
   };
 
@@ -192,9 +224,10 @@ export default function TriviaPursuit() {
   // Send chat
   const handleSendChat = () => {
     if (!chatInput.trim()) return;
-    const myPlayer = players.find((p) => p.userId === user?.id);
-    chatMutation.mutate({ roomId: roomId!, message: chatInput });
-    setChatMessages((prev) => [...prev, { userId: user?.id || 0, displayName: myPlayer?.displayName ?? "You", content: chatInput }]);
+    chatMutation.mutate(
+      { roomId: roomId!, message: chatInput.trim() },
+      { onSuccess: () => { void refetchChat(); }, onError: (error) => toast.error(error.message || "Message could not be sent.") }
+    );
     setChatInput("");
   };
 
@@ -263,12 +296,12 @@ export default function TriviaPursuit() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-orange-200">Select Categories</label>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="grid grid-cols-1 gap-2 mt-2 sm:grid-cols-2">
                     {TRIVIA_CATEGORIES.map((cat) => (
                       <Button
                         key={cat.id}
                         variant={selectedCategories.includes(cat.id) ? "default" : "outline"}
-                        className={selectedCategories.includes(cat.id) ? "bg-orange-500 border-orange-400" : "border-white/30 text-white hover:bg-white/10"}
+                        className={`min-h-12 h-auto justify-start whitespace-normal px-3 py-2 text-left text-sm leading-tight sm:text-base ${selectedCategories.includes(cat.id) ? "bg-orange-500 border-orange-400" : "border-white/30 text-white hover:bg-white/10"}`}
                         onClick={() => setSelectedCategories((prev) => prev.includes(cat.id) ? prev.filter((c) => c !== cat.id) : [...prev, cat.id])}
                       >
                         {cat.emoji} {cat.name}
@@ -376,14 +409,15 @@ export default function TriviaPursuit() {
       <div className="min-h-screen bg-gradient-to-br from-orange-900 to-red-900 p-4">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
             <h1 className="text-3xl font-bold text-white">Trivia Pursuit</h1>
             {isHost && (
-              <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg">
+              <div className="flex flex-wrap items-center gap-2 bg-white/10 px-4 py-2 rounded-lg">
                 <Badge variant="secondary" className="font-mono tracking-widest">Code: {gameCode}</Badge>
                 <Button size="sm" variant="ghost" onClick={handleCopyCode} className="text-white hover:bg-white/20">
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
+                <Button size="sm" variant="outline" onClick={handleEndGame} disabled={endGameMutation.isPending} className="border-white/40 text-white hover:bg-white/20">{endGameMutation.isPending ? "Finishing…" : "End Game"}</Button>
               </div>
             )}
           </div>
@@ -419,9 +453,11 @@ export default function TriviaPursuit() {
                         ))}
                       </div>
                     ) : (
-                      <Button onClick={handleNextQuestion} disabled={nextQuestionMutation.isPending} className="w-full bg-orange-600 hover:bg-orange-700">
-                        Next Question
-                      </Button>
+                      <div className={`rounded-xl border p-4 text-center ${answerResult?.isCorrect ? "border-green-200 bg-green-50 text-green-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
+                        <p className="font-bold">{answerResult?.isCorrect ? `Correct! +${answerResult.pointsAwarded} points` : "Not quite this time."}</p>
+                        {!answerResult?.isCorrect && answerResult?.correctAnswer && <p className="mt-1 text-sm">Correct answer: <span className="font-semibold">{answerResult.correctAnswer}</span></p>}
+                        {isHost ? <Button onClick={handleNextQuestion} disabled={nextQuestionMutation.isPending} className="mt-4 w-full bg-orange-600 hover:bg-orange-700">{nextQuestionMutation.isPending ? "Loading…" : "Next Question"}</Button> : <p className="mt-4 text-sm">Waiting for the host to choose the next question.</p>}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -463,6 +499,12 @@ export default function TriviaPursuit() {
         </div>
       </div>
     );
+  }
+
+  if (phase === "results") {
+    const finalPlayers = [...players].sort((left, right) => right.score - left.score);
+    const winner = finalPlayers[0];
+    return <div className="min-h-screen bg-gradient-to-br from-orange-900 to-red-900 p-4"><main className="mx-auto max-w-xl py-8"><Card className="border-yellow-300/40 bg-white/95 shadow-2xl"><CardContent className="p-6 text-center sm:p-8"><Trophy className="mx-auto h-12 w-12 text-yellow-500" /><h1 className="mt-4 text-3xl font-bold text-gray-950">Final Scoreboard</h1>{winner && <p className="mt-2 text-sm text-muted-foreground"><span className="font-semibold text-gray-900">{winner.displayName}</span> takes the win with {winner.score} points.</p>}<div className="mt-6 space-y-2 text-left">{finalPlayers.map((player, index) => <div key={player.userId} className="flex items-center gap-3 rounded-xl border bg-white p-3"><span className="w-7 text-center font-bold text-orange-700">#{index + 1}</span><span className="text-xl">{player.avatarEmoji}</span><span className="min-w-0 flex-1 truncate font-semibold">{player.displayName}{player.userId === user?.id ? " (You)" : ""}</span><span className="font-bold text-orange-700">{player.score} pts</span></div>)}</div><Button className="mt-6 w-full" onClick={() => window.location.assign("/game-lobby")}>Back to Game Lobby</Button></CardContent></Card></main></div>;
   }
 
   return null;
