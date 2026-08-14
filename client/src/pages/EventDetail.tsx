@@ -36,7 +36,12 @@ export default function EventDetail() {
   const toggleBookmark = trpc.activityBoard.toggleBookmark.useMutation({
     onSuccess: (result) => {
       void utils.activityBoard.bookmarks.invalidate();
-      toast.success(getActivityBookmarkFeedback(result.bookmarked));
+      const feedback = getActivityBookmarkFeedback(result.bookmarked);
+      if (result.bookmarked) {
+        toast.success(feedback.title, { description: feedback.description, duration: 2600 });
+      } else {
+        toast.info(feedback.title, { description: feedback.description, duration: 2200 });
+      }
     },
     onError: () => toast.error("Couldn’t update saved events", { description: "Please try again." }),
   });

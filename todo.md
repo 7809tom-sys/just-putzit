@@ -1123,3 +1123,7 @@
 - [x] Add save and unsave actions directly to personalized similar-event cards
 - [x] Show accessible bookmark state and save feedback without opening event details
 - [x] Add regression coverage and responsive verification for quick bookmarking
+
+## Similar Event Bookmark Toast Feedback
+- [x] Show a distinct short success toast when a similar event is saved
+- [x] Preserve clear removal feedback and add regression coverage

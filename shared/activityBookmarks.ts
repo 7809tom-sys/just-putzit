@@ -3,5 +3,7 @@ export function isActivityBookmarked(bookmarkIds: number[] | undefined, activity
 }
 
 export function getActivityBookmarkFeedback(isBookmarked: boolean) {
-  return isBookmarked ? "Saved for later" : "Removed from saved events";
+  return isBookmarked
+    ? { title: "Event saved", description: "You can find it again in your saved events." }
+    : { title: "Event removed", description: "It is no longer in your saved events." };
 }
