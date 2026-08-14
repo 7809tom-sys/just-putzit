@@ -38,12 +38,12 @@
 - [ ] Identity verification badge on profiles (verified/unverified status)
 - [ ] Unverified accounts hidden from match results
 - [ ] Report & block system on every user profile
-- [ ] Reported accounts auto-suspended pending admin review
-- [ ] Admin moderation dashboard (view flagged accounts, approve/suspend/ban)
+- [x] Reported accounts auto-suspended pending admin review
+- [x] Admin moderation dashboard (view flagged accounts, approve/suspend/ban)
 - [ ] Sally behavioral flagging (detect bot-like response patterns in interviews)
 - [ ] "Third Wheel" safety moderator indicator on community events
-- [ ] Safety tips page explaining how Just Putzit protects users
-- [ ] DB tables: reports, blocks, admin_flags
+- [x] Safety tips page explaining how Just Putzit protects users
+- [x] DB tables: reports, blocks, admin_flags
 
 ## Phase 7: Expanded Platform Features
 - [ ] Three-network onboarding: Singles, Couples, Community selection
@@ -1235,3 +1235,7 @@
 ## Private Report Follow-up Notifications
 - [x] Notify the reporter privately when an administrator records a report status, without disclosing the action taken
 - [x] Add regression coverage for report follow-up notification privacy
+
+## Moderation Account Approval
+- [x] Add an explicit administrator action to clear a suspended account for normal access after review
+- [x] Add regression coverage for the account approval workflow

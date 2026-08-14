@@ -181,6 +181,7 @@ import {
   adminDeletePhoto,
   banUser,
   unbanUser,
+  approveSuspendedUser,
   getAdminStatsEnhanced,
   listGameRooms,
   getGameRoom,
@@ -1584,8 +1585,16 @@ Return JSON with questions array, each having optionA and optionB.`,
     unbanUser: protectedProcedure
       .input(z.object({ userId: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin") throw new Error("Forbidden");
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         await unbanUser(input.userId);
+        return { success: true };
+      }),
+
+    approveUser: protectedProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await approveSuspendedUser(input.userId);
         return { success: true };
       }),
 

@@ -503,6 +503,14 @@ export default function Admin() {
     },
     onError: () => toast.error("Failed to unban user"),
   });
+  const approveUserMutation = trpc.safety.approveUser.useMutation({
+    onSuccess: () => {
+      toast.success("Account approved and restored");
+      utils.safety.searchUsers.invalidate();
+      refetchStatsEnhanced();
+    },
+    onError: () => toast.error("Failed to approve account"),
+  });
   const deletePhotoMutation = trpc.safety.deletePhoto.useMutation({
     onSuccess: () => { toast.success("Photo deleted"); refetchPhotos(); },
     onError: () => toast.error("Failed to delete photo"),
@@ -962,11 +970,11 @@ export default function Admin() {
                                   ? "text-green-600 hover:bg-green-50"
                                   : "text-red-500 hover:bg-red-50"
                               }`}
-                              title={u.role === "banned" ? "Unban user" : "Ban user"}
+                              title={u.role === "banned" ? "Approve & restore account" : "Ban user"}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (u.role === "banned") {
-                                  unbanUserMutation.mutate({ userId: u.id });
+                                  approveUserMutation.mutate({ userId: u.id });
                                 } else {
                                   banUserMutation.mutate({ userId: u.id, reason: "Admin action" });
                                 }

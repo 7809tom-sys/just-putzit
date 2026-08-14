@@ -2265,6 +2265,18 @@ export async function unbanUser(userId: number) {
   await db.update(users).set({ role: "user" }).where(eq(users.id, userId));
 }
 
+export async function approveSuspendedUser(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ role: "user" }).where(eq(users.id, userId));
+  await db.insert(adminFlags).values({
+    userId,
+    flagType: "manual_review",
+    severity: "low",
+    notes: "Account approved and restored by admin after review",
+  });
+}
+
 // ─── Admin: Enhanced Stats ────────────────────────────────────────────────────
 
 export async function getAdminStatsEnhanced() {
