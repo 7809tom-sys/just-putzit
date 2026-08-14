@@ -1193,3 +1193,11 @@
 ## Mobile App Update Delivery
 - [x] Detect PWA updates promptly and refresh stale installed mobile clients safely
 - [x] Add regression coverage for service-worker update behavior
+
+## Jeopardy Game Lifecycle
+- [x] Add a reliable game-completion path and member-visible final scoreboard for Jeopardy
+- [x] Add regression coverage for Jeopardy completion behavior
+
+## Jeopardy Game Lifecycle
+- [x] Add a reliable game-completion path and member-visible final scoreboard for Jeopardy
+- [x] Add regression coverage for Jeopardy completion behavior

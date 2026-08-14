@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { canSubmitJeopardyAnswer } from "@shared/jeopardyAnswerPolicy";
+import { isJeopardyBoardComplete, sortJeopardyPlayers } from "@shared/jeopardyLifecycle";
 
 type GamePhase = "lobby" | "waiting" | "playing" | "results";
 
@@ -68,6 +69,7 @@ export default function Jeopardy() {
   const selectClueMutation = trpc.jeopardy.selectClue.useMutation();
   const submitAnswerMutation = trpc.jeopardy.submitAnswer.useMutation();
   const startGameMutation = trpc.jeopardy.startGame.useMutation();
+  const endGameMutation = trpc.jeopardy.endGame.useMutation();
   const chatMutation = trpc.jeopardy.chat.useMutation();
 
   // Real-time player polling
@@ -98,6 +100,9 @@ export default function Jeopardy() {
     if (playersData.roomStatus === "in_progress" && phase === "waiting") {
       setPhase("playing");
     }
+    if (playersData.roomStatus === "completed" && phase === "playing") {
+      setPhase("results");
+    }
   }, [playersData]);
 
   // Build board from room data
@@ -116,6 +121,10 @@ export default function Jeopardy() {
     catMap.forEach((cat) => cat.clues.sort((a, b) => a.value - b.value));
     setBoardCategories(Array.from(catMap.values()).filter((c) => c.clues.length > 0));
   }, [roomData, categories]);
+
+  const totalBoardClues = boardCategories.reduce((total, category) => total + category.clues.length, 0);
+  const persistedAnsweredClues = boardCategories.flatMap((category) => category.clues).filter((clue) => clue.answered).length;
+  const completedBoard = isJeopardyBoardComplete(totalBoardClues, Math.max(answeredClueIds.size, persistedAnsweredClues));
 
   // Handle TTS for clue
   const handleSpeakClue = (text: string) => {
@@ -208,6 +217,16 @@ export default function Jeopardy() {
     setUserAnswer("");
     setAnswerResult(null);
     setAnswerRevealed(false);
+  };
+
+  const handleEndGame = async () => {
+    if (!roomId) return;
+    try {
+      await endGameMutation.mutateAsync({ roomId });
+      setPhase("results");
+    } catch (error: any) {
+      toast.error(error.message || "We couldn't finish this game. Please try again.");
+    }
   };
 
   // Copy game code
@@ -393,10 +412,13 @@ export default function Jeopardy() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-white">Jeopardy!</h1>
             {isHost && (
-              <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg">
+              <div className="flex flex-wrap items-center gap-2 bg-white/10 px-4 py-2 rounded-lg">
                 <Badge variant="secondary" className="font-mono tracking-widest">Code: {gameCode}</Badge>
                 <Button size="sm" variant="ghost" onClick={handleCopyCode} className="text-white hover:bg-white/20">
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleEndGame} disabled={endGameMutation.isPending} className="border-white/40 text-white hover:bg-white/20">
+                  {endGameMutation.isPending ? "Finishing…" : "End Game"}
                 </Button>
               </div>
             )}
@@ -428,7 +450,11 @@ export default function Jeopardy() {
                       <div className={`rounded-xl border p-4 text-center ${answerResult?.isCorrect ? "border-green-200 bg-green-50 text-green-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
                         <p className="font-bold">{answerResult?.isCorrect ? `Correct! +$${answerResult.pointsAwarded}` : "Not quite this time."}</p>
                         {!answerResult?.isCorrect && answerResult?.correctAnswer && <p className="mt-1 text-sm">Correct response: <span className="font-semibold">{answerResult.correctAnswer}</span></p>}
-                        <Button onClick={handleNextClue} className="mt-4 w-full" variant={answerResult?.isCorrect ? "default" : "secondary"}>Next Clue</Button>
+                        {completedBoard ? (
+                          isHost ? <Button onClick={handleEndGame} disabled={endGameMutation.isPending} className="mt-4 w-full">{endGameMutation.isPending ? "Finishing…" : "View Final Scoreboard"}</Button> : <p className="mt-4 text-sm">All clues are complete. The host will open the final scoreboard.</p>
+                        ) : (
+                          <Button onClick={handleNextClue} className="mt-4 w-full" variant={answerResult?.isCorrect ? "default" : "secondary"}>Next Clue</Button>
+                        )}
                       </div>
                     )}
                   </CardContent>
@@ -436,7 +462,10 @@ export default function Jeopardy() {
               )}
 
               {/* Clue Board */}
-              {!currentClue && (
+              {!currentClue && completedBoard && (
+                <Card className="bg-white/95"><CardContent className="py-10 text-center"><Trophy className="mx-auto h-10 w-10 text-yellow-500" /><h2 className="mt-3 text-xl font-bold">Every clue is answered.</h2><p className="mt-2 text-sm text-muted-foreground">{isHost ? "Open the final scoreboard when your group is ready." : "Waiting for the host to open the final scoreboard."}</p>{isHost && <Button onClick={handleEndGame} disabled={endGameMutation.isPending} className="mt-5">{endGameMutation.isPending ? "Finishing…" : "View Final Scoreboard"}</Button>}</CardContent></Card>
+              )}
+              {!currentClue && !completedBoard && (
                 <Card className="bg-white/95">
                   <CardHeader><CardTitle>Select a Clue</CardTitle></CardHeader>
                   <CardContent>
@@ -510,6 +539,24 @@ export default function Jeopardy() {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (phase === "results") {
+    const finalPlayers = sortJeopardyPlayers(players);
+    const winner = finalPlayers[0];
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 p-4">
+        <main className="mx-auto max-w-xl py-8">
+          <Card className="border-yellow-300/40 bg-white/95 shadow-2xl"><CardContent className="p-6 text-center sm:p-8">
+            <Trophy className="mx-auto h-12 w-12 text-yellow-500" />
+            <h1 className="mt-4 text-3xl font-bold text-gray-950">Final Scoreboard</h1>
+            {winner && <p className="mt-2 text-sm text-muted-foreground"><span className="font-semibold text-gray-900">{winner.displayName}</span> takes the win with ${winner.score.toLocaleString()}.</p>}
+            <div className="mt-6 space-y-2 text-left">{finalPlayers.map((player, index) => <div key={player.userId} className="flex items-center gap-3 rounded-xl border bg-white p-3"><span className="w-7 text-center font-bold text-purple-700">#{index + 1}</span><span className="text-xl">{player.avatarEmoji}</span><span className="min-w-0 flex-1 truncate font-semibold">{player.displayName}{player.userId === user?.id ? " (You)" : ""}</span><span className="font-bold text-purple-700">${player.score.toLocaleString()}</span></div>)}</div>
+            <Button className="mt-6 w-full" onClick={() => window.location.assign("/game-lobby")}>Back to Game Lobby</Button>
+          </CardContent></Card>
+        </main>
       </div>
     );
   }
