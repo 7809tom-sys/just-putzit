@@ -293,8 +293,10 @@ export default function Profile() {
               {profile?.avatarEmoji || "😊"}
             </div>
             <div className="flex-1 text-center sm:text-left">
-              <div className="flex items-center gap-2 justify-center sm:justify-start mb-1">
+              <div className="flex items-center justify-center sm:justify-start mb-1">
                 <h1 className="font-display font-bold text-2xl">{profile?.displayName || user?.name}</h1>
+              </div>
+              <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 {deviceCheckComplete && (
                   <Badge className="bg-green-100 text-green-700 border-0 gap-1">
                     <Fingerprint className="w-3 h-3" /> Device passkey verified
