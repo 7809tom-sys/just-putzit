@@ -43,6 +43,7 @@ const ALL_MODULES: ModuleDef[] = [
   { id: "trip",       label: "Trip Planner",        emoji: "✈️", description: "Plan adventures together",       defaultPinned: false, defaultPosition: 9 },
   { id: "shoutout",   label: "Shout Out",           emoji: "📣", description: "Refer friends & earn rewards",   defaultPinned: true,  defaultPosition: 10 },
   { id: "localevents",label: "Local Events",         emoji: "🏙️", description: "Museum, library & community events", defaultPinned: false, defaultPosition: 11 },
+  { id: "gymbuddy",   label: "Gym Buddy",           emoji: "🏋️", description: "Find a workout partner or build your own plan", defaultPinned: false, defaultPosition: 12 },
 ];
 
 interface ActiveModule {
@@ -112,6 +113,29 @@ function MatchesModule({ matches, navigate }: { matches: any[]; navigate: (p: st
         ))}
       </div>
     </div>
+  );
+}
+
+function GymBuddyModule({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <section className="overflow-hidden rounded-3xl border border-orange-200 bg-gradient-to-br from-orange-500 via-orange-600 to-amber-500 p-6 text-white shadow-sm">
+      <div className="flex items-start gap-4">
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl" aria-hidden="true">🏋️</div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-100">Fitness, your way</p>
+          <h2 className="mt-1 font-display text-xl font-bold">Gym Buddy</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-white/85">Find a workout partner at your gym, plan a session together, or keep building your own program.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button size="sm" className="rounded-full bg-white text-orange-700 hover:bg-orange-50" onClick={() => navigate("/gym-buddy")}>
+              Find a workout partner <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" className="rounded-full border-white/50 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => navigate("/my-workout")}>
+              My workout program
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -581,6 +605,7 @@ function renderModule(moduleId: string, navigate: (p: string) => void, profile: 
     case "marketplace": return <MarketplaceModule navigate={navigate} />;
     case "family":      return <FamilyModule navigate={navigate} />;
     case "trip":        return <TripModule navigate={navigate} />;
+    case "gymbuddy":    return <GymBuddyModule navigate={navigate} />;
     case "shoutout":    return <ShoutoutModule navigate={navigate} />;
     case "localevents": return <LocalEventsModule navigate={navigate} />;
     default:            return null;
