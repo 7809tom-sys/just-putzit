@@ -218,7 +218,7 @@ export type GameSession = typeof gameSessions.$inferSelect;
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["new_match", "game_ready", "new_message", "interview_reminder", "pickup_invite", "event_proposal", "report_update"]).notNull(),
+  type: mysqlEnum("type", ["new_match", "game_ready", "new_message", "interview_reminder", "pickup_invite", "event_proposal", "report_update", "birthday_reminder"]).notNull(),
   title: varchar("title", { length: 200 }).notNull(),
   body: text("body").notNull(),
   isRead: boolean("isRead").notNull().default(false),
@@ -228,6 +228,21 @@ export const notifications = mysqlTable("notifications", {
 });
 
 export type Notification = typeof notifications.$inferSelect;
+
+// ─── Birthday reminders (private, matched-member only) ────────────────────────
+export const birthdayNotifications = mysqlTable("birthday_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  recipientUserId: int("recipientUserId").notNull(),
+  birthdayUserId: int("birthdayUserId").notNull(),
+  matchId: int("matchId").notNull(),
+  birthdayDateKey: varchar("birthdayDateKey", { length: 10 }).notNull(), // YYYY-MM-DD in the reminder run's UTC date
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  recipientBirthdayDateUnique: uniqueIndex("birthday_notifications_recipient_birthday_date_unique")
+    .on(table.recipientUserId, table.birthdayUserId, table.birthdayDateKey),
+}));
+
+export type BirthdayNotification = typeof birthdayNotifications.$inferSelect;
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
 export const reports = mysqlTable("reports", {

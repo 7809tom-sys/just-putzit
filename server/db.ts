@@ -12,6 +12,7 @@ import {
   matches,
   eventProposals,
   notifications,
+  birthdayNotifications,
   userProfiles,
   users,
   reports,
@@ -482,6 +483,81 @@ export async function markAllNotificationsRead(userId: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
+}
+
+/**
+ * Creates one private, in-app birthday reminder for each eligible matched member.
+ * The birthday record tracks delivery by recipient, birthday member, and UTC run
+ * date so Heartbeat retries cannot produce duplicate alerts.
+ */
+export async function createBirthdayMatchNotifications(now = new Date()) {
+  const db = await getDb();
+  if (!db) return { birthdayMembers: 0, created: 0, skipped: 0 };
+
+  const month = now.getUTCMonth() + 1;
+  const day = now.getUTCDate();
+  const birthdayDateKey = now.toISOString().slice(0, 10);
+  const birthdayMembers = await db
+    .select({ userId: userProfiles.userId, displayName: userProfiles.displayName })
+    .from(userProfiles)
+    .where(sql`MONTH(${userProfiles.birthDate}) = ${month} AND DAY(${userProfiles.birthDate}) = ${day}`);
+  const birthdayUserIds = birthdayMembers.map((member) => member.userId);
+
+  if (birthdayUserIds.length === 0) {
+    return { birthdayMembers: 0, created: 0, skipped: 0 };
+  }
+
+  const activeMatches = await db
+    .select()
+    .from(matches)
+    .where(and(
+      eq(matches.status, "active"),
+      or(inArray(matches.user1Id, birthdayUserIds), inArray(matches.user2Id, birthdayUserIds)),
+    ));
+  const birthdayNames = new Map(birthdayMembers.map((member) => [member.userId, member.displayName || "Your match"]));
+  let created = 0;
+  let skipped = 0;
+
+  for (const match of activeMatches) {
+    const birthdayUserId = birthdayUserIds.includes(match.user1Id) ? match.user1Id : match.user2Id;
+    const recipientUserId = birthdayUserId === match.user1Id ? match.user2Id : match.user1Id;
+
+    if (await isBlockInEffect(birthdayUserId, recipientUserId)) {
+      skipped += 1;
+      continue;
+    }
+
+    const [existing] = await db
+      .select({ id: birthdayNotifications.id })
+      .from(birthdayNotifications)
+      .where(and(
+        eq(birthdayNotifications.recipientUserId, recipientUserId),
+        eq(birthdayNotifications.birthdayUserId, birthdayUserId),
+        eq(birthdayNotifications.birthdayDateKey, birthdayDateKey),
+      ))
+      .limit(1);
+    if (existing) {
+      skipped += 1;
+      continue;
+    }
+
+    await db.insert(birthdayNotifications).values({
+      recipientUserId,
+      birthdayUserId,
+      matchId: match.id,
+      birthdayDateKey,
+    });
+    await db.insert(notifications).values({
+      userId: recipientUserId,
+      type: "birthday_reminder",
+      title: "A match has a birthday today",
+      body: `${birthdayNames.get(birthdayUserId)} has a birthday today. A kind message is a thoughtful way to reach out.`,
+      relatedId: match.id,
+    });
+    created += 1;
+  }
+
+  return { birthdayMembers: birthdayMembers.length, created, skipped };
 }
 
 // ─── Safety: Reports & Blocks ─────────────────────────────────────────────────
