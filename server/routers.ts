@@ -2468,8 +2468,14 @@ Return JSON with questions array, each having optionA and optionB.`,
     // ── 2-player challenge flow ──────────────────────────────────────────────
     // Send a challenge to a match (picks 10 random questions from the pool)
     sendChallenge: protectedProcedure
-      .input(z.object({ challengedId: z.number(), matchId: z.number().optional() }))
+      .input(z.object({ challengedId: z.number(), matchId: z.number() }))
       .mutation(async ({ ctx, input }) => {
+        const match = await getMatchById(input.matchId);
+        const isMatchParticipant = match && (match.user1Id === ctx.user.id || match.user2Id === ctx.user.id);
+        const otherMemberId = match?.user1Id === ctx.user.id ? match.user2Id : match?.user2Id === ctx.user.id ? match.user1Id : null;
+        if (!isMatchParticipant || otherMemberId !== input.challengedId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Challenges can only be sent to an existing match." });
+        }
         const all = await getWyrQuestions("all");
         // Pick 10 random questions
         const shuffled = [...all].sort(() => Math.random() - 0.5).slice(0, 10);

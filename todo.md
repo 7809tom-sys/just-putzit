@@ -127,6 +127,11 @@
 - [ ] Vitest tests for 2-player flow
 - [ ] Checkpoint and deliver
 
+## Matched Would You Rather Challenge Entry
+- [ ] Add a challenge action to eligible match cards using the existing private challenge procedure
+- [ ] Route challenge participants into the existing Would You Rather game surface with a reviewable invitation state
+- [ ] Add regression coverage for matched-member-only challenge navigation
+
 ## Phase 12: Admin Panel (justputzit.com ready)
 - [x] Backend: admin.getStats (total users, new this week, verified, interviewed, matches, messages)
 - [x] Backend: admin.searchUsers (search by name/email, paginated)
