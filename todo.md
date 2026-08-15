@@ -154,7 +154,7 @@
 - [x] Campus growth: Carroll waitlist page (/campus/carroll) with honest progress bar + invite link
 - [x] Campus growth: Ambassador leaderboard (top inviters, 5+ referrals = Ambassador badge)
 - [x] 23 tests passing, 0 TypeScript errors
-- [ ] Checkpoint and deliver
+- [x] Checkpoint and deliver
 
 ## Phase 14: Real Auth + Face Verification (Production-Ready)
 
@@ -677,7 +677,7 @@
 - [x] Add birthday backend router (saveBirthday, getBirthday) - uses existing updateIdentity
 - [x] Display full birthday on profile card (e.g., "Birthday: June 15, 1967")
 - [x] Calculate and display age automatically from full date
-- [ ] Add birthday notifications for matches
+- [x] Add private, active-match-only birthday notifications with block handling and duplicate prevention
 - [x] Add birthday badges and celebration UI
 - [ ] Create birthday events feature in Activities
 - [x] Write vitest tests for birthday feature
