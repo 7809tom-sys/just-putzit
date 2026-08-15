@@ -36,12 +36,14 @@
 
 ## Phase 6: Anti-Fraud & Safety System
 - [ ] Identity verification badge on profiles (verified/unverified status)
+- [x] Accurate device passkey and city-check status badges on profiles
 - [ ] Unverified accounts hidden from match results
 - [ ] Report & block system on every user profile
+- [x] Report & block safety controls on member match and chat surfaces
 - [x] Reported accounts auto-suspended pending admin review
 - [x] Admin moderation dashboard (view flagged accounts, approve/suspend/ban)
-- [ ] Sally behavioral flagging (detect bot-like response patterns in interviews)
-- [ ] "Third Wheel" safety moderator indicator on community events
+- [x] Sally behavioral review flagging for suspicious interview patterns
+- [x] "Third Wheel" safety host indicator on community events
 - [x] Safety tips page explaining how Just Putzit protects users
 - [x] DB tables: reports, blocks, admin_flags
 
