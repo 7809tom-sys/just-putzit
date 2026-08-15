@@ -87,7 +87,7 @@ export function FloatingInstallButton() {
 
   return (
     <div
-      className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-2 z-50 flex flex-col items-end gap-2 sm:bottom-6 sm:right-4"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-2 z-50 flex flex-col items-end gap-2 sm:hidden"
       style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.18))" }}
     >
       {/* Tooltip for manual install */}

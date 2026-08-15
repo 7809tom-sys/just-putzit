@@ -1391,6 +1391,10 @@
 - [x] Keep the install entry discoverable through a compact, edge-safe mobile control
 - [x] Add regression coverage for non-obstructive mobile prompt behavior
 
+## Desktop Install Prompt Interaction Repair
+- [x] Keep the PWA install prompt mobile-only so it cannot overlap desktop Home controls
+- [x] Add regression coverage for the desktop-safe prompt position
+
 ## Sally Competitive Game Context
 - [x] Give Sally factual summaries of completed Jeopardy and Trivia Pursuit participation without exposing answers
 - [x] Add regression coverage that prevents game outcomes from becoming unsupported personality claims
