@@ -516,7 +516,7 @@
 - [ ] Backend: tripPlanner.create, tripPlanner.list, tripPlanner.addItem, tripPlanner.removeItem, tripPlanner.delete, tripPlanner.exportIcs
 - [ ] Frontend: /family page — GPS auto-detects location, shows kid-friendly events nearby, family profile setup, family matching cards
 - [ ] Frontend: /trip-planner page — create trip, add activities/events to date slots, export to .ics (Google Calendar / Apple Calendar / Outlook)
-- [ ] "Add to Trip" button on every activity card and event card throughout the app
+- [x] "Add to Trip" button on activity detail pages with a review-first handoff to Trip Planner
 - [ ] .ics file generation on server (RFC 5545 compliant) with event title, date, location, URL
 - [x] Google Calendar deep-link as alternative to .ics download
 - [x] Add Family and Trip Planner links to navbar/More menu
@@ -526,6 +526,11 @@
 - [x] Create a safe Google Calendar deep link for a selected trip itinerary
 - [x] Keep the standard .ics download available as the calendar-provider fallback
 - [x] Add regression coverage for itinerary date, title, and location encoding
+
+## Activity Detail Add to Trip
+- [x] Give signed-in members an add-to-trip route from an activity detail page
+- [x] Prefill the Trip Planner item form from the selected activity without automatically saving it
+- [x] Keep public viewers on the existing join flow and add regression coverage
 
 ## Voice-to-Text Profile Input
 - [x] Build VoiceBio reusable component using Web Speech API (SpeechRecognition) with Whisper API fallback

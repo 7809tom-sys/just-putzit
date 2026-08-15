@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Calendar, CalendarPlus, Plus, Trash2, Download, MapPin, Clock } from "lucide-react";
 import { buildTripGoogleCalendarUrl } from "../../../shared/tripGoogleCalendar";
+import { useLocation } from "wouter";
 
 interface TripPlanFormData {
   title: string;
@@ -29,6 +30,19 @@ export default function TripPlanner() {
   const [itemTime, setItemTime] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [itemCategory, setItemCategory] = useState("activity");
+  const [, navigate] = useLocation();
+  const [pendingActivity, setPendingActivity] = useState<{ title: string; time: string; location: string; notes: string; type: string } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    const title = params.get("title")?.trim();
+    return title ? {
+      title,
+      time: params.get("time") ?? "",
+      location: params.get("location") ?? "",
+      notes: params.get("notes") ?? "",
+      type: params.get("type") ?? "activity",
+    } : null;
+  });
 
   const [formData, setFormData] = useState<TripPlanFormData>({
     title: "",
@@ -192,6 +206,19 @@ END:VEVENT
     });
   };
 
+  const selectTrip = (trip: any) => {
+    setSelectedTrip(trip);
+    if (!pendingActivity) return;
+    setItemTitle(pendingActivity.title);
+    setItemDate(pendingActivity.time.slice(0, 10));
+    setItemTime(pendingActivity.time);
+    setItemDescription(pendingActivity.location || pendingActivity.notes);
+    setItemCategory(["activity", "event", "venue", "custom"].includes(pendingActivity.type) ? pendingActivity.type : "activity");
+    setPendingActivity(null);
+    setIsAddItemOpen(true);
+    navigate("/trip-planner");
+  };
+
   const handleRemoveItem = (itemId: string) => {
     if (!selectedTrip) return;
     removeItemMutation.mutate({
@@ -288,10 +315,11 @@ END:VEVENT
                 <p className="text-gray-600 text-center py-8">No trips yet. Create one to get started!</p>
               ) : (
                 <div className="space-y-2">
+                  {pendingActivity && <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">Choose a trip to review and add “{pendingActivity.title}”.</p>}
                   {trips.map((trip) => (
                     <button
                       key={trip.id}
-                      onClick={() => setSelectedTrip(trip)}
+                      onClick={() => selectTrip(trip)}
                       className={`w-full text-left p-3 rounded-lg transition ${
                         selectedTrip?.id === trip.id
                           ? "bg-blue-600 text-white"

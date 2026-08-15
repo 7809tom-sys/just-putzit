@@ -10,7 +10,7 @@ import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight, Bookmark, BookmarkCheck, List, Map as MapIcon } from "lucide-react";
+import { Calendar, CalendarPlus, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight, Bookmark, BookmarkCheck, List, Map as MapIcon } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { formatSimilarEventDistance } from "@shared/similarEventDetails";
 import { getActivityBookmarkFeedback, isActivityBookmarked } from "@shared/activityBookmarks";
@@ -125,6 +125,13 @@ export default function EventDetail() {
 
   const emoji = CATEGORY_EMOJI[activity.category ?? "other"] ?? "✨";
   const eventDate = activity.eventDate ? new Date(activity.eventDate) : null;
+  const tripParams = new URLSearchParams({
+    title: activity.title,
+    type: "activity",
+    time: activity.eventDate ? new Date(activity.eventDate).toISOString() : "",
+    location: [activity.venueName, activity.venueAddress, activity.venueCity].filter(Boolean).join(", "),
+    notes: activity.description ?? "",
+  });
 
   return (
     <div className="min-h-screen overflow-x-hidden">
@@ -258,12 +265,18 @@ export default function EventDetail() {
             <p className="text-muted-foreground mb-6">
               Join Just Putzit free. Sally will match you with someone who'd love this activity too.
             </p>
-            <a href={getLoginUrl()}>
-              <Button size="lg" className="gradient-sally text-white border-0 shadow-lg rounded-full px-8 gap-2">
-                <Sparkles className="w-5 h-5" />
-                Join Free & RSVP
+            {viewer ? (
+              <Button size="lg" variant="outline" className="rounded-full px-7 gap-2" onClick={() => navigate(`/trip-planner?${tripParams.toString()}`)}>
+                <CalendarPlus className="w-5 h-5" /> Add to a trip
               </Button>
-            </a>
+            ) : (
+              <a href={getLoginUrl()}>
+                <Button size="lg" className="gradient-sally text-white border-0 shadow-lg rounded-full px-8 gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Join Free & RSVP
+                </Button>
+              </a>
+            )}
             <p className="text-xs text-muted-foreground mt-3 flex items-center justify-center gap-1">
               <Shield className="w-3 h-3" /> Biometric verified · Real people only
             </p>
