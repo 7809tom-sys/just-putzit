@@ -375,6 +375,7 @@
 - [x] Publish a technical plan for synchronizing the governed 2,000-question library across game clients
 - [x] Publish exact request and response schemas for shared-library delta synchronization
 - [x] Add protected draft intake and approval controls so only reviewed shared questions become available to games
+- [x] Prepare an initial original shared-question draft batch for administrator review without publishing it
 
 ## Bulgar Dash Visual Clues
 - [x] Audit Bulgar Dash images and licenses for fair, verifiable reuse as Jeopardy visual clues
