@@ -537,6 +537,11 @@
 - [x] Give signed-in members a direct Google Calendar option with .ics fallback
 - [x] Keep public viewers on the existing join flow and add regression coverage
 
+## Activity Detail Sharing
+- [x] Add a signed-in activity detail copy-link action
+- [x] Provide success and fallback feedback for copying an event URL
+- [x] Add regression coverage for member-only event sharing
+
 ## Voice-to-Text Profile Input
 - [x] Build VoiceBio reusable component using Web Speech API (SpeechRecognition) with Whisper API fallback
 - [x] Mic button shows recording state (pulsing red), transcribes in real time, stops on tap

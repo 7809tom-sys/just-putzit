@@ -10,7 +10,7 @@ import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, CalendarPlus, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight, Bookmark, BookmarkCheck, List, Map as MapIcon } from "lucide-react";
+import { Calendar, CalendarPlus, Clock, MapPin, Users, Sparkles, ChevronLeft, Shield, ArrowRight, Bookmark, BookmarkCheck, List, Map as MapIcon, Share2 } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { formatSimilarEventDistance } from "@shared/similarEventDetails";
 import { getActivityBookmarkFeedback, isActivityBookmarked } from "@shared/activityBookmarks";
@@ -133,6 +133,14 @@ export default function EventDetail() {
     location: [activity.venueName, activity.venueAddress, activity.venueCity].filter(Boolean).join(", "),
     notes: activity.description ?? "",
   });
+  const copyActivityLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Event link copied");
+    } catch {
+      toast.error("Couldn’t copy the event link. Please copy it from your browser address bar.");
+    }
+  };
 
   return (
     <div className="min-h-screen overflow-x-hidden">
@@ -275,6 +283,9 @@ export default function EventDetail() {
                   location: [activity.venueName, activity.venueAddress, activity.venueCity].filter(Boolean).join(", "),
                   details: activity.description,
                 }} />
+                <Button size="lg" variant="outline" className="rounded-full px-5 gap-2" onClick={copyActivityLink} aria-label={`Copy link for ${activity.title}`}>
+                  <Share2 className="w-5 h-5" /> Copy link
+                </Button>
                 <Button size="lg" variant="outline" className="rounded-full px-7 gap-2" onClick={() => navigate(`/trip-planner?${tripParams.toString()}`)}>
                   <CalendarPlus className="w-5 h-5" /> Add to a trip
                 </Button>
