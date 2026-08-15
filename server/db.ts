@@ -3487,6 +3487,94 @@ export async function getPublishedSharedQuestionsForGame(
     }));
 }
 
+export type SharedQuestionDraftInput = {
+  prompt: string;
+  format: "would_you_rather" | "multiple_choice" | "free_response" | "visual";
+  category: string;
+  difficulty: "easy" | "medium" | "hard";
+  optionA?: string | null;
+  optionB?: string | null;
+  optionC?: string | null;
+  optionD?: string | null;
+  canonicalAnswer?: string | null;
+  acceptedAnswers?: string[];
+  imageUrl?: string | null;
+  sourceUrl?: string | null;
+  license?: string | null;
+  attribution?: string | null;
+  gameTargets: Array<{ gameType: SharedGameType; gameConfig?: Record<string, unknown> }>;
+};
+
+export async function createSharedQuestionDraft(input: SharedQuestionDraftInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(sharedQuestionLibrary).values({
+      prompt: input.prompt,
+      format: input.format,
+      category: input.category,
+      difficulty: input.difficulty,
+      optionA: input.optionA?.trim() || null,
+      optionB: input.optionB?.trim() || null,
+      optionC: input.optionC?.trim() || null,
+      optionD: input.optionD?.trim() || null,
+      canonicalAnswer: input.canonicalAnswer?.trim() || null,
+      acceptedAnswers: input.acceptedAnswers?.map((answer) => answer.trim()).filter(Boolean) ?? [],
+      imageUrl: input.imageUrl?.trim() || null,
+      sourceUrl: input.sourceUrl?.trim() || null,
+      license: input.license?.trim() || null,
+      attribution: input.attribution?.trim() || null,
+      contentStatus: "draft",
+    });
+    const questionId = Number(inserted.insertId);
+    if (input.gameTargets.length > 0) {
+      await tx.insert(sharedQuestionGameTargets).values(input.gameTargets.map((target) => ({
+        questionId,
+        gameType: target.gameType,
+        gameConfig: target.gameConfig ?? {},
+      })));
+    }
+    const [question] = await tx.select().from(sharedQuestionLibrary).where(eq(sharedQuestionLibrary.id, questionId)).limit(1);
+    if (!question) throw new Error("Could not create shared question draft");
+    return question;
+  });
+}
+
+export async function getSharedQuestionsForEditorialReview(status?: "draft" | "approved" | "published" | "retired", limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  const questions = await db.select().from(sharedQuestionLibrary)
+    .where(status ? eq(sharedQuestionLibrary.contentStatus, status) : undefined)
+    .orderBy(desc(sharedQuestionLibrary.updatedAt))
+    .limit(Math.min(limit, 100));
+  const ids = questions.map((question) => question.id);
+  const targets = ids.length > 0
+    ? await db.select().from(sharedQuestionGameTargets).where(inArray(sharedQuestionGameTargets.questionId, ids))
+    : [];
+  return questions.map((question) => ({ ...question, targets: targets.filter((target) => target.questionId === question.id) }));
+}
+
+export async function getSharedQuestionForEditorialReview(questionId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [question] = await db.select().from(sharedQuestionLibrary).where(eq(sharedQuestionLibrary.id, questionId)).limit(1);
+  if (!question) return null;
+  const targets = await db.select().from(sharedQuestionGameTargets).where(eq(sharedQuestionGameTargets.questionId, questionId));
+  return { ...question, targets };
+}
+
+export async function setSharedQuestionStatus(questionId: number, status: "approved" | "published" | "retired") {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(sharedQuestionLibrary).set({
+    contentStatus: status,
+    publishedAt: status === "published" ? new Date() : null,
+    revision: sql`${sharedQuestionLibrary.revision} + 1`,
+  }).where(eq(sharedQuestionLibrary.id, questionId));
+  const [question] = await db.select().from(sharedQuestionLibrary).where(eq(sharedQuestionLibrary.id, questionId)).limit(1);
+  return question ?? null;
+}
+
 export async function getTriviaQuestionById(id: number) {
   const db = await getDb();
   if (!db) return null;

@@ -35,6 +35,7 @@ import { isEligiblePublicEventProposal } from "../shared/eventProposalPolicy";
 import { hasSharedConnectionIntent, normalizeConnectionPreferences } from "../shared/connectionPreferences";
 import { BLOCKED_CONVERSATION_MESSAGE, isValidMemberSafetyTarget } from "../shared/memberSafetyPolicy";
 import { parseProfileBirthDate } from "../shared/profileBirthDate";
+import { isSharedQuestionFormatEligible, SHARED_GAME_TYPES } from "../shared/sharedQuestionLibrary";
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
   "cooking_class", "escape_room", "wine_tasting", "hiking", "park",
@@ -261,6 +262,10 @@ import {
   notifyNearbyPickupMembers,
   getMemberPreferredPickupCategories,
   getPublishedSharedQuestionsForGame,
+  createSharedQuestionDraft,
+  getSharedQuestionForEditorialReview,
+  getSharedQuestionsForEditorialReview,
+  setSharedQuestionStatus,
   createPickPlanRound,
   getActivePickPlanRoundForMatch,
   getPickPlanRound,
@@ -3722,6 +3727,61 @@ Return JSON with questions array, each having optionA and optionB.`,
       }),
   }),
 
+  sharedQuestionAdmin: router({
+    list: adminProcedure
+      .input(z.object({ status: z.enum(["draft", "approved", "published", "retired"]).optional() }).optional())
+      .query(async ({ input }) => getSharedQuestionsForEditorialReview(input?.status)),
+
+    createDraft: adminProcedure
+      .input(z.object({
+        prompt: z.string().trim().min(5).max(4_000),
+        format: z.enum(["would_you_rather", "multiple_choice", "free_response", "visual"]),
+        category: z.string().trim().min(2).max(100),
+        difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+        optionA: z.string().trim().max(300).optional(),
+        optionB: z.string().trim().max(300).optional(),
+        optionC: z.string().trim().max(300).optional(),
+        optionD: z.string().trim().max(300).optional(),
+        canonicalAnswer: z.string().trim().max(500).optional(),
+        acceptedAnswers: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
+        imageUrl: z.string().url().max(1000).optional(),
+        sourceUrl: z.string().url().max(1000).optional(),
+        license: z.string().trim().max(255).optional(),
+        attribution: z.string().trim().max(4_000).optional(),
+        gameTargets: z.array(z.object({ gameType: z.enum(SHARED_GAME_TYPES), gameConfig: z.record(z.string(), z.unknown()).optional() })).min(1).max(6),
+      }))
+      .mutation(async ({ input }) => createSharedQuestionDraft(input)),
+
+    approve: adminProcedure
+      .input(z.object({ questionId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const question = await getSharedQuestionForEditorialReview(input.questionId);
+        if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Shared question not found." });
+        if (question.contentStatus !== "draft") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Only draft questions can be approved." });
+        assertSharedQuestionReadyForApproval(question);
+        return setSharedQuestionStatus(question.id, "approved");
+      }),
+
+    publish: adminProcedure
+      .input(z.object({ questionId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const question = await getSharedQuestionForEditorialReview(input.questionId);
+        if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Shared question not found." });
+        if (question.contentStatus !== "approved") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A question must be approved before publication." });
+        assertSharedQuestionReadyForApproval(question);
+        return setSharedQuestionStatus(question.id, "published");
+      }),
+
+    retire: adminProcedure
+      .input(z.object({ questionId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const question = await getSharedQuestionForEditorialReview(input.questionId);
+        if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Shared question not found." });
+        if (question.contentStatus === "draft") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Drafts can be deleted or revised instead of retired." });
+        return setSharedQuestionStatus(question.id, "retired");
+      }),
+  }),
+
   // Published questions only. Canonical and accepted answers intentionally stay
   // server-side so clients cannot inspect answers before a game evaluates them.
   sharedQuestions: router({
@@ -3762,6 +3822,25 @@ export function toPickPlanViewerPayload(
     },
     candidates: payload.candidates,
   };
+}
+
+export function assertSharedQuestionReadyForApproval(question: NonNullable<Awaited<ReturnType<typeof getSharedQuestionForEditorialReview>>>) {
+  if (question.targets.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose at least one compatible game target." });
+  if (question.targets.some((target) => !isSharedQuestionFormatEligible(question.format, target.gameType))) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "One or more game targets do not support this question format." });
+  }
+  if (question.format === "would_you_rather" && (!question.optionA || !question.optionB)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Would You Rather questions need both answer options." });
+  }
+  if (question.format === "multiple_choice" && (!question.optionA || !question.optionB || !question.optionC || !question.optionD || !question.canonicalAnswer)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Multiple-choice questions need four options and a canonical answer." });
+  }
+  if ((question.format === "free_response" || question.format === "visual") && !question.canonicalAnswer) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "This question format needs a canonical answer before approval." });
+  }
+  if (question.format === "visual" && (!question.imageUrl || !question.sourceUrl || !question.license || !question.attribution)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Visual questions need image provenance, license, and attribution before approval." });
+  }
 }
 
 async function generateFollowUpQuestion(traits: ProfileTraits, interviewCount: number): Promise<string> {
