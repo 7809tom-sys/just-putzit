@@ -9,4 +9,10 @@ describe("profile saved-events summary", () => {
     expect(source).toContain('document.getElementById("saved-events")?.scrollIntoView');
     expect(source).toContain('id="saved-events"');
   });
+
+  it("gives members with no saved events a direct route to browse events", () => {
+    const source = readFileSync(resolve(__dirname, "../client/src/pages/Profile.tsx"), "utf8");
+    expect(source).toContain("Save an event from its details page to keep the plan handy here.");
+    expect(source).toContain('onClick={() => navigate("/events")}>Browse events</Button>');
+  });
 });

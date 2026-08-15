@@ -703,7 +703,10 @@ export default function Profile() {
               ))}
             </div>
           ) : (
-            <p className="mt-4 rounded-2xl bg-muted/45 px-4 py-3 text-sm text-muted-foreground">Save an event from its details page to keep the plan handy here.</p>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-muted/45 px-4 py-3">
+              <p className="text-sm text-muted-foreground">Save an event from its details page to keep the plan handy here.</p>
+              <Button type="button" size="sm" className="rounded-full" onClick={() => navigate("/events")}>Browse events</Button>
+            </div>
           )}
         </section>
         {/* Traits */}
