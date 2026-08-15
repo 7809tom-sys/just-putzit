@@ -328,6 +328,13 @@
 - [ ] Add Outreach tab in Admin panel with venue list and compose email form
 - [ ] Show email history log per venue in Admin panel
 - [ ] Add college performing-arts sources and outreach templates for musical plays and theater productions
+- [ ] Configure a verified dedicated sender identity for direct administrator outreach
+- [ ] Record direct-send provider responses without storing venue contact details outside the outreach record
+- [ ] Require administrator review and explicit send confirmation for every venue outreach email
+- [ ] Verify the outbound email provider’s DNS records in Cloudflare; inbound forwarding alone must not be treated as direct-send capability
+- [x] Validate the configured outbound-email credential with a non-sending provider API check
+- [x] Send one authorized onboarding-sender delivery check to the specified address before enabling production outreach
+- [ ] Verify `justputzit.com` in Resend while preserving existing Cloudflare incoming-email routing records
 
 ## Sally Continuous Profile Enrichment
 - [x] After every Sally chat message, extract new traits/hobbies/preferences and MERGE into profile (not overwrite)
@@ -357,6 +364,22 @@
 - [ ] In-room game play: WYR, trivia, or icebreaker questions with all room members
 - [ ] Geographic filter: show rooms in same city first, then nearby cities
 - [ ] After game, prompt players to connect/match with each other
+
+## Shared Game Question Library and Pick a Plan
+- [ ] Inventory existing game question tables and define a single reusable question-library model with game eligibility and safety metadata
+- [ ] Add a durable shared-question schema, migration, server selection helpers, and adapter path for existing games
+- [ ] Seed a reviewed shared question catalog in stages toward 2,000 prompts without fabricated user-generated content
+- [ ] Add Pick a Plan as a matched-member game that uses current local events, private voting, and mutual-agreement reveal
+- [ ] Add regression coverage for question eligibility, private voting, and safe event-plan handoff
+- [x] Publish an implementation-ready product roadmap for the shared library and Pick a Plan release sequence
+- [x] Publish a technical plan for synchronizing the governed 2,000-question library across game clients
+- [x] Publish exact request and response schemas for shared-library delta synchronization
+
+## Bulgar Dash Visual Clues
+- [x] Audit Bulgar Dash images and licenses for fair, verifiable reuse as Jeopardy visual clues
+- [x] Define image-clue wording and answer-validation rules before enabling Jeopardy reuse
+- [x] Publish a sample Visual Jeopardy schema with provenance, attribution, metadata, answers, and editorial status
+- [x] Create an investor/developer presentation deck for the Visual Jeopardy and shared question-library architecture
 
 ## Movie Night Feature
 - [ ] Research TMDB API for now-playing movies and trailers
@@ -543,6 +566,11 @@
 - [x] Give signed-in members an add-to-trip route from an activity detail page
 - [x] Prefill the Trip Planner item form from the selected activity without automatically saving it
 - [x] Keep public viewers on the existing join flow and add regression coverage
+
+## Trip Planner ZIP Discovery and Booking Handoff
+- [x] Add a ZIP-code activity search to Trip Planner that resolves nearby current events and activities
+- [x] Add a clear activity-to-itinerary handoff and booking-link step within Trip Planner search results
+- [x] Add regression coverage for ZIP validation, nearby search, and booking handoff behavior
 
 ## Activity Detail Calendar Action
 - [x] Reuse the standard calendar event builder for dated activity details

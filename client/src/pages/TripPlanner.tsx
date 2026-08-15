@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Calendar, CalendarPlus, Plus, Trash2, Download, MapPin, Clock } from "lucide-react";
+import { Calendar, CalendarPlus, Plus, Trash2, Download, MapPin, Clock, ExternalLink } from "lucide-react";
 import { buildTripGoogleCalendarUrl } from "../../../shared/tripGoogleCalendar";
 import { useLocation } from "wouter";
+import { TripPlannerActivitySearch, type TripPlannerDiscoverableEvent } from "@/components/TripPlannerActivitySearch";
 
 interface TripPlanFormData {
   title: string;
@@ -68,7 +69,7 @@ export default function TripPlanner() {
   });
 
   const addItemMutation = trpc.family.addTripItem.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Item added!");
       setIsAddItemOpen(false);
       setItemTitle("");
@@ -76,7 +77,11 @@ export default function TripPlanner() {
       setItemTime("");
       setItemDescription("");
       setItemCategory("activity");
-      refetchTrips();
+      const refreshed = await refetchTrips();
+      if (selectedTrip?.id) {
+        const updatedTrip = (refreshed.data ?? []).find((trip: any) => trip.id === selectedTrip.id);
+        if (updatedTrip) setSelectedTrip(updatedTrip);
+      }
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to add item");
@@ -203,6 +208,23 @@ END:VEVENT
       location: itemDescription,
       url: undefined,
       notes: itemDescription,
+    });
+  };
+
+  const addEventToTrip = (event: TripPlannerDiscoverableEvent) => {
+    if (!selectedTrip) {
+      toast.error("Choose a trip before adding an activity.");
+      return;
+    }
+    const eventDate = event.eventDate ? new Date(event.eventDate) : null;
+    addItemMutation.mutate({
+      planId: selectedTrip.id,
+      title: event.title,
+      type: "event",
+      time: eventDate && !Number.isNaN(eventDate.getTime()) ? eventDate.toISOString() : "",
+      location: [event.venueName, event.address, event.city].filter(Boolean).join(" · ") || undefined,
+      url: event.externalUrl || undefined,
+      notes: event.description || undefined,
     });
   };
 
@@ -381,6 +403,8 @@ END:VEVENT
                   <p className="text-gray-700 mb-6">{selectedTrip.notes}</p>
                 )}
 
+                <TripPlannerActivitySearch onAddEvent={addEventToTrip} isAdding={addItemMutation.isPending} />
+
                 {/* Itinerary Items */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
@@ -497,6 +521,11 @@ END:VEVENT
                                 {item.notes && (
                                   <p className="text-sm text-gray-700 mt-1">{item.notes}</p>
                                 )}
+                                {item.url && (
+                                  <a href={item.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 underline underline-offset-2">
+                                    Official details / book <ExternalLink size={14} />
+                                  </a>
+                                )}
                               </div>
                               <Button
                                 variant="ghost"
@@ -518,7 +547,9 @@ END:VEVENT
             ) : (
               <Card className="p-12 text-center">
                 <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600 text-lg">Select a trip to view details</p>
+                <p className="text-gray-800 text-lg font-semibold">Create or select a trip to start planning</p>
+                <p className="mx-auto mt-2 max-w-sm text-sm text-gray-600">Once you choose a trip, enter a ZIP code to find current nearby activities, add them to your itinerary, and open official booking pages.</p>
+                <Button className="mt-5 gap-2" onClick={() => setIsCreateTripOpen(true)}><Plus size={16} />Create a trip</Button>
               </Card>
             )}
           </div>
