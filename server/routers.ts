@@ -261,6 +261,11 @@ import {
   notifyNearbyPickupMembers,
   getMemberPreferredPickupCategories,
   getPublishedSharedQuestionsForGame,
+  createPickPlanRound,
+  getActivePickPlanRoundForMatch,
+  getPickPlanRound,
+  recordPickPlanVote,
+  revealPickPlanMatch,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, MatchGameQuestion as GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import { familyProfiles, communityEvents } from "../drizzle/schema";
@@ -3650,6 +3655,73 @@ Return JSON with questions array, each having optionA and optionB.`,
       }),
   }),
 
+  pickPlan: router({
+    start: protectedProcedure
+      .input(z.object({ matchId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const match = await getMatchById(input.matchId);
+        if (!match || match.status !== "active" || !isMatchParticipant(match, ctx.user.id)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Pick a Plan is available only to the two members of an active match." });
+        }
+        const otherMemberId = match.user1Id === ctx.user.id ? match.user2Id : match.user1Id;
+        if (await isBlockInEffect(ctx.user.id, otherMemberId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This activity is unavailable for this match." });
+        }
+        const activeRound = await getActivePickPlanRoundForMatch(match.id);
+        if (activeRound) return { roundId: activeRound.id };
+        const [myProfile, otherProfile] = await Promise.all([
+          getProfileByUserId(ctx.user.id),
+          getProfileByUserId(otherMemberId),
+        ]);
+        const city = myProfile?.city ?? otherProfile?.city;
+        if (!city) throw new TRPCError({ code: "BAD_REQUEST", message: "Add a city to your profile before starting Pick a Plan." });
+        const candidates = (await getCommunityEvents({ city, limit: 30 }))
+          .filter((event) => isEligiblePublicEventProposal(event))
+          .slice(0, 3);
+        if (candidates.length < 2) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "There are not enough current public events nearby to start a plan yet." });
+        }
+        const round = await createPickPlanRound({
+          matchId: match.id,
+          creatorId: ctx.user.id,
+          candidateEventIds: candidates.map((event) => event.id),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        });
+        return { roundId: round.id };
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ roundId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const payload = await getPickPlanRound(input.roundId);
+        if (!payload) throw new TRPCError({ code: "NOT_FOUND", message: "Pick a Plan round not found." });
+        const match = await getMatchById(payload.round.matchId);
+        if (!match || !isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN" });
+        const otherMemberId = match.user1Id === ctx.user.id ? match.user2Id : match.user1Id;
+        if (await isBlockInEffect(ctx.user.id, otherMemberId)) throw new TRPCError({ code: "FORBIDDEN" });
+        return toPickPlanViewerPayload(payload, ctx.user.id, otherMemberId);
+      }),
+
+    vote: protectedProcedure
+      .input(z.object({ roundId: z.number().int().positive(), eventId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const existing = await getPickPlanRound(input.roundId);
+        if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Pick a Plan round not found." });
+        const match = await getMatchById(existing.round.matchId);
+        if (!match || match.status !== "active" || !isMatchParticipant(match, ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN" });
+        const otherMemberId = match.user1Id === ctx.user.id ? match.user2Id : match.user1Id;
+        if (await isBlockInEffect(ctx.user.id, otherMemberId)) throw new TRPCError({ code: "FORBIDDEN" });
+        const candidate = existing.candidates.find((event) => event.id === input.eventId);
+        if (!isEligiblePublicEventProposal(candidate)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a current public event from this round." });
+        }
+        await recordPickPlanVote({ roundId: input.roundId, userId: ctx.user.id, eventId: input.eventId });
+        const revealed = await revealPickPlanMatch(input.roundId, [match.user1Id, match.user2Id]);
+        if (!revealed) throw new TRPCError({ code: "NOT_FOUND" });
+        return toPickPlanViewerPayload(revealed, ctx.user.id, otherMemberId);
+      }),
+  }),
+
   // Published questions only. Canonical and accepted answers intentionally stay
   // server-side so clients cannot inspect answers before a game evaluates them.
   sharedQuestions: router({
@@ -3666,6 +3738,31 @@ Return JSON with questions array, each having optionA and optionB.`,
 export type AppRouter = typeof appRouter;
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
+
+export function toPickPlanViewerPayload(
+  payload: NonNullable<Awaited<ReturnType<typeof getPickPlanRound>>>,
+  viewerId: number,
+  otherMemberId: number,
+) {
+  const myVoteEventId = payload.votes.find((vote) => vote.userId === viewerId)?.eventId ?? null;
+  const partnerSubmitted = payload.votes.some((vote) => vote.userId === otherMemberId);
+  const matchedEvent = payload.round.status === "matched"
+    ? payload.candidates.find((event) => event.id === payload.round.matchedEventId) ?? null
+    : null;
+
+  return {
+    round: {
+      id: payload.round.id,
+      matchId: payload.round.matchId,
+      status: payload.round.status,
+      expiresAt: payload.round.expiresAt,
+      myVoteEventId,
+      partnerSubmitted,
+      matchedEvent,
+    },
+    candidates: payload.candidates,
+  };
+}
 
 async function generateFollowUpQuestion(traits: ProfileTraits, interviewCount: number): Promise<string> {
   const covered = Object.keys(traits);

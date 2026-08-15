@@ -147,6 +147,7 @@ export default function Games() {
             <GameSelectCard emoji="💍" title="Newlywed Game" desc="Sally quizzes you on what you think your match answered. How well do you already know each other?" color="gradient-singles" onPlay={() => handleStartGame("newlywed")} />
             <GameSelectCard emoji="🎭" title="Two Truths & a Lie" desc="Sally crafts 3 statements from your match's profile — can you spot the one that's false?" color="gradient-couples" onPlay={() => handleStartGame("two_truths")} />
             <GameSelectCard emoji="⚡" title="This or That" desc="Rapid-fire either/or questions — Sally reveals how often your answers matched!" color="gradient-community" onPlay={() => handleStartGame("this_or_that")} />
+            <GameSelectCard emoji="🗓️" title="Pick a Plan" desc="Choose a current local event privately. Sally reveals it only if you both pick the same plan." color="bg-gradient-to-r from-emerald-100 to-teal-100" onPlay={() => navigate(`/pick-a-plan/${mid}`)} />
             <GameSelectCard emoji="⚖️" title="Would You Rather Challenge" desc="Answer the same ten questions separately, then unlock your compatibility reveal together." color="bg-gradient-to-r from-amber-100 to-orange-100" onPlay={handleStartWyrChallenge} />
             <GameSelectCard emoji="📸" title="Bulger Dash" desc="A mystery photo appears — write a caption that's the truth or a convincing lie. Can your match spot the bluff?" color="bg-gradient-to-r from-purple-500 to-pink-500" onPlay={() => navigate(`/bullgerdash/${matchId}`)} />
           </div>

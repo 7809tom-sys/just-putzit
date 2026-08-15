@@ -11,6 +11,8 @@ import {
   interviewSessions,
   matches,
   eventProposals,
+  pickPlanRounds,
+  pickPlanVotes,
   notifications,
   birthdayNotifications,
   userProfiles,
@@ -404,6 +406,87 @@ export async function respondToEventProposal(input: {
   }
   const [updated] = await db.select().from(eventProposals).where(eq(eventProposals.id, proposal.id)).limit(1);
   return updated ?? proposal;
+}
+
+// ─── Pick a Plan ──────────────────────────────────────────────────────────────
+
+export async function createPickPlanRound(input: {
+  matchId: number;
+  creatorId: number;
+  candidateEventIds: number[];
+  expiresAt: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [result] = await db.insert(pickPlanRounds).values(input);
+  const [round] = await db.select().from(pickPlanRounds).where(eq(pickPlanRounds.id, Number(result.insertId))).limit(1);
+  if (!round) throw new Error("Could not create Pick a Plan round");
+  return round;
+}
+
+export async function getActivePickPlanRoundForMatch(matchId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [round] = await db.select()
+    .from(pickPlanRounds)
+    .where(and(
+      eq(pickPlanRounds.matchId, matchId),
+      eq(pickPlanRounds.status, "voting"),
+      gt(pickPlanRounds.expiresAt, new Date()),
+    ))
+    .orderBy(desc(pickPlanRounds.createdAt))
+    .limit(1);
+  return round ?? null;
+}
+
+export async function getPickPlanRound(roundId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [round] = await db.select().from(pickPlanRounds).where(eq(pickPlanRounds.id, roundId)).limit(1);
+  if (!round) return null;
+  const candidateIds = (round.candidateEventIds ?? []).filter((id): id is number => Number.isInteger(id));
+  const [candidates, votes] = await Promise.all([
+    candidateIds.length > 0 ? db.select().from(communityEvents).where(inArray(communityEvents.id, candidateIds)) : Promise.resolve([]),
+    db.select().from(pickPlanVotes).where(eq(pickPlanVotes.roundId, round.id)),
+  ]);
+  return { round, candidates, votes };
+}
+
+export async function recordPickPlanVote(input: { roundId: number; userId: number; eventId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const current = await getPickPlanRound(input.roundId);
+  if (!current) throw new Error("Pick a Plan round not found");
+  if (current.round.status !== "voting") throw new Error("This Pick a Plan round is no longer open");
+  if (current.round.expiresAt.getTime() <= Date.now()) {
+    await db.update(pickPlanRounds).set({ status: "expired" }).where(eq(pickPlanRounds.id, input.roundId));
+    throw new Error("This Pick a Plan round has expired");
+  }
+  if (!(current.round.candidateEventIds ?? []).includes(input.eventId)) {
+    throw new Error("Choose one of this round’s suggested events");
+  }
+
+  await db.insert(pickPlanVotes).values(input).onDuplicateKeyUpdate({
+    set: { eventId: input.eventId, updatedAt: new Date() },
+  });
+  const updated = await getPickPlanRound(input.roundId);
+  if (!updated) throw new Error("Pick a Plan round not found");
+  return updated;
+}
+
+export async function revealPickPlanMatch(roundId: number, memberIds: [number, number]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const current = await getPickPlanRound(roundId);
+  if (!current) throw new Error("Pick a Plan round not found");
+  const votesByMember = new Map(current.votes.map((vote) => [vote.userId, vote.eventId]));
+  const firstVote = votesByMember.get(memberIds[0]);
+  const secondVote = votesByMember.get(memberIds[1]);
+  if (firstVote === undefined || secondVote === undefined || firstVote !== secondVote) return current;
+
+  await db.update(pickPlanRounds).set({ status: "matched", matchedEventId: firstVote }).where(eq(pickPlanRounds.id, roundId));
+  const revealed = await getPickPlanRound(roundId);
+  return revealed ?? current;
 }
 
 // ─── Game Sessions ────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ import PartnerResults from "./pages/PartnerResults";
 import Couples from "./pages/Couples";
 import WouldYouRather from "@/pages/WouldYouRather";
 import WyrChallenge from "@/pages/WyrChallenge";
+import PickAPlan from "@/pages/PickAPlan";
 import CampusWaitlist from "@/pages/CampusWaitlist";
 import CampusPage from "@/pages/Campus";
 import SignUp from "@/pages/SignUp";
@@ -119,6 +120,7 @@ function Router() {
         <Route path="/would-you-rather" component={WouldYouRather} />
         <Route path="/wyr-challenge/:challengeId" component={WyrChallenge} />
         <Route path="/wyr-challenge" component={WyrChallenge} />
+        <Route path="/pick-a-plan/:matchId" component={PickAPlan} />
         <Route path="/campus/carroll" component={CampusWaitlist} />
         <Route path="/campus" component={CampusPage} />
         <Route path="/signup" component={SignUp} />

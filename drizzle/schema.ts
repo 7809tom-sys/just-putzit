@@ -179,6 +179,34 @@ export const eventProposals = mysqlTable("event_proposals", {
 
 export type EventProposal = typeof eventProposals.$inferSelect;
 
+// ─── Pick a Plan ──────────────────────────────────────────────────────────────
+// Candidate events are selected server-side from current public community events.
+// Votes remain private until both matched members choose the same candidate.
+export const pickPlanRounds = mysqlTable("pick_plan_rounds", {
+  id: int("id").autoincrement().primaryKey(),
+  matchId: int("matchId").notNull(),
+  creatorId: int("creatorId").notNull(),
+  candidateEventIds: json("candidateEventIds").$type<number[]>().notNull().$default(() => []),
+  status: mysqlEnum("status", ["voting", "matched", "expired", "cancelled"]).notNull().default("voting"),
+  matchedEventId: int("matchedEventId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+});
+export type PickPlanRound = typeof pickPlanRounds.$inferSelect;
+
+export const pickPlanVotes = mysqlTable("pick_plan_votes", {
+  id: int("id").autoincrement().primaryKey(),
+  roundId: int("roundId").notNull(),
+  userId: int("userId").notNull(),
+  eventId: int("eventId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  pickPlanRoundMemberUnique: uniqueIndex("pick_plan_round_member_unique").on(table.roundId, table.userId),
+}));
+export type PickPlanVote = typeof pickPlanVotes.$inferSelect;
+
 // ─── Match game question type (used for newlywed/two-truths/this-or-that games) ─
 export type MatchGameQuestion = {
   id: string;
