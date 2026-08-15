@@ -387,7 +387,7 @@
 
 ## Movie Night Feature
 - [ ] Research TMDB API for now-playing movies and trailers
-- [ ] Find Waukesha local theater ticket booking URLs (Marcus Theatres, AMC, etc.)
+- [x] Find Waukesha local theater ticket booking URLs (Marcus Theatres, AMC, etc.)
 - [ ] Add movie_bookings table to DB schema and apply migration
 - [ ] Add tRPC procedures: getNowPlaying, getMovieTrailer, recordMovieBookingClick
 - [ ] Build Movies page with now-playing grid, trailer modal (YouTube embed), theater info
