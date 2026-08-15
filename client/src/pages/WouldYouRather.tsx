@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,7 @@ const CATEGORIES = [
 export default function WouldYouRather() {
   const { isAuthenticated, loading } = useAuth();
   const utils = trpc.useUtils();
+  const [, navigate] = useLocation();
 
   const [category, setCategory] = useState<string>("all");
   const [index, setIndex] = useState(0);
@@ -128,6 +130,24 @@ export default function WouldYouRather() {
               <Trophy className="w-3.5 h-3.5" /> {streak} streak
             </Badge>
           )}
+        </div>
+
+        <div className="mb-6 inline-flex rounded-xl bg-muted p-1" aria-label="Would You Rather game mode">
+          <button
+            type="button"
+            aria-pressed="true"
+            className="rounded-lg bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm"
+          >
+            Solo
+          </button>
+          <button
+            type="button"
+            aria-pressed="false"
+            onClick={() => navigate("/wyr-challenge")}
+            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Challenge a Match
+          </button>
         </div>
 
         {/* Category chips */}

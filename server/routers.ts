@@ -133,6 +133,7 @@ import {
   getWyrQuestions,
   getWyrQuestionById,
   getWyrAnsweredQuestionIds,
+  getWyrChallengeAnswerProgress,
   recordWyrAnswer,
   getWyrSplit,
   getWyrAnswerCount,
@@ -2489,15 +2490,42 @@ Return JSON with questions array, each having optionA and optionB.`,
       .input(z.object({ challengeId: z.number() }))
       .query(async ({ ctx, input }) => {
         const challenge = await getWyrChallenge(input.challengeId);
-        if (!challenge) throw new Error("Challenge not found");
+        if (!challenge) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Challenge not found." });
+        }
         if (challenge.challengerId !== ctx.user.id && challenge.challengedId !== ctx.user.id) {
-          throw new Error("Forbidden");
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only challenge participants can view this invitation." });
         }
         // Fetch the questions for this challenge
         const allQ = await getWyrQuestions("all");
         const qMap = new Map(allQ.map((q) => [q.id, q]));
         const questions = (challenge.questionIds as number[]).map((id) => qMap.get(id)).filter(Boolean);
-        return { challenge, questions };
+        const progress = await getWyrChallengeAnswerProgress(
+          challenge.challengerId,
+          challenge.challengedId,
+          challenge.questionIds as number[],
+        );
+        const isChallenger = challenge.challengerId === ctx.user.id;
+        const myAnsweredQuestionIds = isChallenger
+          ? progress.challengerAnsweredQuestionIds
+          : progress.challengedAnsweredQuestionIds;
+        const partnerAnsweredQuestionIds = isChallenger
+          ? progress.challengedAnsweredQuestionIds
+          : progress.challengerAnsweredQuestionIds;
+        const displayStatus = challenge.status === "completed"
+          ? "completed"
+          : myAnsweredQuestionIds.length > 0 || partnerAnsweredQuestionIds.length > 0
+            ? "active"
+            : "pending";
+        return {
+          challenge,
+          questions,
+          myAnsweredQuestionIds,
+          myAnsweredCount: myAnsweredQuestionIds.length,
+          partnerAnsweredCount: partnerAnsweredQuestionIds.length,
+          displayStatus,
+          canReveal: myAnsweredQuestionIds.length === questions.length && partnerAnsweredQuestionIds.length === questions.length,
+        };
       }),
 
     // List all challenges for the current user
@@ -2510,14 +2538,32 @@ Return JSON with questions array, each having optionA and optionB.`,
       .input(z.object({ challengeId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const challenge = await getWyrChallenge(input.challengeId);
-        if (!challenge) throw new Error("Challenge not found");
+        if (!challenge) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Challenge not found." });
+        }
         if (challenge.challengerId !== ctx.user.id && challenge.challengedId !== ctx.user.id) {
-          throw new Error("Forbidden");
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only challenge participants can reveal compatibility." });
+        }
+        const questionIds = challenge.questionIds as number[];
+        const progress = await getWyrChallengeAnswerProgress(
+          challenge.challengerId,
+          challenge.challengedId,
+          questionIds,
+        );
+        if (
+          questionIds.length === 0 ||
+          progress.challengerAnsweredQuestionIds.length !== questionIds.length ||
+          progress.challengedAnsweredQuestionIds.length !== questionIds.length
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Compatibility unlocks after both members answer every shared question.",
+          });
         }
         const pct = await computeWyrCompatibility(
           challenge.challengerId,
           challenge.challengedId,
-          challenge.questionIds as number[]
+          questionIds
         );
         await updateWyrChallengeStatus(challenge.id, "completed", pct);
         return { compatibilityPct: pct };

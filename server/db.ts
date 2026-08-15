@@ -1395,6 +1395,28 @@ export async function getWyrAnswerCount(userId: number): Promise<number> {
   return rows.length;
 }
 
+/**
+ * Returns only answer-presence information for a challenge. The participant
+ * router exposes a member's own question IDs and the partner's aggregate count
+ * so one member never receives the other's private choices.
+ */
+export async function getWyrChallengeAnswerProgress(
+  challengerId: number,
+  challengedId: number,
+  questionIds: number[],
+) {
+  const challengeQuestionIds = new Set(questionIds);
+  const [challengerAnsweredQuestionIds, challengedAnsweredQuestionIds] = await Promise.all([
+    getWyrAnsweredQuestionIds(challengerId),
+    getWyrAnsweredQuestionIds(challengedId),
+  ]);
+
+  return {
+    challengerAnsweredQuestionIds: challengerAnsweredQuestionIds.filter((questionId) => challengeQuestionIds.has(questionId)),
+    challengedAnsweredQuestionIds: challengedAnsweredQuestionIds.filter((questionId) => challengeQuestionIds.has(questionId)),
+  };
+}
+
 // ─── Admin Stats ──────────────────────────────────────────────────────────────
 
 export async function getAdminStats() {
@@ -1488,15 +1510,23 @@ export async function createWyrChallenge(
 ) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.insert(wyrChallenges).values({
+  await db.insert(wyrChallenges).values({
     challengerId,
     challengedId,
     questionIds,
     matchId: matchId ?? null,
     status: "pending",
   });
-  const id = (result as unknown as { insertId: number }).insertId;
-  const [row] = await db.select().from(wyrChallenges).where(eq(wyrChallenges.id, id)).limit(1);
+  const [row] = await db
+    .select()
+    .from(wyrChallenges)
+    .where(and(
+      eq(wyrChallenges.challengerId, challengerId),
+      eq(wyrChallenges.challengedId, challengedId),
+      matchId === undefined ? sql`${wyrChallenges.matchId} IS NULL` : eq(wyrChallenges.matchId, matchId),
+    ))
+    .orderBy(desc(wyrChallenges.id))
+    .limit(1);
   return row ?? null;
 }
 

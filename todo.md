@@ -119,18 +119,23 @@
 - [x] Checkpoint and deliver playable demo
 
 ## Phase 11: 2-Player Would You Rather (match icebreaker)
-- [ ] Schema: wyr_challenges table (initiatorId, partnerId, status, compatibility%)
-- [ ] Backend: wyr.startChallenge, wyr.getChallenge, wyr.compareAnswers (compute match %)
-- [ ] Seed 20+ additional WYR questions
-- [ ] Frontend: 2-player challenge UI (invite match, answer together, reveal compatibility)
-- [ ] Wire into existing WYR page as a mode toggle (Solo vs. Challenge a Match)
-- [ ] Vitest tests for 2-player flow
-- [ ] Checkpoint and deliver
+- [x] Schema: wyr_challenges table (initiatorId, partnerId, status, compatibility%)
+- [x] Backend: wyr.startChallenge, wyr.getChallenge, wyr.compareAnswers (compute match %)
+- [x] Seed 20+ additional WYR questions
+- [x] Frontend: 2-player challenge UI (invite match, answer together, reveal compatibility)
+- [x] Wire into existing WYR page as a mode toggle (Solo vs. Challenge a Match)
+- [x] Vitest tests for 2-player flow
+- [x] Checkpoint and deliver
 
 ## Matched Would You Rather Challenge Entry
-- [ ] Add a challenge action to eligible match cards using the existing private challenge procedure
-- [ ] Route challenge participants into the existing Would You Rather game surface with a reviewable invitation state
-- [ ] Add regression coverage for matched-member-only challenge navigation
+- [x] Add a challenge action to eligible match cards using the existing private challenge procedure
+- [x] Route challenge participants into the existing Would You Rather game surface with a reviewable invitation state
+- [x] Add regression coverage for matched-member-only challenge navigation
+
+## Protected Matched Would You Rather Lobby
+- [x] Add a matched-member challenge card to the Games screen and route the creator to the private lobby
+- [x] Build the participant-only challenge lobby with shared questions, progress, waiting, and compatibility reveal states
+- [x] Register the private challenge route and add regression coverage for lobby access and completion behavior
 
 ## Phase 12: Admin Panel (justputzit.com ready)
 - [x] Backend: admin.getStats (total users, new this week, verified, interviewed, matches, messages)

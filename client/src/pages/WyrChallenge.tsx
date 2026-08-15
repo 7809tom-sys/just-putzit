@@ -1,392 +1,276 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Swords, Heart, Trophy, ArrowRight, RefreshCw, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, Heart, Loader2, Scale, Swords, Trophy, Users } from "lucide-react";
 import { toast } from "sonner";
 
-// ─── Challenge Lobby (send a challenge to a match) ────────────────────────────
-function ChallengeLobby({ onStartSolo }: { onStartSolo: () => void }) {
-  const { data: matchData } = trpc.matchmaking.getMyMatches.useQuery();
-  const sendChallenge = trpc.wyr.sendChallenge.useMutation({
-    onSuccess: () => {
-      toast.success("Challenge sent! They'll get a notification to play.");
-    },
-    onError: () => toast.error("Couldn't send challenge right now."),
-  });
+type Choice = "A" | "B";
 
-  const matches = matchData ?? [];
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-rose-50 to-purple-50 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-lg space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center mx-auto shadow-lg">
-            <Swords className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Challenge a Match</h1>
-          <p className="text-gray-500 text-sm">
-            Both of you answer the same 10 questions — then see how well you line up.
-          </p>
-        </div>
-
-        {/* Challenge a match */}
-        {matches.length > 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-5 space-y-3">
-            <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <Users className="w-4 h-4 text-orange-400" />
-              Send a challenge to one of your matches
-            </p>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {matches.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{m.otherProfile?.avatarEmoji ?? "😊"}</span>
-                    <span className="font-medium text-gray-800">
-                      {m.otherProfile?.displayName ?? "Your match"}
-                    </span>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="bg-orange-500 hover:bg-orange-600 text-white"
-                    disabled={sendChallenge.isPending}
-                    onClick={() =>
-                      sendChallenge.mutate({
-                        challengedId: m.otherUserId,
-                        matchId: m.id,
-                      })
-                    }
-                  >
-                    Challenge
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6 text-center text-gray-400 text-sm">
-            You don't have any matches yet — complete Sally's interview to get matched!
-          </div>
-        )}
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 text-gray-300 text-sm">
-          <div className="flex-1 h-px bg-gray-200" />
-          or
-          <div className="flex-1 h-px bg-gray-200" />
-        </div>
-
-        {/* Solo play */}
-        <Button
-          onClick={onStartSolo}
-          variant="outline"
-          className="w-full h-12 text-orange-600 border-orange-200 hover:bg-orange-50"
-        >
-          Play solo — just answer for yourself
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Answer card ──────────────────────────────────────────────────────────────
-interface Question {
+type ChallengeQuestion = {
   id: number;
   optionA: string;
   optionB: string;
   category: string;
-}
+};
 
-interface AnswerResult {
-  yourChoice: "A" | "B";
-  percentA: number;
-  percentB: number;
-  totalVotes: number;
-}
+function ChallengeDirectory() {
+  const [, navigate] = useLocation();
+  const { data: matchData, isLoading } = trpc.matchmaking.getMyMatches.useQuery();
+  const sendChallenge = trpc.wyr.sendChallenge.useMutation({
+    onSuccess: (data) => {
+      if (!data.challenge?.id) {
+        toast.error("The challenge could not be created. Please try again.");
+        return;
+      }
+      toast.success("Challenge created. Your shared questions are ready.");
+      navigate(`/wyr-challenge/${data.challenge.id}`);
+    },
+    onError: () => toast.error("Challenges are available only with an existing match."),
+  });
 
-function AnswerCard({
-  question,
-  index,
-  total,
-  onAnswer,
-  result,
-}: {
-  question: Question;
-  index: number;
-  total: number;
-  onAnswer: (choice: "A" | "B") => void;
-  result: AnswerResult | null;
-}) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-rose-50 to-purple-50 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-6">
-        {/* Progress */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-gray-400">
-            <span>Question {index + 1} of {total}</span>
-            <Badge variant="secondary" className="text-xs capitalize">
-              {question.category}
-            </Badge>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-rose-50 to-purple-50 px-4 py-10">
+      <div className="mx-auto w-full max-w-2xl">
+        <button onClick={() => navigate("/would-you-rather")} className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-orange-700 hover:text-orange-900">
+          <ArrowLeft className="h-4 w-4" /> Solo Would You Rather
+        </button>
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 shadow-lg">
+            <Swords className="h-8 w-8 text-white" />
           </div>
-          <Progress value={((index + 1) / total) * 100} className="h-1.5" />
+          <h1 className="font-display text-3xl font-bold text-gray-900">Challenge a Match</h1>
+          <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">Answer the same ten questions privately. Compatibility appears only after you both finish.</p>
         </div>
 
-        {/* Prompt */}
-        <div className="text-center">
-          <p className="text-lg font-bold text-gray-800">Would you rather…</p>
-        </div>
-
-        {/* Options */}
         <div className="space-y-3">
-          {(["A", "B"] as const).map((choice) => {
-            const label = choice === "A" ? question.optionA : question.optionB;
-            const pct = result ? (choice === "A" ? result.percentA : result.percentB) : null;
-            const chosen = result?.yourChoice === choice;
-
-            return (
-              <button
-                key={choice}
-                disabled={!!result}
-                onClick={() => onAnswer(choice)}
-                className={`w-full p-5 rounded-2xl border-2 text-left transition-all duration-200 active:scale-[0.98] ${
-                  result
-                    ? chosen
-                      ? "border-orange-400 bg-orange-50"
-                      : "border-gray-200 bg-gray-50 opacity-60"
-                    : "border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50 cursor-pointer"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 ${
-                        chosen
-                          ? "bg-orange-500 text-white"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {choice}
-                    </span>
-                    <span className="font-medium text-gray-800 leading-snug">{label}</span>
-                  </div>
-                  {pct !== null && (
-                    <span className={`text-sm font-bold flex-shrink-0 ${chosen ? "text-orange-500" : "text-gray-400"}`}>
-                      {pct}%
-                    </span>
-                  )}
+          {isLoading ? (
+            <div className="flex justify-center py-14"><Loader2 className="h-7 w-7 animate-spin text-orange-500" /></div>
+          ) : (matchData ?? []).length === 0 ? (
+            <div className="rounded-3xl border border-orange-100 bg-white p-8 text-center shadow-sm">
+              <Users className="mx-auto mb-3 h-9 w-9 text-orange-300" />
+              <h2 className="font-display text-xl font-bold text-gray-900">No matches to challenge yet</h2>
+              <p className="mt-2 text-sm text-gray-500">When you have a match, you can start a private shared-question challenge here.</p>
+            </div>
+          ) : (
+            (matchData ?? []).map((match) => (
+              <div key={match.id} className="flex items-center gap-4 rounded-3xl border border-orange-100 bg-white p-4 shadow-sm">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full text-2xl" style={{ background: match.otherProfile?.avatarColor || "#fed7aa" }}>
+                  {match.otherProfile?.avatarEmoji || "😊"}
                 </div>
-                {result && (
-                  <div className="mt-3">
-                    <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ${
-                          chosen ? "bg-orange-400" : "bg-gray-300"
-                        }`}
-                        style={{ width: `${pct ?? 0}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">{result.totalVotes} players answered</p>
-                  </div>
-                )}
-              </button>
-            );
-          })}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold text-gray-900">{match.otherProfile?.displayName || "Your match"}</p>
+                  <p className="text-sm text-orange-700">Ten private picks, one shared reveal</p>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={sendChallenge.isPending}
+                  className="rounded-xl bg-orange-500 text-white hover:bg-orange-600"
+                  onClick={() => sendChallenge.mutate({ challengedId: match.otherUserId, matchId: match.id })}
+                >
+                  Challenge
+                </Button>
+              </div>
+            ))
+          )}
         </div>
-
-        {/* Next hint */}
-        {result && (
-          <p className="text-center text-xs text-gray-400 animate-pulse">
-            Tap next question →
-          </p>
-        )}
       </div>
     </div>
   );
 }
 
-// ─── Compatibility reveal ─────────────────────────────────────────────────────
-function CompatibilityReveal({
-  pct,
-  onPlayAgain,
-}: {
-  pct: number;
-  onPlayAgain: () => void;
-}) {
-  const emoji =
-    pct >= 80 ? "🔥" : pct >= 60 ? "💛" : pct >= 40 ? "🤔" : "😅";
-  const label =
-    pct >= 80
-      ? "You two are basically the same person!"
-      : pct >= 60
-      ? "Pretty solid match — lots in common."
-      : pct >= 40
-      ? "Interesting mix — opposites can attract!"
-      : "Very different tastes — that's okay too!";
+function StatusBadge({ status }: { status: "pending" | "active" | "completed" }) {
+  const styles = {
+    pending: "border-amber-200 bg-amber-50 text-amber-800",
+    active: "border-sky-200 bg-sky-50 text-sky-800",
+    completed: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  };
+  const copy = {
+    pending: "Waiting to begin",
+    active: "In progress",
+    completed: "Compatibility revealed",
+  };
+  return <Badge variant="outline" className={`gap-1 rounded-full ${styles[status]}`}><Clock3 className="h-3 w-3" />{copy[status]}</Badge>;
+}
+
+function CompatibilityReveal({ pct, onBack }: { pct: number; onBack: () => void }) {
+  const emoji = pct >= 80 ? "🔥" : pct >= 60 ? "💛" : pct >= 40 ? "🤔" : "😅";
+  const message = pct >= 80 ? "You two line up remarkably often." : pct >= 60 ? "You share quite a few preferences." : pct >= 40 ? "You have a fun mix of shared and different tastes." : "Different preferences can make a great conversation.";
+  return (
+    <div className="rounded-3xl bg-white p-8 text-center shadow-lg">
+      <div className="mb-3 text-6xl">{emoji}</div>
+      <h2 className="font-display text-2xl font-bold text-gray-900">Your Compatibility</h2>
+      <div className="mx-auto my-6 flex h-36 w-36 items-center justify-center rounded-full border-8 border-orange-200 bg-orange-50">
+        <span className="font-display text-5xl font-bold text-orange-600">{pct}%</span>
+      </div>
+      <p className="mx-auto max-w-sm text-sm text-gray-600">{message}</p>
+      <Button onClick={onBack} variant="outline" className="mt-7 rounded-xl border-orange-200 text-orange-700 hover:bg-orange-50">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to games
+      </Button>
+    </div>
+  );
+}
+
+function ChallengeParticipant({ challengeId }: { challengeId: number }) {
+  const [, navigate] = useLocation();
+  const utils = trpc.useUtils();
+  const [answeredSinceLoad, setAnsweredSinceLoad] = useState<number[]>([]);
+  const { data, isLoading, error } = trpc.wyr.getChallenge.useQuery(
+    { challengeId },
+    { refetchInterval: 12_000 },
+  );
+  const answerMutation = trpc.wyr.answer.useMutation({
+    onSuccess: (_result, variables) => {
+      setAnsweredSinceLoad((answered) => Array.from(new Set([...answered, variables.questionId])));
+      void utils.wyr.getChallenge.invalidate({ challengeId });
+    },
+    onError: () => toast.error("Your pick could not be saved. Please try again."),
+  });
+  const compatibilityMutation = trpc.wyr.computeCompatibility.useMutation({
+    onSuccess: () => {
+      toast.success("Your shared compatibility is ready.");
+      void utils.wyr.getChallenge.invalidate({ challengeId });
+    },
+    onError: (mutationError) => toast.error(mutationError.message || "Compatibility is not ready just yet."),
+  });
+
+  const questions = useMemo(
+    () => ((data?.questions ?? []).filter(Boolean) as ChallengeQuestion[]),
+    [data?.questions],
+  );
+  const answeredIds = useMemo(
+    () => new Set([...(data?.myAnsweredQuestionIds ?? []), ...answeredSinceLoad]),
+    [data?.myAnsweredQuestionIds, answeredSinceLoad],
+  );
+  const currentIndex = questions.findIndex((question) => !answeredIds.has(question.id));
+  const currentQuestion = currentIndex >= 0 ? questions[currentIndex] : undefined;
+  const answeredCount = Math.min(questions.length, answeredIds.size);
+
+  useEffect(() => {
+    if (data?.myAnsweredQuestionIds) {
+      setAnsweredSinceLoad((answered) => answered.filter((questionId) => !data.myAnsweredQuestionIds.includes(questionId)));
+    }
+  }, [data?.myAnsweredQuestionIds]);
+
+  if (isLoading) {
+    return <div className="flex justify-center py-28"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>;
+  }
+
+  if (error || !data) {
+    return (
+      <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
+        <Heart className="mx-auto mb-3 h-10 w-10 text-rose-400" />
+        <h1 className="font-display text-2xl font-bold text-gray-900">This invitation is private</h1>
+        <p className="mt-2 text-sm text-gray-600">Only the two matched members on this challenge can open its questions and reveal.</p>
+        <Button onClick={() => navigate("/matches")} variant="outline" className="mt-6 rounded-xl">Back to matches</Button>
+      </div>
+    );
+  }
+
+  const status = data.displayStatus as "pending" | "active" | "completed";
+  const total = questions.length;
+  const partnerDone = data.partnerAnsweredCount >= total && total > 0;
+  const myDone = answeredCount >= total && total > 0;
+
+  if (data.challenge.status === "completed" && data.challenge.compatibilityPct !== null) {
+    return <CompatibilityReveal pct={data.challenge.compatibilityPct} onBack={() => navigate(data.challenge.matchId ? `/games/${data.challenge.matchId}` : "/matches")} />;
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-rose-50 to-purple-50 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm text-center space-y-8">
-        <div className="space-y-2">
-          <div className="text-6xl">{emoji}</div>
-          <h2 className="text-3xl font-bold text-gray-900">Your Compatibility</h2>
-        </div>
-
-        {/* Big number */}
-        <div className="relative">
-          <div className="w-40 h-40 rounded-full border-8 border-orange-200 flex items-center justify-center mx-auto bg-white shadow-lg">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <button onClick={() => navigate(data.challenge.matchId ? `/games/${data.challenge.matchId}` : "/matches")} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-orange-700 hover:text-orange-900">
+            <ArrowLeft className="h-4 w-4" /> Back to games
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-rose-500"><Scale className="h-5 w-5 text-white" /></div>
             <div>
-              <span className="text-5xl font-black text-orange-500">{pct}</span>
-              <span className="text-2xl font-bold text-orange-400">%</span>
+              <h1 className="font-display text-2xl font-bold text-gray-900">Would You Rather Challenge</h1>
+              <p className="text-sm text-gray-600">Your picks stay private until the shared reveal.</p>
             </div>
           </div>
         </div>
-
-        <p className="text-gray-600 text-base font-medium">{label}</p>
-
-        <div className="space-y-3">
-          <Button
-            onClick={onPlayAgain}
-            className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Play Again
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full h-12 border-orange-200 text-orange-600 hover:bg-orange-50"
-            onClick={() => window.history.back()}
-          >
-            Back to Matches
-          </Button>
-        </div>
+        <StatusBadge status={status} />
       </div>
+
+      <div className="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm">
+        <div className="mb-2 flex items-center justify-between text-sm">
+          <span className="font-semibold text-gray-800">Your progress</span>
+          <span className="text-orange-700">{answeredCount} / {total}</span>
+        </div>
+        <Progress value={total ? (answeredCount / total) * 100 : 0} className="h-2" />
+        <p className="mt-3 text-xs text-gray-500">Your match has completed {Math.min(data.partnerAnsweredCount, total)} of {total} private picks.</p>
+      </div>
+
+      {currentQuestion ? (
+        <div className="rounded-3xl bg-white p-6 shadow-lg sm:p-8">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <span className="text-sm font-semibold text-gray-500">Question {currentIndex + 1} of {total}</span>
+            <Badge variant="secondary" className="rounded-full capitalize">{currentQuestion.category}</Badge>
+          </div>
+          <p className="mb-6 text-center font-display text-2xl font-bold text-gray-900">Would you rather…</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(["A", "B"] as Choice[]).map((choice) => (
+              <button
+                key={choice}
+                disabled={answerMutation.isPending}
+                onClick={() => answerMutation.mutate({ questionId: currentQuestion.id, choice })}
+                className="group rounded-2xl border-2 border-orange-100 bg-orange-50/50 p-5 text-left transition-all duration-200 hover:border-orange-400 hover:bg-orange-50 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
+              >
+                <span className="mb-4 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-orange-700 shadow-sm group-hover:bg-orange-500 group-hover:text-white">{choice}</span>
+                <span className="block font-semibold leading-snug text-gray-900">{choice === "A" ? currentQuestion.optionA : currentQuestion.optionB}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-3xl bg-white p-8 text-center shadow-lg">
+          {partnerDone ? <Trophy className="mx-auto mb-4 h-12 w-12 text-amber-500" /> : <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-emerald-500" />}
+          <h2 className="font-display text-2xl font-bold text-gray-900">{partnerDone ? "Both sets of picks are in" : "Your answers are saved"}</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">
+            {partnerDone ? "Reveal your shared compatibility when you’re ready." : "Your match needs to finish their private picks before the compatibility reveal unlocks. This page checks for progress automatically."}
+          </p>
+          {partnerDone && (
+            <Button disabled={compatibilityMutation.isPending} onClick={() => compatibilityMutation.mutate({ challengeId })} className="mt-6 rounded-xl bg-orange-500 text-white hover:bg-orange-600">
+              {compatibilityMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Swords className="mr-2 h-4 w-4" />}
+              Reveal compatibility
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Solo play mode (no challenge partner) ────────────────────────────────────
-function SoloPlay({ onDone }: { onDone: (pct: number) => void }) {
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [results, setResults] = useState<AnswerResult[]>([]);
-  const [pendingResult, setPendingResult] = useState<AnswerResult | null>(null);
-
-  const { data } = trpc.wyr.getBatch.useQuery({ limit: 10 });
-  const answerMutation = trpc.wyr.answer.useMutation({
-    onSuccess: (res) => {
-      setPendingResult(res);
-    },
-  });
-
-  const questions = data?.questions ?? [];
-
-  const handleAnswer = (choice: "A" | "B") => {
-    if (!questions[currentIdx] || pendingResult) return;
-    answerMutation.mutate({ questionId: questions[currentIdx].id, choice });
-  };
-
-  const handleNext = () => {
-    if (!pendingResult) return;
-    const newResults = [...results, pendingResult];
-    setResults(newResults);
-    setPendingResult(null);
-
-    if (currentIdx + 1 >= questions.length) {
-      // Compute a pseudo-compatibility with the "crowd" (average agreement)
-      const avgA = newResults.reduce((s, r) => s + r.percentA, 0) / newResults.length;
-      const pct = Math.round(avgA > 50 ? avgA : 100 - avgA);
-      onDone(pct);
-    } else {
-      setCurrentIdx(currentIdx + 1);
-    }
-  };
-
-  if (!data || questions.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-orange-400 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-gray-500 text-sm">Loading questions…</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (pendingResult) {
-    return (
-      <div onClick={handleNext} className="cursor-pointer">
-        <AnswerCard
-          question={questions[currentIdx]}
-          index={currentIdx}
-          total={questions.length}
-          onAnswer={() => {}}
-          result={pendingResult}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <AnswerCard
-      question={questions[currentIdx]}
-      index={currentIdx}
-      total={questions.length}
-      onAnswer={handleAnswer}
-      result={null}
-    />
-  );
-}
-
-// ─── Root page ────────────────────────────────────────────────────────────────
 export default function WyrChallengePage() {
-  const { user } = useAuth();
-  const [, navigate] = useLocation();
-  const [mode, setMode] = useState<"lobby" | "solo" | "result">("lobby");
-  const [finalPct, setFinalPct] = useState(0);
+  const { user, loading } = useAuth();
+  const { challengeId } = useParams<{ challengeId?: string }>();
+  const numericChallengeId = Number(challengeId);
+  const hasChallengeId = Number.isSafeInteger(numericChallengeId) && numericChallengeId > 0;
+
+  if (loading) {
+    return <div className="min-h-screen bg-gradient-to-br from-orange-50 via-rose-50 to-purple-50"><div className="flex justify-center py-28"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div></div>;
+  }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="text-center space-y-4">
-          <Heart className="w-12 h-12 text-orange-400 mx-auto" />
-          <p className="text-gray-600">Sign in to play Would You Rather with your matches.</p>
-          <Button onClick={() => navigate("/")} className="bg-orange-500 hover:bg-orange-600 text-white">
-            Go to Home
-          </Button>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-rose-50 to-purple-50 px-4 py-24 text-center">
+        <Heart className="mx-auto mb-4 h-12 w-12 text-rose-400" />
+        <h1 className="font-display text-2xl font-bold text-gray-900">Sign in to play together</h1>
+        <p className="mx-auto mt-2 max-w-sm text-sm text-gray-600">Would You Rather challenges are private to the two matched members.</p>
       </div>
     );
   }
 
-  if (mode === "lobby") {
-    return <ChallengeLobby onStartSolo={() => setMode("solo")} />;
-  }
-
-  if (mode === "solo") {
-    return (
-      <SoloPlay
-        onDone={(pct) => {
-          setFinalPct(pct);
-          setMode("result");
-        }}
-      />
-    );
-  }
+  if (!hasChallengeId) return <ChallengeDirectory />;
 
   return (
-    <CompatibilityReveal
-      pct={finalPct}
-      onPlayAgain={() => {
-        setFinalPct(0);
-        setMode("lobby");
-      }}
-    />
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-rose-50 to-purple-50 px-4 py-10">
+      <main className="mx-auto w-full max-w-2xl"><ChallengeParticipant challengeId={numericChallengeId} /></main>
+    </div>
   );
 }

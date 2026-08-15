@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Heart, MessageCircle, Gamepad2, Sparkles, Users, Shield, Calendar } from "lucide-react";
+import { Heart, MessageCircle, Gamepad2, Sparkles, Users, Shield, Calendar, Scale } from "lucide-react";
 import { EventProposalDialog } from "@/components/EventProposalDialog";
 import { MemberSafetyActions } from "@/components/MemberSafetyActions";
 
@@ -85,6 +85,17 @@ export default function Matches() {
 function MatchCard({ match, navigate, city, onBlocked }: { match: any; navigate: any; city?: string | null; onBlocked: () => void }) {
   const profile = match.otherProfile;
   const traits = profile?.traits as any;
+  const sendWyrChallenge = trpc.wyr.sendChallenge.useMutation({
+    onSuccess: (data) => {
+      if (!data.challenge?.id) {
+        toast.error("The challenge could not be created. Please try again.");
+        return;
+      }
+      toast.success("Your private challenge is ready.");
+      navigate(`/wyr-challenge/${data.challenge.id}`);
+    },
+    onError: () => toast.error("This challenge is available only with this existing match."),
+  });
 
   return (
     <div className="relative bg-white rounded-3xl shadow-sm border border-border p-6 card-hover">
@@ -142,10 +153,10 @@ function MatchCard({ match, navigate, city, onBlocked }: { match: any; navigate:
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <Button
           size="sm"
-          className="flex-1 gradient-sally text-white border-0 rounded-xl btn-scale gap-1.5"
+          className="gradient-sally text-white border-0 rounded-xl btn-scale gap-1.5"
           onClick={() => navigate(`/chat/${match.id}`)}
         >
           <MessageCircle className="w-3.5 h-3.5" /> Chat
@@ -153,10 +164,19 @@ function MatchCard({ match, navigate, city, onBlocked }: { match: any; navigate:
         <Button
           size="sm"
           variant="outline"
-          className="flex-1 rounded-xl gap-1.5"
+          className="rounded-xl gap-1.5"
           onClick={() => navigate(`/games/${match.id}`)}
         >
           <Gamepad2 className="w-3.5 h-3.5" /> Games
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="rounded-xl border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100"
+          disabled={!match.otherUserId || sendWyrChallenge.isPending}
+          onClick={() => sendWyrChallenge.mutate({ challengedId: match.otherUserId, matchId: match.id })}
+        >
+          <Scale className="w-3.5 h-3.5" /> WYR
         </Button>
       </div>
       <EventProposalDialog

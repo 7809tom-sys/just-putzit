@@ -26,6 +26,18 @@ export default function Games() {
 
   const { data: profile } = trpc.profile.get.useQuery();
 
+  const sendWyrChallenge = trpc.wyr.sendChallenge.useMutation({
+    onSuccess: (data) => {
+      if (!data.challenge?.id) {
+        toast.error("The challenge could not be created. Please try again.");
+        return;
+      }
+      toast.success("Challenge created. Your shared questions are ready.");
+      navigate(`/wyr-challenge/${data.challenge.id}`);
+    },
+    onError: () => toast.error("This challenge is only available with your existing match."),
+  });
+
   const startNewlywed = trpc.games.startNewlywed.useMutation({
     onSuccess: (data: any) => {
       if (data) {
@@ -95,6 +107,14 @@ export default function Games() {
     submitAnswer.mutate({ sessionId, questionId: q.id, answer, isUser1: isUser1 ?? true });
   };
 
+  const handleStartWyrChallenge = () => {
+    if (!otherProfile?.userId || !mid || sendWyrChallenge.isPending) {
+      toast.error("We couldn't confirm this match for a private challenge.");
+      return;
+    }
+    sendWyrChallenge.mutate({ challengedId: otherProfile.userId, matchId: mid });
+  };
+
   // Game selection screen
   if (!activeGame) {
     return (
@@ -127,6 +147,7 @@ export default function Games() {
             <GameSelectCard emoji="💍" title="Newlywed Game" desc="Sally quizzes you on what you think your match answered. How well do you already know each other?" color="gradient-singles" onPlay={() => handleStartGame("newlywed")} />
             <GameSelectCard emoji="🎭" title="Two Truths & a Lie" desc="Sally crafts 3 statements from your match's profile — can you spot the one that's false?" color="gradient-couples" onPlay={() => handleStartGame("two_truths")} />
             <GameSelectCard emoji="⚡" title="This or That" desc="Rapid-fire either/or questions — Sally reveals how often your answers matched!" color="gradient-community" onPlay={() => handleStartGame("this_or_that")} />
+            <GameSelectCard emoji="⚖️" title="Would You Rather Challenge" desc="Answer the same ten questions separately, then unlock your compatibility reveal together." color="bg-gradient-to-r from-amber-100 to-orange-100" onPlay={handleStartWyrChallenge} />
             <GameSelectCard emoji="📸" title="Bulger Dash" desc="A mystery photo appears — write a caption that's the truth or a convincing lie. Can your match spot the bluff?" color="bg-gradient-to-r from-purple-500 to-pink-500" onPlay={() => navigate(`/bullgerdash/${matchId}`)} />
           </div>
         </div>

@@ -117,6 +117,7 @@ function Router() {
         <Route path="/partner-results" component={PartnerResults} />
         <Route path="/couples" component={Couples} />
         <Route path="/would-you-rather" component={WouldYouRather} />
+        <Route path="/wyr-challenge/:challengeId" component={WyrChallenge} />
         <Route path="/wyr-challenge" component={WyrChallenge} />
         <Route path="/campus/carroll" component={CampusWaitlist} />
         <Route path="/campus" component={CampusPage} />
