@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { selectCurrentSavedActivityEvents } from "../shared/savedActivityEvents";
 
@@ -13,5 +15,11 @@ describe("saved activity events", () => {
       { id: "inactive", isActive: false, isRecurring: true, eventDate: null, savedAt: now },
     ], now);
     expect(result.map((event) => event.id)).toEqual(["upcoming", "recurring", "evergreen"]);
+  });
+
+  it("keeps saved event cards directly linked to their activity details with an accessible action", () => {
+    const source = readFileSync(resolve(__dirname, "../client/src/pages/Profile.tsx"), "utf8");
+    expect(source).toContain("navigate(`/events/${event.id}`)");
+    expect(source).toContain("aria-label={`View ${event.title}`}");
   });
 });
