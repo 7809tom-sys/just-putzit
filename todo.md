@@ -518,9 +518,14 @@
 - [ ] Frontend: /trip-planner page — create trip, add activities/events to date slots, export to .ics (Google Calendar / Apple Calendar / Outlook)
 - [ ] "Add to Trip" button on every activity card and event card throughout the app
 - [ ] .ics file generation on server (RFC 5545 compliant) with event title, date, location, URL
-- [ ] Google Calendar deep-link as alternative to .ics download
+- [x] Google Calendar deep-link as alternative to .ics download
 - [x] Add Family and Trip Planner links to navbar/More menu
 - [ ] TypeScript check, tests, checkpoint
+
+## Trip Planner Google Calendar Export
+- [x] Create a safe Google Calendar deep link for a selected trip itinerary
+- [x] Keep the standard .ics download available as the calendar-provider fallback
+- [x] Add regression coverage for itinerary date, title, and location encoding
 
 ## Voice-to-Text Profile Input
 - [x] Build VoiceBio reusable component using Web Speech API (SpeechRecognition) with Whisper API fallback

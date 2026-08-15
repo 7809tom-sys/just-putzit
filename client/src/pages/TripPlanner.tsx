@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Calendar, Plus, Trash2, Download, MapPin, Clock } from "lucide-react";
+import { Calendar, CalendarPlus, Plus, Trash2, Download, MapPin, Clock } from "lucide-react";
+import { buildTripGoogleCalendarUrl } from "../../../shared/tripGoogleCalendar";
 
 interface TripPlanFormData {
   title: string;
@@ -149,6 +150,15 @@ END:VEVENT
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     toast.success("Calendar exported!");
+  };
+
+  const openGoogleCalendar = (trip: any) => {
+    const url = buildTripGoogleCalendarUrl(trip);
+    if (!url) {
+      toast.error("Add a trip title and date before sending it to Google Calendar.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleCreateTrip = () => {
@@ -311,6 +321,15 @@ END:VEVENT
                     <p className="text-sm text-gray-600">{new Date(selectedTrip.tripDate).toLocaleDateString()}</p>
                   </div>
                   <div className="flex gap-2">
+                    <Button
+                      onClick={() => openGoogleCalendar(selectedTrip)}
+                      variant="outline"
+                      className="gap-2"
+                      title="Open itinerary in Google Calendar"
+                    >
+                      <CalendarPlus size={18} />
+                      Google Calendar
+                    </Button>
                     <Button
                       onClick={() => downloadICS(selectedTrip)}
                       variant="outline"
