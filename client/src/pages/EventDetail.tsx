@@ -17,6 +17,7 @@ import { getActivityBookmarkFeedback, isActivityBookmarked } from "@shared/activ
 import { sortSimilarEvents, type SimilarEventSort } from "@shared/similarEventSorting";
 import { filterSimilarEventsByCategory, SIMILAR_EVENT_CATEGORY_FILTERS, type SimilarEventCategoryFilter } from "@shared/similarEventCategoryFilter";
 import { SimilarEventsMap } from "@/components/SimilarEventsMap";
+import { BookingCalendarMenu } from "@/components/BookingCalendarMenu";
 import { toast } from "sonner";
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -266,9 +267,18 @@ export default function EventDetail() {
               Join Just Putzit free. Sally will match you with someone who'd love this activity too.
             </p>
             {viewer ? (
-              <Button size="lg" variant="outline" className="rounded-full px-7 gap-2" onClick={() => navigate(`/trip-planner?${tripParams.toString()}`)}>
-                <CalendarPlus className="w-5 h-5" /> Add to a trip
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <BookingCalendarMenu booking={{
+                  title: activity.title,
+                  start: activity.eventDate,
+                  durationMinutes: activity.durationMinutes,
+                  location: [activity.venueName, activity.venueAddress, activity.venueCity].filter(Boolean).join(", "),
+                  details: activity.description,
+                }} />
+                <Button size="lg" variant="outline" className="rounded-full px-7 gap-2" onClick={() => navigate(`/trip-planner?${tripParams.toString()}`)}>
+                  <CalendarPlus className="w-5 h-5" /> Add to a trip
+                </Button>
+              </div>
             ) : (
               <a href={getLoginUrl()}>
                 <Button size="lg" className="gradient-sally text-white border-0 shadow-lg rounded-full px-8 gap-2">

@@ -532,6 +532,11 @@
 - [x] Prefill the Trip Planner item form from the selected activity without automatically saving it
 - [x] Keep public viewers on the existing join flow and add regression coverage
 
+## Activity Detail Calendar Action
+- [x] Reuse the standard calendar event builder for dated activity details
+- [x] Give signed-in members a direct Google Calendar option with .ics fallback
+- [x] Keep public viewers on the existing join flow and add regression coverage
+
 ## Voice-to-Text Profile Input
 - [x] Build VoiceBio reusable component using Web Speech API (SpeechRecognition) with Whisper API fallback
 - [x] Mic button shows recording state (pulsing red), transcribes in real time, stops on tap
