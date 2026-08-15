@@ -782,6 +782,8 @@ export const venueOutreach = mysqlTable("venue_outreach", {
   subject: varchar("subject", { length: 500 }).notNull(),
   body: text("body").notNull(),
   status: mysqlEnum("status", ["sent", "failed", "draft"]).notNull().default("sent"),
+  fromEmail: varchar("fromEmail", { length: 320 }),
+  providerMessageId: varchar("providerMessageId", { length: 255 }),
   errorMessage: text("errorMessage"),
   sentAt: timestamp("sentAt").defaultNow().notNull(),
 });

@@ -3575,6 +3575,34 @@ export async function setSharedQuestionStatus(questionId: number, status: "appro
   return question ?? null;
 }
 
+export async function createVenueOutreachRecord(input: {
+  venueId: number;
+  sentByUserId: number;
+  toEmail: string;
+  fromEmail: string | null;
+  subject: string;
+  body: string;
+  status: "sent" | "failed" | "draft";
+  providerMessageId?: string | null;
+  errorMessage?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [result] = await db.insert(venueOutreach).values({
+    ...input,
+    providerMessageId: input.providerMessageId ?? null,
+    errorMessage: input.errorMessage ?? null,
+  });
+  const [record] = await db.select().from(venueOutreach).where(eq(venueOutreach.id, Number(result.insertId))).limit(1);
+  return record ?? null;
+}
+
+export async function getVenueOutreachHistory(venueId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(venueOutreach).where(eq(venueOutreach.venueId, venueId)).orderBy(desc(venueOutreach.sentAt)).limit(50);
+}
+
 export async function getTriviaQuestionById(id: number) {
   const db = await getDb();
   if (!db) return null;

@@ -323,18 +323,18 @@
 - [x] Add regression coverage for both Gym detail route patterns
 
 ## Admin Email Outreach
-- [ ] Add venueOutreach DB table (id, venueId, toEmail, subject, body, sentAt, status)
-- [ ] Add sendOutreachEmail tRPC procedure (admin only) using built-in email or SMTP
-- [ ] Add Outreach tab in Admin panel with venue list and compose email form
-- [ ] Show email history log per venue in Admin panel
+- [x] Add venueOutreach DB table (id, venueId, toEmail, subject, body, sentAt, status)
+- [x] Add sendOutreachEmail tRPC procedure (admin only) using built-in email or SMTP
+- [x] Add Outreach tab in Admin panel with venue list and compose email form
+- [x] Show email history log per venue in Admin panel
 - [ ] Add college performing-arts sources and outreach templates for musical plays and theater productions
-- [ ] Configure a verified dedicated sender identity for direct administrator outreach
-- [ ] Record direct-send provider responses without storing venue contact details outside the outreach record
-- [ ] Require administrator review and explicit send confirmation for every venue outreach email
-- [ ] Verify the outbound email provider’s DNS records in Cloudflare; inbound forwarding alone must not be treated as direct-send capability
+- [x] Configure a verified dedicated sender identity for direct administrator outreach
+- [x] Record direct-send provider responses without storing venue contact details outside the outreach record
+- [x] Require administrator review and explicit send confirmation for every venue outreach email
+- [x] Verify the outbound email provider’s DNS records in Cloudflare; inbound forwarding alone must not be treated as direct-send capability
 - [x] Validate the configured outbound-email credential with a non-sending provider API check
 - [x] Send one authorized onboarding-sender delivery check to the specified address before enabling production outreach
-- [ ] Verify `justputzit.com` in Resend while preserving existing Cloudflare incoming-email routing records
+- [x] Verify `justputzit.com` in Resend while preserving existing Cloudflare incoming-email routing records
 
 ## Sally Continuous Profile Enrichment
 - [x] After every Sally chat message, extract new traits/hobbies/preferences and MERGE into profile (not overwrite)

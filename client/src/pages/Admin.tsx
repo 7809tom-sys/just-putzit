@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   Shield,
@@ -38,6 +40,7 @@ import {
   Camera,
   MapPin,
   ClipboardCheck,
+  Send,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -153,6 +156,34 @@ function SharedQuestionEditorialTab() {
       })}</div>}
     </div>
   );
+}
+
+function OutreachTab() {
+  const [venueId, setVenueId] = useState<number | null>(null);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const utils = trpc.useUtils();
+  const { data: venues = [], isLoading: venuesLoading } = trpc.outreach.eligibleVenues.useQuery();
+  const selectedVenue = venues.find((venue) => venue.id === venueId) ?? null;
+  const { data: history = [] } = trpc.outreach.history.useQuery({ venueId: venueId! }, { enabled: venueId !== null });
+  const send = trpc.outreach.send.useMutation({
+    onSuccess: () => { toast.success("Outreach email accepted by the delivery provider."); setSubject(""); setBody(""); setConfirmOpen(false); if (venueId) utils.outreach.history.invalidate({ venueId }); },
+    onError: (error) => toast.error(error.message),
+  });
+  const ready = Boolean(selectedVenue && subject.trim().length >= 3 && body.trim().length >= 10);
+
+  return <div className="space-y-5">
+    <Card className="border-sky-100 bg-sky-50/60 shadow-sm"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-lg"><Send className="h-5 w-5 text-sky-700" /> Direct partner outreach</CardTitle></CardHeader><CardContent className="text-sm text-sky-950">Every message is reviewed and confirmed before delivery. It goes to the selected active venue’s stored business contact, comes from <strong>support@justputzit.com</strong>, and is logged for administrators.</CardContent></Card>
+    <Card className="border-none shadow-sm"><CardContent className="space-y-4 p-5">
+      <div className="grid gap-4 md:grid-cols-2"><label className="grid gap-1.5 text-sm font-medium">Venue<select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={venueId ?? ""} onChange={(event) => setVenueId(event.target.value ? Number(event.target.value) : null)} disabled={venuesLoading}><option value="">Choose a venue with an official email</option>{venues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name} · {venue.city}</option>)}</select></label><div className="rounded-md border bg-muted/35 px-3 py-2 text-sm"><p className="font-medium">Recipient</p><p className="text-muted-foreground">{selectedVenue ? selectedVenue.contactEmail : "Select a venue to reveal its official outreach address."}</p></div></div>
+      <label className="grid gap-1.5 text-sm font-medium">Subject<Input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={500} placeholder="A community partnership idea for your venue" /></label>
+      <label className="grid gap-1.5 text-sm font-medium">Message<Textarea value={body} onChange={(event) => setBody(event.target.value)} maxLength={20000} className="min-h-40" placeholder="Introduce Just Putzit, the community opportunity, and a clear next step. Do not include member names or private member information." /></label>
+      <div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">No email is sent until you confirm the exact recipient, subject, and body in the next step.</p><Button disabled={!ready || send.isPending} onClick={() => setConfirmOpen(true)}><Send className="mr-2 h-4 w-4" /> Review & send</Button></div>
+    </CardContent></Card>
+    {venueId !== null && <Card className="border-none shadow-sm"><CardHeader className="pb-2"><CardTitle className="text-base">Recent outreach to this venue</CardTitle></CardHeader><CardContent>{history.length === 0 ? <p className="text-sm text-muted-foreground">No logged outreach for this venue yet.</p> : <div className="space-y-2">{history.map((entry) => <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-sm first:border-t-0 first:pt-0"><span className="font-medium">{entry.subject}</span><span className="text-muted-foreground">{entry.status} · {new Date(entry.sentAt).toLocaleDateString()}</span></div>)}</div>}</CardContent></Card>}
+    <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Send this outreach email?</AlertDialogTitle><AlertDialogDescription>This will send the reviewed message from support@justputzit.com to {selectedVenue?.contactEmail}. The recipient, sender, subject, delivery status, and provider message identifier will be logged for administrators.</AlertDialogDescription></AlertDialogHeader><div className="rounded-md bg-muted p-3 text-sm"><p className="font-medium">{subject}</p><p className="mt-2 whitespace-pre-wrap text-muted-foreground">{body}</p></div><AlertDialogFooter><AlertDialogCancel disabled={send.isPending}>Cancel</AlertDialogCancel><AlertDialogAction disabled={!ready || send.isPending} onClick={(event) => { event.preventDefault(); if (venueId) send.mutate({ venueId, subject, body, confirmed: true }); }}>{send.isPending ? "Sending…" : "Send email"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  </div>;
 }
 
 // ── User Detail Drawer ────────────────────────────────────────────────────────
@@ -717,6 +748,9 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="shared-questions" className="rounded-full gap-1.5">
               <ClipboardCheck className="w-3.5 h-3.5" /> Questions
+            </TabsTrigger>
+            <TabsTrigger value="outreach" className="rounded-full gap-1.5">
+              <Send className="w-3.5 h-3.5" /> Outreach
             </TabsTrigger>
           </TabsList>
 
@@ -1472,6 +1506,10 @@ export default function Admin() {
 
           <TabsContent value="shared-questions">
             <SharedQuestionEditorialTab />
+          </TabsContent>
+
+          <TabsContent value="outreach">
+            <OutreachTab />
           </TabsContent>
         </Tabs>
       </div>

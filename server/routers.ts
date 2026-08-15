@@ -36,6 +36,7 @@ import { hasSharedConnectionIntent, normalizeConnectionPreferences } from "../sh
 import { BLOCKED_CONVERSATION_MESSAGE, isValidMemberSafetyTarget } from "../shared/memberSafetyPolicy";
 import { parseProfileBirthDate } from "../shared/profileBirthDate";
 import { isSharedQuestionFormatEligible, SHARED_GAME_TYPES } from "../shared/sharedQuestionLibrary";
+import { sendVerifiedOutreachEmail } from "./resendOutreach";
 const ACTIVITY_CATEGORY_VALUES = [
   "bowling", "mini_golf", "kayaking", "movies", "dining", "coffee",
   "cooking_class", "escape_room", "wine_tasting", "hiking", "park",
@@ -266,6 +267,8 @@ import {
   getSharedQuestionForEditorialReview,
   getSharedQuestionsForEditorialReview,
   setSharedQuestionStatus,
+  createVenueOutreachRecord,
+  getVenueOutreachHistory,
   createPickPlanRound,
   getActivePickPlanRoundForMatch,
   getPickPlanRound,
@@ -3725,6 +3728,42 @@ Return JSON with questions array, each having optionA and optionB.`,
         if (!revealed) throw new TRPCError({ code: "NOT_FOUND" });
         return toPickPlanViewerPayload(revealed, ctx.user.id, otherMemberId);
       }),
+  }),
+
+  outreach: router({
+    eligibleVenues: adminProcedure.query(async () => {
+      const venues = await getVenuePartners();
+      return venues.filter((venue) => venue.isActive && Boolean(venue.contactEmail)).map((venue) => ({
+        id: venue.id,
+        name: venue.name,
+        city: venue.city,
+        contactEmail: venue.contactEmail!,
+      }));
+    }),
+    history: adminProcedure.input(z.object({ venueId: z.number().int().positive() })).query(async ({ input }) => getVenueOutreachHistory(input.venueId)),
+    send: adminProcedure.input(z.object({
+      venueId: z.number().int().positive(),
+      subject: z.string().trim().min(3).max(500),
+      body: z.string().trim().min(10).max(20_000),
+      confirmed: z.literal(true),
+    })).mutation(async ({ input, ctx }) => {
+      const venue = await getVenueById(input.venueId);
+      if (!venue?.isActive || !venue.contactEmail) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This active venue needs an official contact email before outreach can be sent." });
+      const result = await sendVerifiedOutreachEmail({ to: venue.contactEmail, subject: input.subject, body: input.body });
+      const record = await createVenueOutreachRecord({
+        venueId: venue.id,
+        sentByUserId: ctx.user.id,
+        toEmail: venue.contactEmail,
+        fromEmail: process.env.OUTREACH_FROM_EMAIL ?? null,
+        subject: input.subject,
+        body: input.body,
+        status: result.ok ? "sent" : "failed",
+        providerMessageId: result.ok ? result.providerMessageId : null,
+        errorMessage: result.ok ? null : result.errorMessage,
+      });
+      if (!result.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Delivery failed and was recorded: ${result.errorMessage}` });
+      return { record, fromEmail: process.env.OUTREACH_FROM_EMAIL ?? null };
+    }),
   }),
 
   sharedQuestionAdmin: router({
