@@ -327,7 +327,7 @@
 - [x] Add sendOutreachEmail tRPC procedure (admin only) using built-in email or SMTP
 - [x] Add Outreach tab in Admin panel with venue list and compose email form
 - [x] Show email history log per venue in Admin panel
-- [ ] Add college performing-arts sources and outreach templates for musical plays and theater productions
+- [x] Add college performing-arts outreach template for musical plays and theater productions
 - [x] Configure a verified dedicated sender identity for direct administrator outreach
 - [x] Record direct-send provider responses without storing venue contact details outside the outreach record
 - [x] Require administrator review and explicit send confirmation for every venue outreach email
@@ -335,6 +335,7 @@
 - [x] Validate the configured outbound-email credential with a non-sending provider API check
 - [x] Send one authorized onboarding-sender delivery check to the specified address before enabling production outreach
 - [x] Verify `justputzit.com` in Resend while preserving existing Cloudflare incoming-email routing records
+- [x] Add administrator-reviewable partner and college performing-arts outreach templates to the direct-send workspace
 
 ## Sally Continuous Profile Enrichment
 - [x] After every Sally chat message, extract new traits/hobbies/preferences and MERGE into profile (not overwrite)

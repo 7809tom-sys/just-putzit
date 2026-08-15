@@ -12,5 +12,7 @@ describe("administrator direct outreach workspace", () => {
     expect(source).toContain("Send this outreach email?");
     expect(source).toContain("confirmed: true");
     expect(source).toContain("support@justputzit.com");
+    expect(source).toContain("Start from a reviewable template");
+    expect(source).toContain("hydrateOutreachTemplate(nextTemplate, selectedVenue)");
   });
 });

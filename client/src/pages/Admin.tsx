@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { OUTREACH_TEMPLATES, hydrateOutreachTemplate } from "@/../../shared/outreachTemplates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -160,6 +161,7 @@ function SharedQuestionEditorialTab() {
 
 function OutreachTab() {
   const [venueId, setVenueId] = useState<number | null>(null);
+  const [templateId, setTemplateId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -177,6 +179,7 @@ function OutreachTab() {
     <Card className="border-sky-100 bg-sky-50/60 shadow-sm"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-lg"><Send className="h-5 w-5 text-sky-700" /> Direct partner outreach</CardTitle></CardHeader><CardContent className="text-sm text-sky-950">Every message is reviewed and confirmed before delivery. It goes to the selected active venue’s stored business contact, comes from <strong>support@justputzit.com</strong>, and is logged for administrators.</CardContent></Card>
     <Card className="border-none shadow-sm"><CardContent className="space-y-4 p-5">
       <div className="grid gap-4 md:grid-cols-2"><label className="grid gap-1.5 text-sm font-medium">Venue<select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={venueId ?? ""} onChange={(event) => setVenueId(event.target.value ? Number(event.target.value) : null)} disabled={venuesLoading}><option value="">Choose a venue with an official email</option>{venues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name} · {venue.city}</option>)}</select></label><div className="rounded-md border bg-muted/35 px-3 py-2 text-sm"><p className="font-medium">Recipient</p><p className="text-muted-foreground">{selectedVenue ? selectedVenue.contactEmail : "Select a venue to reveal its official outreach address."}</p></div></div>
+      <label className="grid gap-1.5 text-sm font-medium">Start from a reviewable template<select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={templateId} disabled={!selectedVenue} onChange={(event) => { const nextTemplate = event.target.value; setTemplateId(nextTemplate); if (selectedVenue && nextTemplate) { const hydrated = hydrateOutreachTemplate(nextTemplate, selectedVenue); if (hydrated) { setSubject(hydrated.subject); setBody(hydrated.body); } } }}><option value="">Write a custom message</option>{OUTREACH_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.label}</option>)}</select></label>
       <label className="grid gap-1.5 text-sm font-medium">Subject<Input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={500} placeholder="A community partnership idea for your venue" /></label>
       <label className="grid gap-1.5 text-sm font-medium">Message<Textarea value={body} onChange={(event) => setBody(event.target.value)} maxLength={20000} className="min-h-40" placeholder="Introduce Just Putzit, the community opportunity, and a clear next step. Do not include member names or private member information." /></label>
       <div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">No email is sent until you confirm the exact recipient, subject, and body in the next step.</p><Button disabled={!ready || send.isPending} onClick={() => setConfirmOpen(true)}><Send className="mr-2 h-4 w-4" /> Review & send</Button></div>
