@@ -542,6 +542,11 @@
 - [x] Provide success and fallback feedback for copying an event URL
 - [x] Add regression coverage for member-only event sharing
 
+## Profile Saved-Events Summary
+- [x] Show the member’s current saved-events count without exposing event details elsewhere
+- [x] Link the summary indicator to the saved-events section on the same profile
+- [x] Add regression coverage for the private saved-events count
+
 ## Voice-to-Text Profile Input
 - [x] Build VoiceBio reusable component using Web Speech API (SpeechRecognition) with Whisper API fallback
 - [x] Mic button shows recording state (pulsing red), transcribes in real time, stops on tap

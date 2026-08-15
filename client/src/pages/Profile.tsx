@@ -27,6 +27,7 @@ export default function Profile() {
   const { data: profile, isLoading, refetch: refetchProfile } = trpc.profile.get.useQuery();
   const { data: latestLearning } = trpc.profile.latestLearning.useQuery();
   const { data: savedEvents, isLoading: savedEventsLoading } = trpc.activityBoard.savedEvents.useQuery();
+  const savedEventsCount = savedEvents?.length ?? 0;
   const { data: photos, refetch: refetchPhotos } = trpc.profile.getPhotos.useQuery();
   const { data: verificationStatus } = trpc.passkey.verificationStatus.useQuery();
   const deviceCheckComplete = verificationStatus?.passkeyVerified ?? false;
@@ -361,6 +362,11 @@ export default function Profile() {
                     🎉 Happy birthday!
                   </Badge>
                 )}
+                {!savedEventsLoading && (
+                  <Button variant="ghost" size="sm" className="h-7 rounded-full px-2.5 text-xs text-primary hover:bg-primary/10" onClick={() => document.getElementById("saved-events")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+                    {savedEventsCount} saved {savedEventsCount === 1 ? "event" : "events"}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -670,7 +676,7 @@ export default function Profile() {
           </div>
         )}
 
-        <section className="mb-6 rounded-3xl bg-white p-6 shadow-xl">
+        <section id="saved-events" className="mb-6 rounded-3xl bg-white p-6 shadow-xl">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="flex items-center gap-2 font-display text-xl font-bold"><Bookmark className="h-5 w-5 text-primary" /> Saved events & activities</h2>
