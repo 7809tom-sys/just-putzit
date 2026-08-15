@@ -69,6 +69,8 @@ import {
   triviaAnswers,
   gameChatMessages,
   gameChatMessagesUpdated,
+  sharedQuestionLibrary,
+  sharedQuestionGameTargets,
   type TriviaQuestion,
   type TriviaRoom,
   type TriviaRoomPlayer,
@@ -83,6 +85,7 @@ import {
   type MatchGameQuestion as GameQuestion,
   type ConciergePlanItem,
 } from "../drizzle/schema";
+import { isSharedQuestionFormatEligible, toSharedQuestionClientRecord, type SharedGameType } from "../shared/sharedQuestionLibrary";
 import { ENV } from "./_core/env";
 import { PICKUP_ALERT_CATEGORY, type PickupActivityType, isPickupPreferenceMatch } from "../shared/pickupActivityPolicy";
 import { isActiveSponsoredPlacement } from "../shared/sponsoredPlacementPolicy";
@@ -3354,6 +3357,51 @@ export async function getTriviaQuestions(category?: string, limit = 30) {
       .orderBy(sql`RAND()`).limit(limit);
   }
   return db.select().from(triviaQuestions).orderBy(sql`RAND()`).limit(limit);
+}
+
+// ─── Governed Shared Question Library ─────────────────────────────────────────
+
+export async function getPublishedSharedQuestionsForGame(
+  gameType: SharedGameType,
+  options: { category?: string; limit?: number } = {},
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(sharedQuestionGameTargets.gameType, gameType),
+    eq(sharedQuestionGameTargets.enabled, true),
+    eq(sharedQuestionLibrary.contentStatus, "published"),
+  ];
+  if (options.category && options.category !== "all") {
+    conditions.push(eq(sharedQuestionLibrary.category, options.category));
+  }
+
+  const rows = await db
+    .select({ question: sharedQuestionLibrary, gameConfig: sharedQuestionGameTargets.gameConfig })
+    .from(sharedQuestionGameTargets)
+    .innerJoin(sharedQuestionLibrary, eq(sharedQuestionGameTargets.questionId, sharedQuestionLibrary.id))
+    .where(and(...conditions))
+    .orderBy(sql`RAND()`)
+    .limit(Math.min(options.limit ?? 20, 100));
+
+  return rows
+    .filter(({ question }) => isSharedQuestionFormatEligible(question.format, gameType))
+    .map(({ question, gameConfig }) => toSharedQuestionClientRecord({
+      id: question.id,
+      prompt: question.prompt,
+      format: question.format,
+      category: question.category,
+      difficulty: question.difficulty,
+      optionA: question.optionA,
+      optionB: question.optionB,
+      optionC: question.optionC,
+      optionD: question.optionD,
+      imageUrl: question.imageUrl,
+      attribution: question.attribution,
+      sourceUrl: question.sourceUrl,
+      gameConfig: gameConfig ?? {},
+    }));
 }
 
 export async function getTriviaQuestionById(id: number) {

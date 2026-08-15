@@ -260,6 +260,7 @@ import {
   joinPickupSession,
   notifyNearbyPickupMembers,
   getMemberPreferredPickupCategories,
+  getPublishedSharedQuestionsForGame,
 } from "./db";
 import type { ProfileTraits, InterviewMessage, MatchGameQuestion as GameQuestion, ConciergePlanItem } from "../drizzle/schema";
 import { familyProfiles, communityEvents } from "../drizzle/schema";
@@ -3647,6 +3648,18 @@ Return JSON with questions array, each having optionA and optionB.`,
             return true;
           });
       }),
+  }),
+
+  // Published questions only. Canonical and accepted answers intentionally stay
+  // server-side so clients cannot inspect answers before a game evaluates them.
+  sharedQuestions: router({
+    listForGame: protectedProcedure
+      .input(z.object({
+        gameType: z.enum(["would_you_rather", "trivia", "jeopardy", "trivia_pursuit", "bullgerdash", "pick_a_plan"]),
+        category: z.string().trim().min(1).max(100).optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+      }))
+      .query(async ({ input }) => getPublishedSharedQuestionsForGame(input.gameType, input)),
   }),
 });
 

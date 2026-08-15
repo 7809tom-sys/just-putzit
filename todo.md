@@ -366,8 +366,8 @@
 - [ ] After game, prompt players to connect/match with each other
 
 ## Shared Game Question Library and Pick a Plan
-- [ ] Inventory existing game question tables and define a single reusable question-library model with game eligibility and safety metadata
-- [ ] Add a durable shared-question schema, migration, server selection helpers, and adapter path for existing games
+- [x] Inventory existing game question tables and define a single reusable question-library model with game eligibility and safety metadata
+- [x] Add a durable shared-question schema, migration, server selection helpers, and adapter path for existing games
 - [ ] Seed a reviewed shared question catalog in stages toward 2,000 prompts without fabricated user-generated content
 - [ ] Add Pick a Plan as a matched-member game that uses current local events, private voting, and mutual-agreement reveal
 - [ ] Add regression coverage for question eligibility, private voting, and safe event-plan handoff

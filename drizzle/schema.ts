@@ -1027,6 +1027,45 @@ export type GameQuestion = typeof gameQuestions.$inferSelect;
 export const jeopardyQuestions = gameQuestions;
 export type JeopardyQuestion = GameQuestion;
 
+// ─── Governed shared question library ─────────────────────────────────────────
+// This is intentionally additive. Existing game-specific question tables remain
+// active until each adapter is migrated and independently verified.
+export const sharedQuestionLibrary = mysqlTable("shared_question_library", {
+  id: int("id").autoincrement().primaryKey(),
+  prompt: text("prompt").notNull(),
+  format: mysqlEnum("format", ["would_you_rather", "multiple_choice", "free_response", "visual"]).notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull().default("medium"),
+  optionA: varchar("optionA", { length: 300 }),
+  optionB: varchar("optionB", { length: 300 }),
+  optionC: varchar("optionC", { length: 300 }),
+  optionD: varchar("optionD", { length: 300 }),
+  canonicalAnswer: varchar("canonicalAnswer", { length: 500 }),
+  acceptedAnswers: json("acceptedAnswers").$type<string[]>().notNull().$default(() => []),
+  imageUrl: varchar("imageUrl", { length: 1000 }),
+  sourceUrl: varchar("sourceUrl", { length: 1000 }),
+  license: varchar("license", { length: 255 }),
+  attribution: text("attribution"),
+  contentStatus: mysqlEnum("contentStatus", ["draft", "approved", "published", "retired"]).notNull().default("draft"),
+  revision: int("revision").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  publishedAt: timestamp("publishedAt"),
+});
+export type SharedQuestionLibraryItem = typeof sharedQuestionLibrary.$inferSelect;
+
+export const sharedQuestionGameTargets = mysqlTable("shared_question_game_targets", {
+  id: int("id").autoincrement().primaryKey(),
+  questionId: int("questionId").notNull(),
+  gameType: mysqlEnum("gameType", ["would_you_rather", "trivia", "jeopardy", "trivia_pursuit", "bullgerdash", "pick_a_plan"]).notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  gameConfig: json("gameConfig").$type<Record<string, unknown>>().notNull().$default(() => ({})),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  sharedQuestionGameTargetUnique: uniqueIndex("shared_question_game_target_unique").on(table.questionId, table.gameType),
+}));
+export type SharedQuestionGameTarget = typeof sharedQuestionGameTargets.$inferSelect;
+
 export const jeopardyRooms = mysqlTable("jeopardy_rooms", {
   id: int("id").autoincrement().primaryKey(),
   gameCode: varchar("gameCode", { length: 8 }).notNull().unique(),
