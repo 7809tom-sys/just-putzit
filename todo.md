@@ -376,6 +376,7 @@
 - [x] Publish exact request and response schemas for shared-library delta synchronization
 - [x] Add protected draft intake and approval controls so only reviewed shared questions become available to games
 - [x] Prepare an initial original shared-question draft batch for administrator review without publishing it
+- [x] Add an Admin Shared Questions workspace with review, approve, publish, and retire actions
 
 ## Bulgar Dash Visual Clues
 - [x] Audit Bulgar Dash images and licenses for fair, verifiable reuse as Jeopardy visual clues

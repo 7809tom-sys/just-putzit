@@ -37,6 +37,7 @@ import {
   UserCheck2,
   Camera,
   MapPin,
+  ClipboardCheck,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -113,6 +114,44 @@ function StatCard({
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </CardContent>
     </Card>
+  );
+}
+
+function SharedQuestionEditorialTab() {
+  const utils = trpc.useUtils();
+  const { data: questions = [], isLoading } = trpc.sharedQuestionAdmin.list.useQuery();
+  const refresh = () => utils.sharedQuestionAdmin.list.invalidate();
+  const approve = trpc.sharedQuestionAdmin.approve.useMutation({
+    onSuccess: () => { toast.success("Question approved. It is still not live until published."); refresh(); },
+    onError: (error) => toast.error(error.message),
+  });
+  const publish = trpc.sharedQuestionAdmin.publish.useMutation({
+    onSuccess: () => { toast.success("Question published to its eligible game targets."); refresh(); },
+    onError: (error) => toast.error(error.message),
+  });
+  const retire = trpc.sharedQuestionAdmin.retire.useMutation({
+    onSuccess: () => { toast.success("Question retired from future game selection."); refresh(); },
+    onError: (error) => toast.error(error.message),
+  });
+  const counts = questions.reduce((result: Record<string, number>, question) => {
+    result[question.contentStatus] = (result[question.contentStatus] ?? 0) + 1;
+    return result;
+  }, {});
+
+  return (
+    <div className="space-y-5">
+      <Card className="border-amber-100 bg-amber-50/60 shadow-sm">
+        <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-lg"><ClipboardCheck className="h-5 w-5 text-amber-700" /> Shared question editorial review</CardTitle></CardHeader>
+        <CardContent className="text-sm text-amber-950">Only <strong>published</strong> questions are available to games. Approval checks question format, target compatibility, answer requirements, and image-rights metadata before a separate publish action.</CardContent>
+      </Card>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {(["draft", "approved", "published", "retired"] as const).map((status) => <StatCard key={status} label={status[0].toUpperCase() + status.slice(1)} value={counts[status] ?? 0} icon={<ClipboardCheck className="h-5 w-5 text-amber-700" />} accent="bg-amber-100" />)}
+      </div>
+      {isLoading ? <div className="flex justify-center py-10"><Spinner /></div> : questions.length === 0 ? <Card className="p-8 text-center text-sm text-muted-foreground">No shared questions are awaiting review.</Card> : <div className="space-y-3">{questions.map((question) => {
+        const busy = approve.isPending || publish.isPending || retire.isPending;
+        return <Card key={question.id} className="border-none shadow-sm"><CardContent className="p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><Badge variant={question.contentStatus === "published" ? "default" : "secondary"}>{question.contentStatus}</Badge><Badge variant="outline">{question.format.replaceAll("_", " ")}</Badge><span className="text-xs text-muted-foreground">{question.category} · {question.difficulty}</span></div><p className="mt-3 font-medium text-foreground">{question.prompt}</p>{question.optionA && <p className="mt-2 text-sm text-muted-foreground">A. {question.optionA} {question.optionB ? ` · B. ${question.optionB}` : ""}</p>}<p className="mt-2 text-xs text-muted-foreground">Targets: {question.targets.map((target) => target.gameType.replaceAll("_", " ")).join(", ") || "None"}</p>{question.format === "visual" && <p className="mt-1 text-xs text-muted-foreground">Visual rights: {question.license && question.attribution && question.sourceUrl ? "metadata supplied" : "incomplete"}</p>}</div><div className="flex shrink-0 flex-wrap gap-2">{question.contentStatus === "draft" && <Button size="sm" onClick={() => approve.mutate({ questionId: question.id })} disabled={busy}>Approve</Button>}{question.contentStatus === "approved" && <Button size="sm" onClick={() => publish.mutate({ questionId: question.id })} disabled={busy}>Publish</Button>}{(question.contentStatus === "approved" || question.contentStatus === "published") && <Button size="sm" variant="outline" onClick={() => retire.mutate({ questionId: question.id })} disabled={busy}>Retire</Button>}</div></div></CardContent></Card>;
+      })}</div>}
+    </div>
   );
 }
 
@@ -675,6 +714,9 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="locations" className="rounded-full gap-1.5">
               <MapPin className="w-3.5 h-3.5" /> Locations
+            </TabsTrigger>
+            <TabsTrigger value="shared-questions" className="rounded-full gap-1.5">
+              <ClipboardCheck className="w-3.5 h-3.5" /> Questions
             </TabsTrigger>
           </TabsList>
 
@@ -1426,6 +1468,10 @@ export default function Admin() {
           {/* ── GPS Locations ── */}
           <TabsContent value="locations">
             <LocationsTab />
+          </TabsContent>
+
+          <TabsContent value="shared-questions">
+            <SharedQuestionEditorialTab />
           </TabsContent>
         </Tabs>
       </div>
