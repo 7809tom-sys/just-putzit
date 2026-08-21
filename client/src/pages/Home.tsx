@@ -762,6 +762,13 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
   return (
     <div className="min-h-screen gradient-warm">
       <div className="container py-8">
+        <section className="mb-5 rounded-2xl border border-border/70 bg-white/90 p-3 shadow-sm backdrop-blur-sm sm:p-4" aria-label="Search your community">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            <MapPin className="h-3.5 w-3.5" /> Find your community
+          </div>
+          <LocationOverrideControl compact />
+        </section>
+
         {/* Welcome header */}
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
@@ -795,10 +802,6 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
               <span className="hidden sm:inline">Customize</span>
             </button>
           </div>
-        </div>
-
-        <div className="mb-6 max-w-xl">
-          <LocationOverrideControl compact />
         </div>
 
         <div className="mb-6">

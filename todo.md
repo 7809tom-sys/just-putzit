@@ -1068,6 +1068,7 @@
 - [x] Add Today’s Plan persistence and Home actions for event/activity planning
 - [x] Add calendar, directions, and safe social coordination handoffs to Today’s Plan
 - [x] Add tests and verify the responsive Home experience
+- [x] Move the Home activity and location search control into the top page area with responsive desktop and mobile layout
 
 ## Family Select Toast Feedback
 - [x] Show a success toast when a valid Family Select gender option is selected
