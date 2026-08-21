@@ -432,6 +432,12 @@
 - [x] Keep source-labeled game preferences separate from interview-derived personality traits
 - [x] Add regression coverage for the transparent Would You Rather insight display
 
+## Spotify Favorites
+- [ ] Register the Just Putzit Spotify application and configure the exact OAuth redirect URI
+- [ ] Add a member-controlled Spotify Favorites selection that never shares a full listening history by default
+- [ ] Show selected favorite music as optional profile context and a consented match conversation starter
+- [ ] Add disconnect, removal, and regression coverage for Spotify preference privacy
+
 ## Campus / University Dating Pool
 - [ ] Audit existing campus schema (campuses table, campus_members)
 - [ ] Add campus_members table if missing; add joinCampus/leaveCampus tRPC procedures
@@ -1362,6 +1368,11 @@
 ## Jeopardy Live Answer Flow Repair
 - [x] Trace and repair the live Jeopardy answer submission, result feedback, and next-clue progression
 - [x] Add regression coverage and verify the full answer-result flow at mobile size
+
+## Jeopardy Answer Persistence and Error Safety
+- [x] Fix the mobile Jeopardy answer submission failure that exposes a raw database error
+- [x] Replace raw Jeopardy persistence errors with safe, actionable member feedback
+- [x] Add regression coverage for answer persistence and mobile-safe error handling
 
 ## Mobile App Update Delivery
 - [x] Detect PWA updates promptly and refresh stale installed mobile clients safely

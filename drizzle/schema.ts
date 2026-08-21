@@ -1129,7 +1129,7 @@ export const jeopardyAnswers = mysqlTable("jeopardy_answers", {
   answer: varchar("answer", { length: 300 }).notNull(),
   isCorrect: boolean("isCorrect").notNull().default(false),
   pointsAwarded: int("pointsAwarded").notNull().default(0),
-  answeredAtMs: int("answeredAtMs").notNull().default(0),
+  answeredAtMs: bigint("answeredAtMs", { mode: "number" }).notNull().default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type JeopardyAnswer = typeof jeopardyAnswers.$inferSelect;

@@ -219,8 +219,8 @@ export default function Jeopardy() {
       } else {
         toast.error(`Incorrect. Answer: ${result.correctAnswer}`);
       }
-    } catch (error: any) {
-      toast.error(error.message || "We couldn't check that answer. Please try again.");
+    } catch {
+      toast.error("We couldn't save that answer. Please try again.");
     }
   };
 

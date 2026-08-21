@@ -206,16 +206,22 @@ export const jeopardyRouter = router({
       const isCorrect = isJeopardyAnswerCorrect(input.answer, correctAns);
       const pointsAwarded = isCorrect ? (clue.value ?? 400) : 0;
 
-      // Save answer
-      await db.insert(jeopardyAnswers).values({
-        roomId: input.roomId,
-        userId: ctx.user.id,
-        questionId: input.clueId,
-        answer: input.answer,
-        isCorrect,
-        pointsAwarded,
-        answeredAtMs: Date.now(),
-      });
+      // A Unix timestamp in milliseconds exceeds a signed 32-bit integer. The
+      // column is intentionally BIGINT so the persisted answer remains valid.
+      try {
+        await db.insert(jeopardyAnswers).values({
+          roomId: input.roomId,
+          userId: ctx.user.id,
+          questionId: input.clueId,
+          answer: input.answer,
+          isCorrect,
+          pointsAwarded,
+          answeredAtMs: Date.now(),
+        });
+      } catch (error) {
+        console.error("[Jeopardy] Failed to save answer", error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "We couldn't save that answer. Please try again." });
+      }
 
       // Update player score
       if (isCorrect) {
