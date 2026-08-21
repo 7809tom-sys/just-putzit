@@ -161,7 +161,7 @@ const GAMES = [
     color: "from-purple-500 to-pink-500",
     badge: "2 Players",
     badgeColor: "bg-purple-100 text-purple-700",
-    route: "/games",
+    route: "/bullgerdash",
     players: "2",
     time: "Open-ended",
     premium: false,
@@ -442,7 +442,7 @@ export default function GamesHub() {
       return;
     }
     if (game.id === "bullgerdash") {
-      toast.info("Bulger Dash is a 2-player match game! Go to Matches → open a chat → tap Games to challenge your match.");
+      navigate("/matches");
       return;
     }
     if (game.premium) {

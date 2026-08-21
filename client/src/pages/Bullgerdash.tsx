@@ -56,6 +56,21 @@ export default function Bullgerdash() {
     onSuccess: () => navigate(`/chat/${matchId}`),
   });
 
+  if (!mid) {
+    return (
+      <div className="min-h-screen gradient-warm flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center">
+          <div className="text-5xl mb-4">📸</div>
+          <h1 className="font-display font-bold text-2xl mb-2">Play Bulger Dash with a match</h1>
+          <p className="text-muted-foreground mb-6">Bulger Dash is a private two-player game. Choose a match first, then open Games to start a mystery-photo round together.</p>
+          <Button className="w-full gradient-sally text-white border-0 rounded-xl btn-scale" onClick={() => navigate("/matches")}>
+            Find a Match to Play
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Auto-start game if no game exists
   useEffect(() => {
     if (gameData === null && match && user) {

@@ -383,6 +383,11 @@
 - [x] Audit Bulgar Dash images and licenses for fair, verifiable reuse as Jeopardy visual clues
 - [x] Define image-clue wording and answer-validation rules before enabling Jeopardy reuse
 - [x] Publish a sample Visual Jeopardy schema with provenance, attribution, metadata, answers, and editorial status
+
+## Bulgar Dash Availability Repair
+- [x] Audit the Bulgar Dash route, Games navigation entry, and active content availability
+- [x] Restore a clear member-facing entry and playable state if the game is missing or broken
+- [x] Add regression coverage for Bulgar Dash route and Games discovery
 - [x] Create an investor/developer presentation deck for the Visual Jeopardy and shared question-library architecture
 
 ## Movie Night Feature

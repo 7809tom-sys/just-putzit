@@ -134,6 +134,7 @@ function Router() {
         <Route path="/trivia-pursuit" component={TriviaPursuit} />
         <Route path="/finish-sentence" component={FinishSentence} />
         <Route path="/bullgerdash/:matchId" component={Bullgerdash} />
+        <Route path="/bullgerdash" component={Bullgerdash} />
         <Route path="/games-hub" component={GamesHub} />
         <Route path="/games-hub/:gameId" component={GamesHub} />
         <Route path="/social-games" component={SocialGames} />
