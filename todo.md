@@ -388,6 +388,11 @@
 - [x] Audit the Bulgar Dash route, Games navigation entry, and active content availability
 - [x] Restore a clear member-facing entry and playable state if the game is missing or broken
 - [x] Add regression coverage for Bulgar Dash route and Games discovery
+
+## Unified Games Hub
+- [x] Add every live match game to Games Hub with accurate two-player and match-required labels
+- [x] Keep solo and multiplayer games in Games Hub with their existing direct launch behavior
+- [x] Add Games Hub regression coverage for the complete current game roster and correct match handoffs
 - [x] Create an investor/developer presentation deck for the Visual Jeopardy and shared question-library architecture
 
 ## Movie Night Feature

@@ -154,6 +154,109 @@ const GAMES = [
     traits: ["knowledge", "interests"],
   },
   {
+    id: "would_you_rather",
+    title: "Would You Rather",
+    description: "Quick either-or choices that help Sally learn your preferences.",
+    emoji: "⚖️",
+    color: "from-amber-500 to-orange-500",
+    badge: "Solo or Match",
+    badgeColor: "bg-amber-100 text-amber-700",
+    route: "/would-you-rather",
+    players: "1–2",
+    time: "3–5 min",
+    premium: false,
+    traits: ["preferences", "lifestyle", "decision_style"],
+  },
+  {
+    id: "newlywed",
+    title: "Newlywed Game",
+    description: "Guess how your match answered Sally’s prompts. Select a match first to play.",
+    emoji: "💍",
+    color: "from-rose-500 to-pink-500",
+    badge: "Match required",
+    badgeColor: "bg-rose-100 text-rose-700",
+    route: "/matches",
+    players: "2",
+    time: "5 min",
+    premium: false,
+    requiresMatch: true,
+    traits: ["attentiveness", "humor", "connection"],
+  },
+  {
+    id: "two_truths",
+    title: "Two Truths & a Lie",
+    description: "Spot the false statement drawn from your match’s profile. Select a match first to play.",
+    emoji: "🎭",
+    color: "from-violet-500 to-fuchsia-500",
+    badge: "Match required",
+    badgeColor: "bg-violet-100 text-violet-700",
+    route: "/matches",
+    players: "2",
+    time: "5 min",
+    premium: false,
+    requiresMatch: true,
+    traits: ["curiosity", "humor", "connection"],
+  },
+  {
+    id: "this_or_that_match",
+    title: "This or That",
+    description: "Compare rapid-fire either-or choices with a match. Select a match first to play.",
+    emoji: "⚡",
+    color: "from-cyan-500 to-blue-500",
+    badge: "Match required",
+    badgeColor: "bg-cyan-100 text-cyan-700",
+    route: "/matches",
+    players: "2",
+    time: "3 min",
+    premium: false,
+    requiresMatch: true,
+    traits: ["preferences", "lifestyle", "connection"],
+  },
+  {
+    id: "pick_a_plan",
+    title: "Pick a Plan",
+    description: "Privately choose a current public event; Sally reveals it only when you both choose the same plan.",
+    emoji: "🗓️",
+    color: "from-emerald-500 to-teal-500",
+    badge: "Match required",
+    badgeColor: "bg-emerald-100 text-emerald-700",
+    route: "/matches",
+    players: "2",
+    time: "3 min",
+    premium: false,
+    requiresMatch: true,
+    traits: ["local_style", "planning", "connection"],
+  },
+  {
+    id: "wyr_challenge",
+    title: "Would You Rather Challenge",
+    description: "Answer the same ten choices separately, then unlock a compatibility reveal together.",
+    emoji: "⚖️",
+    color: "from-yellow-500 to-amber-500",
+    badge: "Match required",
+    badgeColor: "bg-yellow-100 text-yellow-700",
+    route: "/matches",
+    players: "2",
+    time: "5 min",
+    premium: false,
+    requiresMatch: true,
+    traits: ["preferences", "compatibility", "connection"],
+  },
+  {
+    id: "watch_party",
+    title: "Watch Party",
+    description: "Find a sports watch party and join the conversation around the game.",
+    emoji: "📺",
+    color: "from-sky-500 to-indigo-500",
+    badge: "Community",
+    badgeColor: "bg-sky-100 text-sky-700",
+    route: "/sports",
+    players: "Community",
+    time: "Live",
+    premium: false,
+    traits: ["sports_interests", "community_connection"],
+  },
+  {
     id: "bullgerdash",
     title: "Bulger Dash",
     description: "A mystery photo appears — write a caption that's truth or a convincing lie. Can your match spot the bluff?",
@@ -165,6 +268,7 @@ const GAMES = [
     players: "2",
     time: "Open-ended",
     premium: false,
+    requiresMatch: true,
     traits: ["humor", "creativity", "bluffing"],
   },
 ];
@@ -425,6 +529,10 @@ export default function GamesHub() {
   const [gameDone, setGameDone] = useState(false);
 
   const handleGameSelect = (game: typeof GAMES[0]) => {
+    if (game.requiresMatch) {
+      navigate("/matches");
+      return;
+    }
     if (game.id === "social_games") {
       navigate("/social-games");
       return;
@@ -441,8 +549,12 @@ export default function GamesHub() {
       navigate("/trivia-pursuit");
       return;
     }
-    if (game.id === "bullgerdash") {
-      navigate("/matches");
+    if (game.id === "would_you_rather") {
+      navigate("/would-you-rather");
+      return;
+    }
+    if (game.id === "watch_party") {
+      navigate("/sports");
       return;
     }
     if (game.premium) {
@@ -552,6 +664,11 @@ export default function GamesHub() {
                       <span className="flex items-center gap-1 text-xs text-orange-500">
                         <Star className="w-3 h-3" /> Builds profile
                       </span>
+                      {game.requiresMatch && (
+                        <span className="flex items-center gap-1 text-xs text-violet-600 font-medium">
+                          <Heart className="w-3 h-3" /> Choose a match first
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
