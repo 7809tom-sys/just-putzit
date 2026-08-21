@@ -1374,6 +1374,11 @@
 - [x] Replace raw Jeopardy persistence errors with safe, actionable member feedback
 - [x] Add regression coverage for answer persistence and mobile-safe error handling
 
+## Jeopardy Complete Mobile Play Loop
+- [x] Reproduce the live mobile flow from room creation through final scoreboard using a real answer submission
+- [x] Repair any remaining clue selection, answer result, next-clue, or completion-state gaps
+- [x] Add end-to-end regression coverage for the full mobile Jeopardy game loop
+
 ## Mobile App Update Delivery
 - [x] Detect PWA updates promptly and refresh stale installed mobile clients safely
 - [x] Add regression coverage for service-worker update behavior
