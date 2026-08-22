@@ -443,6 +443,8 @@
 - [x] Add regression coverage for conservative WYR game insight handling
 
 ## All Games → Sally Profile (Matchmaking Intelligence)
+- [x] Audit group-game answer and participation signals to identify only explicit, member-controlled profile-learning candidates
+- [x] Add evidence-limited Team Builder learning that never infers personality from consensus or non-response
 - [ ] WYR answers: extract traits async after every answer, merge into userProfiles
 - [ ] Game Lobby (Trivia/Icebreaker/Two Truths): extract traits after each answer submitted
 - [ ] Match Games: extract traits from game session answers

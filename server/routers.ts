@@ -1520,7 +1520,7 @@ Return JSON with questions array, each having optionA and optionB.`,
         await submitGameAnswer(input.roomId, ctx.user.id, input.questionIndex, input.answer);
         // Fire-and-forget: extract traits from this game answer
         const room = await getGameRoom(input.roomId);
-        if (room && room.questions) {
+        if (room && room.gameType !== "team_builder" && room.questions) {
           const questions = room.questions as Array<{ text?: string; id?: number }>;
           const q = questions[input.questionIndex];
           if (q?.text) {
