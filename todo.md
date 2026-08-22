@@ -372,10 +372,11 @@
 - [ ] Seed a reviewed shared question catalog in stages toward 2,000 prompts without fabricated user-generated content
 - [x] Add Pick a Plan as a matched-member game that uses current local events, private voting, and mutual-agreement reveal
 - [x] Add regression coverage for question eligibility, private voting, and safe event-plan handoff
-- [ ] Create a developer-facing website for the shared-question delta synchronization specification
+- [x] Create a developer-facing website for the shared-question delta synchronization specification
 - [x] Publish an implementation-ready product roadmap for the shared library and Pick a Plan release sequence
 - [x] Publish a technical plan for synchronizing the governed 2,000-question library across game clients
 - [x] Publish exact request and response schemas for shared-library delta synchronization
+- [x] Verify and publish the developer-facing website for the shared-question delta synchronization specification
 - [x] Add protected draft intake and approval controls so only reviewed shared questions become available to games
 - [x] Prepare an initial original shared-question draft batch for administrator review without publishing it
 - [x] Add an Admin Shared Questions workspace with review, approve, publish, and retire actions
