@@ -13,6 +13,7 @@ describe("Games Hub complete roster", () => {
       "Pick a Plan",
       "Would You Rather Challenge",
       "Bulger Dash",
+      "Team Builder",
       "Watch Party",
     ]) {
       expect(source).toContain(`title: "${title}"`);
@@ -20,5 +21,7 @@ describe("Games Hub complete roster", () => {
     expect(source).toContain("if (game.requiresMatch)");
     expect(source).toContain('navigate("/matches")');
     expect(source).toContain("Choose a match first");
+    expect(source).toContain('id: "team_builder"');
+    expect(source).toContain('route: "/game-lobby"');
   });
 });

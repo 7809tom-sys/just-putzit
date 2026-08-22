@@ -1412,13 +1412,33 @@ Return JSON with questions array, each having optionA and optionB.`,
       .query(async ({ input }) => {
         const room = await getGameRoom(input.roomId);
         const players = await getGameRoomPlayers(input.roomId);
-        return room ? { ...room, players } : null;
+        if (!room) return null;
+        if (room.gameType !== "team_builder") return { ...room, players };
+        const answers = (room.answers ?? []) as { userId: number; questionIndex: number; answer: string; timestamp: number }[];
+        const currentQuestionIndex = room.currentQuestionIndex ?? 0;
+        const currentAnswers = answers.filter((answer) => answer.questionIndex === currentQuestionIndex);
+        const activePlayerIds = players.map((player) => player.userId);
+        const submittedByActivePlayers = currentAnswers.filter((answer) => activePlayerIds.includes(answer.userId));
+        const allSubmitted = activePlayerIds.length > 0 && submittedByActivePlayers.length >= activePlayerIds.length;
+        const distinctAnswers = Array.from(new Set(submittedByActivePlayers.map((answer) => answer.answer)));
+        const consensusAnswer = allSubmitted && distinctAnswers.length === 1 ? distinctAnswers[0] : null;
+        const completedQuestionIndexes = Array.from(new Set(answers.map((answer) => answer.questionIndex)));
+        const groupScore = completedQuestionIndexes.reduce((score, index) => {
+          const roundAnswers = answers.filter((answer) => answer.questionIndex === index && activePlayerIds.includes(answer.userId));
+          return roundAnswers.length >= activePlayerIds.length && new Set(roundAnswers.map((answer) => answer.answer)).size === 1 ? score + 10 : score;
+        }, 0);
+        return {
+          ...room,
+          players,
+          answers: allSubmitted ? answers : answers.map((answer) => ({ ...answer, answer: "" })),
+          teamBuilder: { submittedCount: submittedByActivePlayers.length, playerCount: activePlayerIds.length, allSubmitted, consensusAnswer, groupScore },
+        };
       }),
 
     createRoom: protectedProcedure
       .input(z.object({
         name: z.string().min(2).max(80),
-        gameType: z.enum(["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence", "bullgerdash"]),
+        gameType: z.enum(["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence", "bullgerdash", "team_builder"]),
         city: z.string().optional(),
         maxPlayers: z.number().min(2).max(12).optional(),
       }))
@@ -1437,6 +1457,8 @@ Return JSON with questions array, each having optionA and optionB.`,
           ? `Generate 8 "Two Truths and a Lie" prompts/topics for adults. Each prompt is a category/topic for players to create their own statements. Return JSON with a questions array, each having: id (number), text (string, the topic/prompt).`
           : input.gameType === "finish_sentence"
           ? `Generate 8 warm, open-ended "Finish My Sentence" prompts for adults getting to know each other. Keep every prompt short, playful, and safe for a community setting. Prompts should invite a personal answer without asking for private contact details, sensitive identity information, or sexual content. Return JSON with a questions array, each having: id (number), text (string, ending with an ellipsis).`
+          : input.gameType === "team_builder"
+          ? `Generate 8 safe, practical team-building scenarios for a group of adults. Each prompt asks the group to choose one of three positive collaboration approaches. Avoid workplace politics, sensitive identity topics, private information, sexual content, and pressure. Return JSON with a questions array, each having: id (number), text (string), optionA (string), optionB (string), optionC (string).`
           : `Generate 8 fun trivia questions about pop culture, food, travel, or fun facts. Return JSON with a questions array, each having: id (number), text (string), optionA (string), optionB (string), optionC (string), optionD (string), correctAnswer (string).`;
 
         let roomQuestions: Array<{ id: number; text: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string }> = [];
@@ -1488,6 +1510,13 @@ Return JSON with questions array, each having optionA and optionB.`,
     submitAnswer: protectedProcedure
       .input(z.object({ roomId: z.number(), questionIndex: z.number(), answer: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        const existingRoom = await getGameRoom(input.roomId);
+        if (existingRoom?.gameType === "team_builder") {
+          const existingAnswers = (existingRoom.answers ?? []) as { userId: number; questionIndex: number }[];
+          if (existingAnswers.some((answer) => answer.userId === ctx.user.id && answer.questionIndex === input.questionIndex)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Your Team Builder choice is locked for this round." });
+          }
+        }
         await submitGameAnswer(input.roomId, ctx.user.id, input.questionIndex, input.answer);
         // Fire-and-forget: extract traits from this game answer
         const room = await getGameRoom(input.roomId);

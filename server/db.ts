@@ -2881,7 +2881,7 @@ export async function getGameRoom(roomId: number) {
 export async function createGameRoom(data: {
   hostUserId: number;
   name: string;
-  gameType: "would_you_rather" | "trivia" | "icebreaker" | "two_truths" | "finish_sentence" | "bullgerdash";
+  gameType: "would_you_rather" | "trivia" | "icebreaker" | "two_truths" | "finish_sentence" | "bullgerdash" | "team_builder";
   city?: string;
   maxPlayers?: number;
   questions: { id: number; text: string; optionA?: string; optionB?: string }[];
@@ -2949,6 +2949,8 @@ export async function submitGameAnswer(roomId: number, userId: number, questionI
   const room = await getGameRoom(roomId);
   if (!room) return;
   const answers = (room.answers ?? []) as { userId: number; questionIndex: number; answer: string; timestamp: number }[];
+  const priorAnswerIndex = answers.findIndex((item) => item.userId === userId && item.questionIndex === questionIndex);
+  if (priorAnswerIndex >= 0) answers.splice(priorAnswerIndex, 1);
   answers.push({ userId, questionIndex, answer, timestamp: Date.now() });
   await db.update(gameRooms).set({ answers, updatedAt: new Date() }).where(eq(gameRooms.id, roomId));
 }

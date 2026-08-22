@@ -26,10 +26,10 @@ describe("Bulger Dash group play", () => {
     const app = project("client/src/App.tsx");
     const groupPage = project("client/src/pages/BullgerdashGroup.tsx");
 
-    expect(hub).toContain('route: "/bullgerdash"');
+    expect(hub).toContain('route: "/game-lobby"');
     expect(hub).toContain('navigate("/game-lobby")');
     expect(lobby).toContain('bullgerdash: { label: "Bulger Dash"');
-    expect(lobby).toContain('"bullgerdash"] as const');
+    expect(lobby).toContain('"bullgerdash", "team_builder"] as const');
     expect(lobby).toContain('navigate(`/bullgerdash-room/${activeRoom.id}`)');
     expect(app).toContain('<Route path="/bullgerdash-room/:roomId" component={BullgerdashGroup} />');
     expect(groupPage).toContain("groupSubmitVote");

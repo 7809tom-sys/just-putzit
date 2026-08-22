@@ -372,6 +372,7 @@
 - [ ] Seed a reviewed shared question catalog in stages toward 2,000 prompts without fabricated user-generated content
 - [x] Add Pick a Plan as a matched-member game that uses current local events, private voting, and mutual-agreement reveal
 - [x] Add regression coverage for question eligibility, private voting, and safe event-plan handoff
+- [ ] Create a developer-facing website for the shared-question delta synchronization specification
 - [x] Publish an implementation-ready product roadmap for the shared library and Pick a Plan release sequence
 - [x] Publish a technical plan for synchronizing the governed 2,000-question library across game clients
 - [x] Publish exact request and response schemas for shared-library delta synchronization
@@ -394,6 +395,12 @@
 - [x] Add fair group round participation, vote resolution, and scoreboard handling
 - [x] Add a clear Games Hub and Game Lobby launch path for group Bulger Dash
 - [x] Add multiplayer regression coverage and mobile verification for group Bulger Dash
+
+## Team Builder Group Game
+- [x] Define safe cooperative Team Builder prompts and group round rules for Game Lobby rooms
+- [x] Add shared team-round participation, consensus resolution, and group score handling
+- [x] Add a clear Team Builder launch path in Games Hub and Game Lobby
+- [x] Add multiplayer regression coverage and mobile verification for Team Builder
 
 ## Unified Games Hub
 - [x] Add every live match game to Games Hub with accurate two-player and match-required labels

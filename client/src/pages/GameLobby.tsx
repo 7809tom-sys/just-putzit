@@ -19,9 +19,10 @@ const GAME_TYPE_LABELS: Record<string, { label: string; emoji: string; descripti
   two_truths: { label: "Two Truths & a Lie", emoji: "🎭", description: "Share statements and guess which one is the lie!" },
   finish_sentence: { label: "Finish My Sentence", emoji: "✍️", description: "Complete open-ended prompts and reveal your personality." },
   bullgerdash: { label: "Bulger Dash", emoji: "📸", description: "A group mystery-photo bluff game. Take turns writing, voting, and scoring." },
+  team_builder: { label: "Team Builder", emoji: "🤝", description: "Cooperate on practical scenarios. Reach consensus to earn a group score." },
 };
 
-const ROOM_GAME_TYPES = ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence", "bullgerdash"] as const;
+const ROOM_GAME_TYPES = ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence", "bullgerdash", "team_builder"] as const;
 export const SOLO_GAME_ROUTES: Record<string, string> = {
   jeopardy: "/jeopardy",
   trivia_pursuit: "/trivia-pursuit",
@@ -120,6 +121,7 @@ export default function GameLobby() {
   const currentAnswers = (activeRoom?.answers as any[] ?? []).filter(
     (a: any) => a.questionIndex === (activeRoom?.currentQuestionIndex ?? 0)
   );
+  const teamBuilder = (activeRoom as any)?.teamBuilder as { submittedCount: number; playerCount: number; allSubmitted: boolean; consensusAnswer: string | null; groupScore: number } | undefined;
   const selectableGameTypes = gameMode === "solo" ? Object.keys(SOLO_GAME_ROUTES) : ROOM_GAME_TYPES;
   const setMode = (mode: "solo" | "multiplayer") => {
     setGameMode(mode);
@@ -233,6 +235,13 @@ export default function GameLobby() {
               <Card className="border-orange-200 shadow-md">
                 <CardContent className="pt-8 pb-6 text-center">
                   <p className="text-xl font-bold text-gray-900 mb-6 leading-relaxed">{currentQuestion.text}</p>
+                  {activeRoom.gameType === "team_builder" && (
+                    <div className="mb-5 rounded-xl border border-teal-200 bg-teal-50 p-4 text-left">
+                      <p className="font-semibold text-teal-900">🤝 Build the team answer</p>
+                      <p className="mt-1 text-sm text-teal-800">Each player chooses privately. Your group earns 10 points when everyone reaches the same choice.</p>
+                      <p className="mt-2 text-xs font-medium text-teal-700">{teamBuilder?.submittedCount ?? 0}/{teamBuilder?.playerCount ?? 0} submitted · Team score: {teamBuilder?.groupScore ?? 0}</p>
+                    </div>
+                  )}
 
                   {/* WYR / Trivia options */}
                   {(currentQuestion.optionA || currentQuestion.optionB) && (
@@ -283,6 +292,11 @@ export default function GameLobby() {
 
                   {alreadyAnsweredCurrent && (
                     <p className="mt-4 text-green-600 font-medium">✅ Answer submitted! Waiting for others...</p>
+                  )}
+                  {activeRoom.gameType === "team_builder" && teamBuilder?.allSubmitted && (
+                    <p className={`mt-4 font-semibold ${teamBuilder.consensusAnswer ? "text-emerald-700" : "text-amber-700"}`}>
+                      {teamBuilder.consensusAnswer ? `Team consensus: ${teamBuilder.consensusAnswer} · +10 points` : "No full consensus this round — talk it through and try the next scenario."}
+                    </p>
                   )}
                 </CardContent>
               </Card>
@@ -508,6 +522,21 @@ export default function GameLobby() {
                       }}
                     >
                       <Users className="mr-1.5 h-3.5 w-3.5" /> Create group room
+                    </Button>
+                  )}
+                  {gameId === "team_builder" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="mt-3 w-full rounded-full bg-teal-600 text-xs hover:bg-teal-700"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setNewGameType("team_builder");
+                        setGameMode("multiplayer");
+                        setCreateOpen(true);
+                      }}
+                    >
+                      <Users className="mr-1.5 h-3.5 w-3.5" /> Create team room
                     </Button>
                   )}
                 </CardContent>
