@@ -1,17 +1,22 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getDb } from "../db";
+import { getDb, getGameRoom, getGameRoomPlayers, startGameRoom } from "../db";
 import {
   bullgerdashPhotos,
   bullgerdashGames,
   bullgerdashRounds,
+  bullgerdashGroupGames,
+  bullgerdashGroupRounds,
+  bullgerdashGroupVotes,
 } from "../../drizzle/schema";
-import { eq, and, sql, notInArray } from "drizzle-orm";
+import { eq, and, sql, notInArray, inArray } from "drizzle-orm";
 
 type BullPhoto = typeof bullgerdashPhotos.$inferSelect;
 type BullGame  = typeof bullgerdashGames.$inferSelect;
 type BullRound = typeof bullgerdashRounds.$inferSelect;
+type GroupGame = typeof bullgerdashGroupGames.$inferSelect;
+type GroupRound = typeof bullgerdashGroupRounds.$inferSelect;
 
 // ─── Points config ────────────────────────────────────────────────────────────
 const POINTS_STORYTELLER_FOOLED = 3;
@@ -222,4 +227,166 @@ export const bullgerdashRouter = router({
 
       return rounds.map((r: BullRound) => ({ ...r, photo: photoMap[r.photoId] ?? null }));
     }),
+
+  // ── Group Game Lobby flow ───────────────────────────────────────────────────
+  // This remains separate from the existing private match game above. A player
+  // snapshot is taken at start so late room joins do not alter a round mid-vote.
+  groupStart: protectedProcedure
+    .input(z.object({ roomId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const room = await getGameRoom(input.roomId);
+      if (!room || room.gameType !== "bullgerdash") throw new TRPCError({ code: "NOT_FOUND", message: "Bulger Dash room not found" });
+      if (room.hostUserId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the room host can start Bulger Dash" });
+      const players = await getGameRoomPlayers(input.roomId);
+      const playerIds = players.map((player) => player.userId);
+      if (playerIds.length < 2) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "At least two players are needed to start Bulger Dash" });
+
+      const existing = await db.select().from(bullgerdashGroupGames).where(eq(bullgerdashGroupGames.roomId, input.roomId)).limit(1);
+      if (existing[0]) return buildGroupViewerPayload(db, existing[0], ctx.user.id);
+
+      const [inserted] = await db.insert(bullgerdashGroupGames).values({
+        roomId: input.roomId,
+        hostUserId: ctx.user.id,
+        playerIds,
+        scores: Object.fromEntries(playerIds.map((playerId) => [String(playerId), 0])),
+        status: "active",
+      }).$returningId();
+      const game = (await db.select().from(bullgerdashGroupGames).where(eq(bullgerdashGroupGames.id, (inserted as { id: number }).id)).limit(1))[0]!;
+      await createGroupRound(db, game, playerIds);
+      await startGameRoom(input.roomId);
+      return buildGroupViewerPayload(db, game, ctx.user.id);
+    }),
+
+  groupGet: protectedProcedure
+    .input(z.object({ roomId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const games = await db.select().from(bullgerdashGroupGames).where(eq(bullgerdashGroupGames.roomId, input.roomId)).limit(1);
+      const game = games[0];
+      if (!game) return null;
+      if (!game.playerIds.includes(ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "You were not part of this Bulger Dash game" });
+      return buildGroupViewerPayload(db, game, ctx.user.id);
+    }),
+
+  groupSubmitCaption: protectedProcedure
+    .input(z.object({ roomId: z.number().int().positive(), caption: z.string().trim().min(5).max(500), isLie: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const game = await getGroupGameForRoom(db, input.roomId);
+      const round = await getCurrentGroupRound(db, game);
+      if (round.storytellerId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the storyteller can submit a caption" });
+      if (round.phase !== "storyteller_writing") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This caption has already been submitted" });
+      await db.update(bullgerdashGroupRounds).set({ caption: input.caption, isLie: input.isLie, phase: "group_voting" }).where(eq(bullgerdashGroupRounds.id, round.id));
+      return { success: true };
+    }),
+
+  groupSubmitVote: protectedProcedure
+    .input(z.object({ roomId: z.number().int().positive(), guess: z.enum(["truth", "lie"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const game = await getGroupGameForRoom(db, input.roomId);
+      const round = await getCurrentGroupRound(db, game);
+      if (round.phase !== "group_voting") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Voting is not open" });
+      if (round.storytellerId === ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "The storyteller cannot vote" });
+      if (!round.participantIds.includes(ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "You were not part of this round" });
+      const existing = await db.select().from(bullgerdashGroupVotes).where(and(eq(bullgerdashGroupVotes.roundId, round.id), eq(bullgerdashGroupVotes.voterId, ctx.user.id))).limit(1);
+      if (existing[0]) throw new TRPCError({ code: "CONFLICT", message: "You have already voted this round" });
+      await db.insert(bullgerdashGroupVotes).values({ roundId: round.id, voterId: ctx.user.id, guess: input.guess });
+
+      const votes = await db.select().from(bullgerdashGroupVotes).where(eq(bullgerdashGroupVotes.roundId, round.id));
+      const eligibleVoterIds = round.participantIds.filter((playerId) => playerId !== round.storytellerId);
+      if (votes.length < eligibleVoterIds.length) return { revealed: false, votesSubmitted: votes.length, requiredVotes: eligibleVoterIds.length };
+
+      const scores = { ...game.scores };
+      let storytellerPoints = 0;
+      for (const vote of votes) {
+        const correct = round.isLie ? vote.guess === "lie" : vote.guess === "truth";
+        if (correct) scores[String(vote.voterId)] = (scores[String(vote.voterId)] ?? 0) + POINTS_VOTER_CORRECT;
+        else storytellerPoints += POINTS_STORYTELLER_FOOLED;
+      }
+      scores[String(round.storytellerId)] = (scores[String(round.storytellerId)] ?? 0) + storytellerPoints;
+      await db.update(bullgerdashGroupGames).set({ scores }).where(eq(bullgerdashGroupGames.id, game.id));
+      await db.update(bullgerdashGroupRounds).set({ phase: "reveal" }).where(eq(bullgerdashGroupRounds.id, round.id));
+      return { revealed: true, votesSubmitted: votes.length, requiredVotes: eligibleVoterIds.length };
+    }),
+
+  groupNextRound: protectedProcedure
+    .input(z.object({ roomId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const game = await getGroupGameForRoom(db, input.roomId);
+      if (game.hostUserId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the room host can advance the round" });
+      const currentRound = await getCurrentGroupRound(db, game);
+      if (currentRound.phase !== "reveal") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Wait for the round reveal before advancing" });
+      const nextRound = game.currentRound + 1;
+      await db.update(bullgerdashGroupGames).set({ currentRound: nextRound }).where(eq(bullgerdashGroupGames.id, game.id));
+      const refreshedGame = { ...game, currentRound: nextRound };
+      await createGroupRound(db, refreshedGame, game.playerIds);
+      return { success: true };
+    }),
+
+  groupEnd: protectedProcedure
+    .input(z.object({ roomId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const game = await getGroupGameForRoom(db, input.roomId);
+      if (game.hostUserId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the room host can end the game" });
+      await db.update(bullgerdashGroupGames).set({ status: "finished" }).where(eq(bullgerdashGroupGames.id, game.id));
+      return { success: true };
+    }),
 });
+
+async function getGroupGameForRoom(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, roomId: number) {
+  const rows = await db.select().from(bullgerdashGroupGames).where(eq(bullgerdashGroupGames.roomId, roomId)).limit(1);
+  if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Group Bulger Dash has not started yet" });
+  return rows[0];
+}
+
+async function getCurrentGroupRound(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, game: GroupGame) {
+  const rows = await db.select().from(bullgerdashGroupRounds)
+    .where(and(eq(bullgerdashGroupRounds.groupGameId, game.id), eq(bullgerdashGroupRounds.roundNumber, game.currentRound)))
+    .limit(1);
+  if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Current group round not found" });
+  return rows[0];
+}
+
+async function createGroupRound(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, game: Pick<GroupGame, "id" | "currentRound"> & { playerIds: number[] }, participantIds: number[]) {
+  const usedRows = await db.select({ photoId: bullgerdashGroupRounds.photoId }).from(bullgerdashGroupRounds).where(eq(bullgerdashGroupRounds.groupGameId, game.id));
+  const usedIds = usedRows.map((row) => row.photoId);
+  const available = usedIds.length > 0 ? await db.select().from(bullgerdashPhotos).where(notInArray(bullgerdashPhotos.id, usedIds)) : await db.select().from(bullgerdashPhotos);
+  const pool = available.length ? available : await db.select().from(bullgerdashPhotos);
+  if (!pool.length) throw new TRPCError({ code: "NOT_FOUND", message: "No Bulger Dash photos are available" });
+  const storytellerId = participantIds[(game.currentRound - 1) % participantIds.length]!;
+  await db.insert(bullgerdashGroupRounds).values({
+    groupGameId: game.id,
+    roundNumber: game.currentRound,
+    storytellerId,
+    participantIds,
+    photoId: pool[Math.floor(Math.random() * pool.length)]!.id,
+  });
+}
+
+async function buildGroupViewerPayload(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, game: GroupGame, viewerId: number) {
+  const round = await getCurrentGroupRound(db, game);
+  const [photo] = await db.select().from(bullgerdashPhotos).where(eq(bullgerdashPhotos.id, round.photoId)).limit(1);
+  const votes = await db.select().from(bullgerdashGroupVotes).where(eq(bullgerdashGroupVotes.roundId, round.id));
+  const eligibleVoterIds = round.participantIds.filter((playerId) => playerId !== round.storytellerId);
+  const myVote = votes.find((vote) => vote.voterId === viewerId)?.guess ?? null;
+  const reveal = round.phase === "reveal";
+  return {
+    game: { id: game.id, roomId: game.roomId, hostUserId: game.hostUserId, playerIds: game.playerIds, scores: game.scores, currentRound: game.currentRound, status: game.status },
+    round: { id: round.id, roundNumber: round.roundNumber, storytellerId: round.storytellerId, caption: round.caption, phase: round.phase, isLie: reveal ? round.isLie : null },
+    photo: photo ? { id: photo.id, imageUrl: photo.imageUrl, truthCaption: reveal ? photo.truthCaption : null } : null,
+    myVote,
+    votesSubmitted: votes.length,
+    requiredVotes: eligibleVoterIds.length,
+    isStoryteller: round.storytellerId === viewerId,
+  };
+}

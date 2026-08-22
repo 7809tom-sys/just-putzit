@@ -53,6 +53,7 @@ import Jeopardy from "@/pages/Jeopardy";
 import TriviaPursuit from "@/pages/TriviaPursuit";
 import FinishSentence from "@/pages/FinishSentence";
 import Bullgerdash from "@/pages/Bullgerdash";
+import BullgerdashGroup from "@/pages/BullgerdashGroup";
 import Sports from "@/pages/Sports";
 import WatchParty from "@/pages/WatchParty";
 import LiveScores from "@/pages/LiveScores";
@@ -135,6 +136,7 @@ function Router() {
         <Route path="/finish-sentence" component={FinishSentence} />
         <Route path="/bullgerdash/:matchId" component={Bullgerdash} />
         <Route path="/bullgerdash" component={Bullgerdash} />
+        <Route path="/bullgerdash-room/:roomId" component={BullgerdashGroup} />
         <Route path="/games-hub" component={GamesHub} />
         <Route path="/games-hub/:gameId" component={GamesHub} />
         <Route path="/social-games" component={SocialGames} />

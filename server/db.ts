@@ -2881,7 +2881,7 @@ export async function getGameRoom(roomId: number) {
 export async function createGameRoom(data: {
   hostUserId: number;
   name: string;
-  gameType: "would_you_rather" | "trivia" | "icebreaker" | "two_truths" | "finish_sentence";
+  gameType: "would_you_rather" | "trivia" | "icebreaker" | "two_truths" | "finish_sentence" | "bullgerdash";
   city?: string;
   maxPlayers?: number;
   questions: { id: number; text: string; optionA?: string; optionB?: string }[];

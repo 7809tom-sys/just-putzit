@@ -389,6 +389,12 @@
 - [x] Restore a clear member-facing entry and playable state if the game is missing or broken
 - [x] Add regression coverage for Bulgar Dash route and Games discovery
 
+## Bulger Dash Group Play
+- [x] Extend Bulger Dash from a match-only game to an any-group Game Lobby experience
+- [x] Add fair group round participation, vote resolution, and scoreboard handling
+- [x] Add a clear Games Hub and Game Lobby launch path for group Bulger Dash
+- [x] Add multiplayer regression coverage and mobile verification for group Bulger Dash
+
 ## Unified Games Hub
 - [x] Add every live match game to Games Hub with accurate two-player and match-required labels
 - [x] Keep solo and multiplayer games in Games Hub with their existing direct launch behavior

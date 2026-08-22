@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +18,10 @@ const GAME_TYPE_LABELS: Record<string, { label: string; emoji: string; descripti
   icebreaker: { label: "Icebreaker", emoji: "🧊", description: "Open-ended questions to spark real conversations." },
   two_truths: { label: "Two Truths & a Lie", emoji: "🎭", description: "Share statements and guess which one is the lie!" },
   finish_sentence: { label: "Finish My Sentence", emoji: "✍️", description: "Complete open-ended prompts and reveal your personality." },
+  bullgerdash: { label: "Bulger Dash", emoji: "📸", description: "A group mystery-photo bluff game. Take turns writing, voting, and scoring." },
 };
 
-const ROOM_GAME_TYPES = ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence"] as const;
+const ROOM_GAME_TYPES = ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence", "bullgerdash"] as const;
 export const SOLO_GAME_ROUTES: Record<string, string> = {
   jeopardy: "/jeopardy",
   trivia_pursuit: "/trivia-pursuit",
@@ -135,6 +136,10 @@ export default function GameLobby() {
     toast.success(`Starting ${game.label} solo game...`);
     navigate(route);
   };
+
+  useEffect(() => {
+    if (activeRoom?.gameType === "bullgerdash") navigate(`/bullgerdash-room/${activeRoom.id}`);
+  }, [activeRoom?.gameType, activeRoom?.id, navigate]);
 
   if (activeRoomId && activeRoom) {
     const gameInfo = GAME_TYPE_LABELS[activeRoom.gameType] ?? GAME_TYPE_LABELS.would_you_rather;
@@ -488,6 +493,21 @@ export default function GameLobby() {
                       }}
                     >
                       <Play className="mr-1.5 h-3.5 w-3.5" /> Play solo
+                    </Button>
+                  )}
+                  {gameId === "bullgerdash" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="mt-3 w-full rounded-full bg-violet-600 text-xs hover:bg-violet-700"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setNewGameType("bullgerdash");
+                        setGameMode("multiplayer");
+                        setCreateOpen(true);
+                      }}
+                    >
+                      <Users className="mr-1.5 h-3.5 w-3.5" /> Create group room
                     </Button>
                   )}
                 </CardContent>

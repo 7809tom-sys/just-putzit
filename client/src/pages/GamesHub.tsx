@@ -266,9 +266,9 @@ const GAMES = [
     badgeColor: "bg-purple-100 text-purple-700",
     route: "/bullgerdash",
     players: "2",
-    time: "Open-ended",
+    time: "5–10 min",
     premium: false,
-    requiresMatch: true,
+    requiresMatch: false,
     traits: ["humor", "creativity", "bluffing"],
   },
 ];
@@ -555,6 +555,10 @@ export default function GamesHub() {
     }
     if (game.id === "watch_party") {
       navigate("/sports");
+      return;
+    }
+    if (game.id === "bullgerdash") {
+      navigate("/game-lobby");
       return;
     }
     if (game.premium) {

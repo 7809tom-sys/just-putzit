@@ -795,7 +795,7 @@ export const gameRooms = mysqlTable("game_rooms", {
   id: int("id").autoincrement().primaryKey(),
   hostUserId: int("hostUserId").notNull(),
   name: varchar("name", { length: 120 }).notNull(),
-  gameType: mysqlEnum("gameType", ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence"]).notNull().default("would_you_rather"),
+  gameType: mysqlEnum("gameType", ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence", "bullgerdash"]).notNull().default("would_you_rather"),
   city: varchar("city", { length: 120 }),
   maxPlayers: int("maxPlayers").notNull().default(6),
   status: mysqlEnum("status", ["waiting", "in_progress", "finished"]).notNull().default("waiting"),
@@ -1300,6 +1300,50 @@ export const bullgerdashRounds = mysqlTable("bullgerdash_rounds", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type BullgerdashRound = typeof bullgerdashRounds.$inferSelect;
+
+// ─── Bullgerdash Group Games (Game Lobby rooms) ────────────────────────────────
+// These records are intentionally separate from the private two-player match game.
+// A group snapshot freezes the eligible players for a round, preventing late joins
+// from changing an in-progress vote requirement.
+export const bullgerdashGroupGames = mysqlTable("bullgerdash_group_games", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("room_id").notNull().unique(),
+  hostUserId: int("host_user_id").notNull(),
+  playerIds: json("player_ids").$type<number[]>().notNull(),
+  scores: json("scores").$type<Record<string, number>>().notNull(),
+  currentRound: int("current_round").notNull().default(1),
+  status: mysqlEnum("status", ["waiting", "active", "finished"]).notNull().default("waiting"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type BullgerdashGroupGame = typeof bullgerdashGroupGames.$inferSelect;
+
+export const bullgerdashGroupRounds = mysqlTable("bullgerdash_group_rounds", {
+  id: int("id").autoincrement().primaryKey(),
+  groupGameId: int("group_game_id").notNull(),
+  roundNumber: int("round_number").notNull(),
+  storytellerId: int("storyteller_id").notNull(),
+  participantIds: json("participant_ids").$type<number[]>().notNull(),
+  photoId: int("photo_id").notNull(),
+  caption: text("caption"),
+  isLie: boolean("is_lie"),
+  phase: mysqlEnum("phase", ["storyteller_writing", "group_voting", "reveal"]).notNull().default("storyteller_writing"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  groupRoundUnique: uniqueIndex("bullgerdash_group_round_unique").on(table.groupGameId, table.roundNumber),
+}));
+export type BullgerdashGroupRound = typeof bullgerdashGroupRounds.$inferSelect;
+
+export const bullgerdashGroupVotes = mysqlTable("bullgerdash_group_votes", {
+  id: int("id").autoincrement().primaryKey(),
+  roundId: int("round_id").notNull(),
+  voterId: int("voter_id").notNull(),
+  guess: mysqlEnum("guess", ["truth", "lie"]).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  groupVoteUnique: uniqueIndex("bullgerdash_group_vote_unique").on(table.roundId, table.voterId),
+}));
+export type BullgerdashGroupVote = typeof bullgerdashGroupVotes.$inferSelect;
 
 // ─── Voice Messages ───────────────────────────────────────────────────────────
 export const voiceMessages = mysqlTable("voice_messages", {

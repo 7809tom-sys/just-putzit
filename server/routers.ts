@@ -1418,7 +1418,7 @@ Return JSON with questions array, each having optionA and optionB.`,
     createRoom: protectedProcedure
       .input(z.object({
         name: z.string().min(2).max(80),
-        gameType: z.enum(["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence"]),
+        gameType: z.enum(["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence", "bullgerdash"]),
         city: z.string().optional(),
         maxPlayers: z.number().min(2).max(12).optional(),
       }))
@@ -1427,7 +1427,9 @@ Return JSON with questions array, each having optionA and optionB.`,
         const city = input.city ?? profile?.city ?? undefined;
 
         // Generate questions via LLM based on game type
-        const questionPrompt = input.gameType === "would_you_rather"
+        const questionPrompt = input.gameType === "bullgerdash"
+          ? null
+          : input.gameType === "would_you_rather"
           ? `Generate 8 fun, creative "Would You Rather" questions for a group of adults getting to know each other. Make them light-hearted, interesting, and conversation-starting. Return JSON with a questions array, each having: id (number), text (string), optionA (string), optionB (string).`
           : input.gameType === "icebreaker"
           ? `Generate 8 fun icebreaker questions for adults getting to know each other. Questions should be open-ended and reveal personality. Return JSON with a questions array, each having: id (number), text (string).`
@@ -1437,17 +1439,20 @@ Return JSON with questions array, each having optionA and optionB.`,
           ? `Generate 8 warm, open-ended "Finish My Sentence" prompts for adults getting to know each other. Keep every prompt short, playful, and safe for a community setting. Prompts should invite a personal answer without asking for private contact details, sensitive identity information, or sexual content. Return JSON with a questions array, each having: id (number), text (string, ending with an ellipsis).`
           : `Generate 8 fun trivia questions about pop culture, food, travel, or fun facts. Return JSON with a questions array, each having: id (number), text (string), optionA (string), optionB (string), optionC (string), optionD (string), correctAnswer (string).`;
 
-        const response = await invokeLLM({
-          messages: [
-            { role: "system", content: questionPrompt },
-            { role: "user", content: "Generate the questions now." },
-          ],
-          response_format: { type: "json_schema", json_schema: { name: "lobby_questions", strict: false, schema: { type: "object", properties: { questions: { type: "array", items: { type: "object" } } }, required: ["questions"] } } },
-        });
-        const content = response.choices[0]?.message?.content;
-        const questions = JSON.parse(typeof content === "string" ? content : "{}").questions ?? [];
+        let roomQuestions: Array<{ id: number; text: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string }> = [];
+        if (questionPrompt) {
+          const generated = await invokeLLM({
+            messages: [
+              { role: "system", content: questionPrompt },
+              { role: "user", content: "Generate the questions now." },
+            ],
+            response_format: { type: "json_schema", json_schema: { name: "lobby_questions", strict: false, schema: { type: "object", properties: { questions: { type: "array", items: { type: "object" } } }, required: ["questions"] } } },
+          });
+          const content = generated.choices[0]?.message?.content;
+          roomQuestions = content ? JSON.parse(typeof content === "string" ? content : "{}").questions ?? [] : [];
+        }
 
-        const room = await createGameRoom({ hostUserId: ctx.user.id, name: input.name, gameType: input.gameType, city, maxPlayers: input.maxPlayers, questions });
+        const room = await createGameRoom({ hostUserId: ctx.user.id, name: input.name, gameType: input.gameType, city, maxPlayers: input.maxPlayers, questions: roomQuestions });
         if (room) await joinGameRoom(room.id, ctx.user.id);
         return room;
       }),

@@ -8,8 +8,8 @@ describe("Game Lobby routes", () => {
     const lobbySource = readFileSync(resolve(root, "client/src/pages/GameLobby.tsx"), "utf8");
     const routerSource = readFileSync(resolve(root, "server/routers.ts"), "utf8");
     const appSource = readFileSync(resolve(root, "client/src/App.tsx"), "utf8");
-    expect(lobbySource).toContain('const ROOM_GAME_TYPES = ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence"]');
-    expect(routerSource).toContain('z.enum(["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence"])');
+    expect(lobbySource).toContain('const ROOM_GAME_TYPES = ["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence", "bullgerdash"]');
+    expect(routerSource).toContain('z.enum(["would_you_rather", "trivia", "icebreaker", "two_truths", "finish_sentence", "bullgerdash"])');
     expect(lobbySource).toContain('finish_sentence: "/finish-sentence"');
     expect(appSource).toContain('path="/finish-sentence"');
   });
