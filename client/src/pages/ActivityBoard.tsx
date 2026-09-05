@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Calendar as CalendarWidget } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { MapPin, Calendar, CalendarDays, List, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy, Megaphone, Bookmark, BookmarkCheck, Share2, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { MapPin, Calendar, CalendarDays, List, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy, Megaphone, Bookmark, BookmarkCheck, Share2, SlidersHorizontal, ChevronDown, Heart } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -136,6 +136,7 @@ export default function ActivityBoard() {
   const [communitySort, setCommunitySort] = useState<"date" | "distance" | "trending">("date");
   const [communityView, setCommunityView] = useState<"list" | "calendar">("list");
   const [selectedCommunityDate, setSelectedCommunityDate] = useState<Date | undefined>();
+  const [interestingEventId, setInterestingEventId] = useState<number | null>(null);
   const [, navigate] = useLocation();
   const [pickupForm, setPickupForm] = useState({
     activityType: "basketball" as "basketball" | "bowling_singles" | "other",
@@ -182,6 +183,8 @@ export default function ActivityBoard() {
     limit: 150,
   });
   const { data: bookmarkedEventIds } = trpc.activityBoard.bookmarks.useQuery(undefined, { enabled: Boolean(user) });
+  const { data: memberEventInterests } = trpc.events.myInterests.useQuery(undefined, { enabled: Boolean(user) });
+  const interestedEventIds = useMemo(() => new Set((memberEventInterests ?? []).map((item: any) => item.interest.eventId)), [memberEventInterests]);
   const toggleBookmark = trpc.activityBoard.toggleBookmark.useMutation({
     onSuccess: (result) => {
       void utils.activityBoard.bookmarks.invalidate();
@@ -189,6 +192,43 @@ export default function ActivityBoard() {
     },
     onError: () => toast.error("Couldn’t update saved events. Please try again."),
   });
+  const markInterest = trpc.events.markInterest.useMutation({
+    onSuccess: () => {
+      setInterestingEventId(null);
+      void utils.events.myInterests.invalidate();
+      void utils.events.list.invalidate();
+      toast.success("Added to your event interests.");
+    },
+    onError: () => {
+      setInterestingEventId(null);
+      toast.error("Couldn’t update your event interest. Please try again.");
+    },
+  });
+  const removeInterest = trpc.events.removeInterest.useMutation({
+    onSuccess: () => {
+      setInterestingEventId(null);
+      void utils.events.myInterests.invalidate();
+      void utils.events.list.invalidate();
+      toast.success("Removed from your event interests.");
+    },
+    onError: () => {
+      setInterestingEventId(null);
+      toast.error("Couldn’t update your event interest. Please try again.");
+    },
+  });
+
+  function toggleEventInterest(eventId: number) {
+    if (!user) {
+      toast.error("Sign in to mark an event as interesting.");
+      return;
+    }
+    setInterestingEventId(eventId);
+    if (interestedEventIds.has(eventId)) {
+      removeInterest.mutate({ eventId });
+    } else {
+      markInterest.mutate({ eventId, status: "interested" });
+    }
+  }
 
   const rsvpMutation = trpc.activityBoard.rsvp.useMutation({
     onSuccess: () => {
@@ -946,6 +986,8 @@ export default function ActivityBoard() {
                     {selectedCommunityEvents.flatMap((event: any, index: number) => {
                       const src = SOURCE_META[(event as any).source ?? "admin"] ?? SOURCE_META.admin;
                       const bookmarked = bookmarkedEventIds?.includes(event.id) ?? false;
+                      const interested = interestedEventIds.has(event.id);
+                      const interestCount = Number((event as any).interestCount ?? 0);
                       const eventCard = (
                         <Card key={event.id} className="border border-gray-100 hover:shadow-md transition-shadow">
                           <CardContent className="p-5">
@@ -996,6 +1038,12 @@ export default function ActivityBoard() {
                                       {event.venueName}
                                     </span>
                                   )}
+                                  {interestCount > 0 && (
+                                    <span className="flex items-center gap-1 text-rose-600" aria-label={`${interestCount} member${interestCount === 1 ? "" : "s"} interested`}>
+                                      <Heart className="w-3.5 h-3.5" />
+                                      {interestCount} interested
+                                    </span>
+                                  )}
                                   {userLat !== undefined && userLng !== undefined && event.lat != null && event.lng != null && (
                                     <span className="flex items-center gap-1 font-semibold text-orange-600">
                                       <MapPin className="w-3.5 h-3.5" />
@@ -1010,6 +1058,9 @@ export default function ActivityBoard() {
                                     {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />} Save
                                   </Button>
                                 )}
+                                <Button size="sm" variant="outline" aria-label={interested ? `Remove ${event.title} from your event interests` : `Mark ${event.title} as interesting`} aria-pressed={interested} disabled={interestingEventId === event.id} onClick={() => toggleEventInterest(event.id)} className={`rounded-full text-xs gap-1 ${interested ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100" : ""}`}>
+                                  <Heart className={`h-3.5 w-3.5 ${interested ? "fill-current" : ""}`} /> {interested ? "Interested" : "Interest"}
+                                </Button>
                                 <Button size="sm" variant="outline" onClick={() => void shareEvent(event)} className="rounded-full text-xs gap-1">
                                   <Share2 className="h-3.5 w-3.5" /> Share
                                 </Button>

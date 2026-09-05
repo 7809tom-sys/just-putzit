@@ -1136,6 +1136,11 @@
 - [x] Preserve ingestion when geocoding is unavailable and avoid collecting member location data
 - [x] Add coverage for public-venue coordinate lookup and distance-ready source records
 
+## Community Event Interest Action
+- [x] Surface the existing explicit interest action on Activity Board Community Event cards
+- [x] Keep member interest private while showing only the existing aggregate interest count
+- [x] Add regression coverage for the Activity Board interest interaction
+
 ## Official Brookfield Public Library Discovery
 - [x] Add the official Brookfield Public Library calendar as a tracked Community Events source
 - [x] Ingest current public library programs while excluding closure notices and government-only entries

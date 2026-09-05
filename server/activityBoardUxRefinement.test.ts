@@ -36,4 +36,12 @@ describe("Activity Board UX refinement", () => {
     expect(board).toContain("interestCount");
     expect(board).toContain("engagementDifference");
   });
+
+  it("allows an explicit member interest action while keeping card engagement aggregate-only", () => {
+    expect(board).toContain("toggleEventInterest");
+    expect(board).toContain('trpc.events.myInterests.useQuery');
+    expect(board).toContain('status: "interested"');
+    expect(board).toContain("interestedEventIds");
+    expect(board).toContain("interested");
+  });
 });
