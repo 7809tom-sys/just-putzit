@@ -2015,12 +2015,12 @@ Return JSON with questions array, each having optionA and optionB.`,
 
   // ─── Marketplace (ticket booking) ─────────────────────────────────────────
   marketplace: router({
-    categoryCounts: protectedProcedure.query(async () => getActivityMarketplaceCategoryCounts()),
+    categoryCounts: publicProcedure.query(async () => getActivityMarketplaceCategoryCounts()),
 
-    browse: protectedProcedure
-      .input(z.object({ category: z.string().optional(), ticketsOnly: z.boolean().optional() }))
+    browse: publicProcedure
+      .input(z.object({ category: z.string().optional(), city: z.string().trim().min(1).max(120).optional(), ticketsOnly: z.boolean().optional() }))
       .query(async ({ input }) => {
-        const listings = await getActivityListings(undefined, input.category);
+        const listings = await getActivityListings(input.city, input.category);
         const enriched = await Promise.all(
           listings.map(async (l) => {
             const venue = await getVenueById(l.venueId);

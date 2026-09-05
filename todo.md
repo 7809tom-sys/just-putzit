@@ -1145,6 +1145,14 @@
 - [x] Diagnose why the Activity Marketplace appears empty for members
 - [x] Restore browseable, current marketplace inventory or provide a clear nearby-activity fallback
 - [x] Add regression coverage and verify Marketplace browsing on desktop and mobile
+- [x] Allow public Marketplace browsing while retaining member-only booking and checkout
+- [x] Show a clear sign-in handoff only when a visitor selects an activity to book
+- [x] Add access-boundary regression coverage and re-verify the live Marketplace route
+
+## Activity Marketplace Data Quality
+- [x] Remove non-production test listings from active Marketplace inventory
+- [x] Make Marketplace results city-aware for signed-in members without silently substituting another city
+- [x] Add regression coverage and desktop/mobile verification for local, trusted Marketplace inventory
 
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,20 +46,28 @@ function dollars(cents: number) {
 }
 
 export default function Marketplace() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated });
   const [category, setCategory] = useState("all");
+  const [browseAllLocations, setBrowseAllLocations] = useState(false);
   const [selected, setSelected] = useState<Listing | null>(null);
   const [partySize, setPartySize] = useState(2);
   const [scheduledFor, setScheduledFor] = useState("");
 
   const utils = trpc.useUtils();
+  const memberCity = profile?.city?.trim() || undefined;
+  const marketplaceInput = useMemo(() => ({
+    category: category === "all" ? undefined : category,
+    city: browseAllLocations ? undefined : memberCity,
+  }), [browseAllLocations, category, memberCity]);
   const { data: listings, isLoading, isError, refetch } = trpc.marketplace.browse.useQuery(
-    { category: category === "all" ? undefined : category },
-    { enabled: isAuthenticated }
+    marketplaceInput,
+    { enabled: true }
   );
-  const { data: categoryCounts } = trpc.marketplace.categoryCounts.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: categoryCounts } = trpc.marketplace.categoryCounts.useQuery();
   const availableCategories = CATEGORIES.filter((item) => item.id === "all" || (categoryCounts?.[item.id] ?? 0) > 0);
   const totalAvailable = Object.values(categoryCounts ?? {}).reduce((total, count) => total + Number(count), 0);
+  const locationLabel = !browseAllLocations && memberCity ? memberCity : null;
 
   useEffect(() => {
     if (category !== "all" && categoryCounts && (categoryCounts[category] ?? 0) === 0) {
@@ -98,6 +106,11 @@ export default function Marketplace() {
 
   const handleBook = () => {
     if (!selected) return;
+    if (!isAuthenticated) {
+      toast.info("Join free to book this local activity.");
+      window.location.href = getLoginUrl();
+      return;
+    }
     if (selected.priceCents > 0) {
       checkoutMutation.mutate({
         activityId: selected.id,
@@ -113,31 +126,6 @@ export default function Marketplace() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="flex items-center justify-center py-32"><Spinner /></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container max-w-md py-24 text-center">
-          <div className="text-5xl mb-4">🎟️</div>
-          <h1 className="font-display text-2xl font-bold mb-2">The Activity Marketplace</h1>
-          <p className="text-muted-foreground mb-6">
-            Book bowling, mini golf, kayaking, dinners and more — in seconds. Sign in to browse.
-          </p>
-          <Button onClick={() => (window.location.href = getLoginUrl())} className="rounded-full">
-            Sign in to browse
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container max-w-6xl py-8">
@@ -146,8 +134,13 @@ export default function Marketplace() {
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Activity Marketplace</h1>
             <p className="text-sm text-muted-foreground">
-              Real things to do, booked in-app. No fees for you — ever. {totalAvailable > 0 ? `${totalAvailable} activities available.` : ""}
+              {locationLabel ? `Showing bookable activities in ${locationLabel}.` : "Browse current local options."} Membership is free; sign in only when you are ready to book. {totalAvailable > 0 ? `${totalAvailable} activities available.` : ""}
             </p>
+            {locationLabel && (
+              <button type="button" onClick={() => setBrowseAllLocations(true)} className="mt-2 text-xs font-medium text-primary underline-offset-4 hover:underline">
+                Browse all locations instead
+              </button>
+            )}
           </div>
           <Button variant="outline" className="rounded-full gap-2 bg-card" asChild>
             <a href="/bookings"><Ticket className="w-4 h-4" /> My Bookings</a>
@@ -223,12 +216,21 @@ export default function Marketplace() {
                     </p>
                   )}
                   <Button
-                    onClick={() => { setSelected(l); setPartySize(2); setScheduledFor(""); }}
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        toast.info("Join free to book this local activity.");
+                        window.location.href = getLoginUrl();
+                        return;
+                      }
+                      setSelected(l);
+                      setPartySize(2);
+                      setScheduledFor("");
+                    }}
                     className="w-full rounded-full gap-2"
                     size="sm"
                   >
                     {l.hasTickets ? <Ticket className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                    {l.hasTickets ? "Book tickets" : l.priceCents > 0 ? "Reserve" : "RSVP"}
+                    {isAuthenticated ? (l.hasTickets ? "Book tickets" : l.priceCents > 0 ? "Reserve" : "RSVP") : "Join free to book"}
                   </Button>
                 </CardContent>
               </Card>
@@ -238,10 +240,11 @@ export default function Marketplace() {
           <Card className="border-dashed border-2 bg-muted/30">
             <CardContent className="p-10 text-center">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary"><Compass className="h-5 w-5" /></div>
-              <h2 className="font-display text-lg font-bold text-foreground">No bookable activities in {category === "all" ? "the Marketplace" : `this ${category.replaceAll("_", " ")} category`} yet</h2>
-              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Try every available Marketplace category, or explore nearby public activities and current events while new partners are added.</p>
+              <h2 className="font-display text-lg font-bold text-foreground">No bookable activities in {locationLabel ? `${locationLabel} for ` : ""}{category === "all" ? "this Marketplace view" : `this ${category.replaceAll("_", " ")} category`} yet</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Try every available Marketplace category, expand your location search, or explore nearby public activities and current events while new partners are added.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
                 {category !== "all" && <Button variant="outline" className="rounded-full bg-card" onClick={() => setCategory("all")}>Browse all available</Button>}
+                {locationLabel && <Button variant="outline" className="rounded-full bg-card" onClick={() => setBrowseAllLocations(true)}>Browse all locations</Button>}
                 <Button className="rounded-full" asChild><a href="/activities">Explore nearby activities</a></Button>
               </div>
             </CardContent>

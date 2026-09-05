@@ -1,6 +1,10 @@
 import { describe, expect, it, beforeAll } from "vitest";
+import { afterAll } from "vitest";
+import { eq, inArray } from "drizzle-orm";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+import { getDb } from "./db";
+import { activityListings, venuePartners } from "../drizzle/schema";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -141,4 +145,17 @@ describe("couples network", () => {
     const lonelyCaller = appRouter.createCaller(ctxFor(makeUser(990003, "No Couple")));
     await expect(lonelyCaller.couples.findCoupleMatches()).rejects.toThrow();
   });
+});
+
+afterAll(async () => {
+  const db = await getDb();
+  if (!db) return;
+  const testVenues = await db.select({ id: venuePartners.id })
+    .from(venuePartners)
+    .where(eq(venuePartners.contactEmail, "owner@testlanes.com"));
+  const testVenueIds = testVenues.map((venue) => venue.id);
+  if (testVenueIds.length > 0) {
+    await db.update(activityListings).set({ isActive: false }).where(inArray(activityListings.venueId, testVenueIds));
+    await db.update(venuePartners).set({ isActive: false }).where(inArray(venuePartners.id, testVenueIds));
+  }
 });

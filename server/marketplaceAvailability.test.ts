@@ -10,7 +10,20 @@ describe("Marketplace availability recovery", () => {
   it("exposes only active Marketplace category counts through the established protected router", () => {
     expect(db).toContain("getActivityMarketplaceCategoryCounts");
     expect(db).toContain("groupBy(activityListings.category)");
-    expect(router).toContain("categoryCounts: protectedProcedure");
+    expect(router).toContain("categoryCounts: publicProcedure");
+  });
+
+  it("allows visitors to browse while retaining sign-in handoff for booking", () => {
+    expect(router).toContain("browse: publicProcedure");
+    expect(marketplace).toContain("Join free to book this local activity.");
+    expect(marketplace).toContain("Join free to book");
+  });
+
+  it("uses the signed-in member city without silently switching them to another market", () => {
+    expect(router).toContain("city: z.string().trim().min(1).max(120).optional()");
+    expect(router).toContain("getActivityListings(input.city, input.category)");
+    expect(marketplace).toContain("Showing bookable activities in ${locationLabel}.");
+    expect(marketplace).toContain("Browse all locations instead");
   });
 
   it("recovers from a stale empty category and explains retry and nearby-activity options", () => {
