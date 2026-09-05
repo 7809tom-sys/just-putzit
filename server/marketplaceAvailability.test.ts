@@ -33,6 +33,14 @@ describe("Marketplace availability recovery", () => {
     expect(marketplace).toContain("categoryCounts.useQuery(marketplaceLocationInput)");
   });
 
+  it("lets visitors choose and clear an explicit city filter without reading a private profile location", () => {
+    expect(marketplace).toContain("visitorCityDraft");
+    expect(marketplace).toContain("Find bookable activities by city");
+    expect(marketplace).toContain("Search city");
+    expect(marketplace).toContain("All locations");
+    expect(marketplace).toContain("isAuthenticated\n    ? (browseAllLocations ? undefined : memberCity)\n    : visitorCity");
+  });
+
   it("recovers from a stale empty category and explains retry and nearby-activity options", () => {
     expect(marketplace).toContain("availableCategories");
     expect(marketplace).toContain('setCategory("all")');

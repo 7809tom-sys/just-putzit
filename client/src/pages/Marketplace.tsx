@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MapPin, Ticket, Users, CalendarDays, Star, CheckCircle2, RefreshCw, Compass } from "lucide-react";
+import { MapPin, Ticket, Users, CalendarDays, Star, CheckCircle2, RefreshCw, Compass, Search, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -50,19 +50,24 @@ export default function Marketplace() {
   const { data: profile } = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated });
   const [category, setCategory] = useState("all");
   const [browseAllLocations, setBrowseAllLocations] = useState(false);
+  const [visitorCityDraft, setVisitorCityDraft] = useState("");
+  const [visitorCity, setVisitorCity] = useState<string | undefined>();
   const [selected, setSelected] = useState<Listing | null>(null);
   const [partySize, setPartySize] = useState(2);
   const [scheduledFor, setScheduledFor] = useState("");
 
   const utils = trpc.useUtils();
   const memberCity = profile?.city?.trim() || undefined;
+  const activeCity = isAuthenticated
+    ? (browseAllLocations ? undefined : memberCity)
+    : visitorCity;
   const marketplaceInput = useMemo(() => ({
     category: category === "all" ? undefined : category,
-    city: browseAllLocations ? undefined : memberCity,
-  }), [browseAllLocations, category, memberCity]);
+    city: activeCity,
+  }), [activeCity, category]);
   const marketplaceLocationInput = useMemo(() => ({
-    city: browseAllLocations ? undefined : memberCity,
-  }), [browseAllLocations, memberCity]);
+    city: activeCity,
+  }), [activeCity]);
   const { data: listings, isLoading, isError, refetch } = trpc.marketplace.browse.useQuery(
     marketplaceInput,
     { enabled: true }
@@ -70,7 +75,7 @@ export default function Marketplace() {
   const { data: categoryCounts } = trpc.marketplace.categoryCounts.useQuery(marketplaceLocationInput);
   const availableCategories = CATEGORIES.filter((item) => item.id === "all" || (categoryCounts?.[item.id] ?? 0) > 0);
   const totalAvailable = Object.values(categoryCounts ?? {}).reduce((total, count) => total + Number(count), 0);
-  const locationLabel = !browseAllLocations && memberCity ? memberCity : null;
+  const locationLabel = activeCity ?? null;
 
   useEffect(() => {
     if (category !== "all" && categoryCounts && (categoryCounts[category] ?? 0) === 0) {
@@ -139,16 +144,34 @@ export default function Marketplace() {
             <p className="text-sm text-muted-foreground">
               {locationLabel ? `Showing bookable activities in ${locationLabel}.` : "Browse current local options."} Membership is free; sign in only when you are ready to book. {totalAvailable > 0 ? `${totalAvailable} activities available.` : ""}
             </p>
-            {locationLabel && (
-              <button type="button" onClick={() => setBrowseAllLocations(true)} className="mt-2 text-xs font-medium text-primary underline-offset-4 hover:underline">
-                Browse all locations instead
-              </button>
-            )}
+            {isAuthenticated && locationLabel && <button type="button" onClick={() => setBrowseAllLocations(true)} className="mt-2 text-xs font-medium text-primary underline-offset-4 hover:underline">Browse all locations instead</button>}
+            {isAuthenticated && !locationLabel && memberCity && <button type="button" onClick={() => setBrowseAllLocations(false)} className="mt-2 text-xs font-medium text-primary underline-offset-4 hover:underline">Use saved {memberCity} location</button>}
           </div>
           <Button variant="outline" className="rounded-full gap-2 bg-card" asChild>
             <a href="/bookings"><Ticket className="w-4 h-4" /> My Bookings</a>
           </Button>
         </div>
+
+        {!isAuthenticated && (
+          <form
+            className="mb-5 flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-end"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const nextCity = visitorCityDraft.trim();
+              setVisitorCity(nextCity || undefined);
+              setCategory("all");
+            }}
+          >
+            <div className="min-w-0 flex-1">
+              <Label htmlFor="marketplace-city" className="text-xs font-semibold">Find bookable activities by city</Label>
+              <Input id="marketplace-city" value={visitorCityDraft} onChange={(event) => setVisitorCityDraft(event.target.value)} placeholder="City, for example Milwaukee" className="mt-1" />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" className="rounded-full gap-2"><Search className="h-4 w-4" /> Search city</Button>
+              {visitorCity && <Button type="button" variant="outline" className="rounded-full bg-card gap-2" onClick={() => { setVisitorCity(undefined); setVisitorCityDraft(""); setCategory("all"); }}><X className="h-4 w-4" /> All locations</Button>}
+            </div>
+          </form>
+        )}
 
         {/* Category chips */}
         <div className="flex flex-wrap gap-2 mb-6">

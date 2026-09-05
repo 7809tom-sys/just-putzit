@@ -1155,6 +1155,9 @@
 - [x] Add regression coverage and desktop/mobile verification for local, trusted Marketplace inventory
 - [x] Scope Marketplace totals and category controls to the active saved city or explicit all-locations choice
 - [x] Add regression coverage for location-accurate Marketplace availability
+- [x] Add an explicit city search for Marketplace visitors without saved profile locations
+- [x] Preserve member saved-city browsing and make all-locations selection reversible
+- [x] Add coverage and responsive verification for visitor-controlled Marketplace location filtering
 
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
