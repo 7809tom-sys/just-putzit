@@ -1116,6 +1116,11 @@
 - [x] Allow members to select a day and review that day’s current events before opening details
 - [x] Add regression coverage and responsive verification for the filtered calendar view
 
+## Privacy-Safe Community Event Trending
+- [x] Return aggregate interest counts alongside current Community Events without exposing identities
+- [x] Use actual aggregate engagement with a date tie-breaker for Activity Board Trending order
+- [x] Add regression coverage for the aggregate-only trending contract
+
 ## Family Select Toast Feedback
 - [x] Show a success toast when a valid Family Select gender option is selected
 - [x] Add regression coverage and verify the Family interaction

@@ -350,7 +350,10 @@ export default function ActivityBoard() {
   });
 
   const sortedCommunity = useMemo(() => [...filteredCommunity].sort((a: any, b: any) => {
-    if (communitySort === "trending") return (b.rsvpCount ?? 0) - (a.rsvpCount ?? 0);
+    if (communitySort === "trending") {
+      const engagementDifference = Number(b.interestCount ?? 0) - Number(a.interestCount ?? 0);
+      return engagementDifference || new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
+    }
     if (communitySort === "distance" && userLat !== undefined && userLng !== undefined) {
       const distance = (event: any) => event.lat != null && event.lng != null
         ? haversineDistanceMiles(userLat, userLng, Number(event.lat), Number(event.lng))

@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, gt, inArray, lt, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { selectCurrentVerifiedEvents } from "./eventRecommendations";
 import { normalizeSavedLocationDraft } from "./savedLocationPolicy";
@@ -2053,8 +2053,13 @@ export async function getCommunityEvents(filters: {
     conditions.push(eq(communityEvents.category, filters.category as CommunityEvent["category"]));
   }
   if (filters.isFree !== undefined) conditions.push(eq(communityEvents.isFree, filters.isFree));
+  const eventColumns = getTableColumns(communityEvents);
+  const interestCount = sql<number>`(
+    SELECT COUNT(*) FROM ${eventInterests}
+    WHERE ${eventInterests.eventId} = ${communityEvents.id}
+  )`.as("interestCount");
   return db
-    .select()
+    .select({ ...eventColumns, interestCount })
     .from(communityEvents)
     .where(and(...conditions))
     .orderBy(communityEvents.eventDate)

@@ -31,4 +31,9 @@ describe("Activity Board UX refinement", () => {
     expect(board).toContain("selectedCommunityEvents");
     expect(board).toContain("Show all current events");
   });
+
+  it("orders Trending by the aggregate-only event interest signal", () => {
+    expect(board).toContain("interestCount");
+    expect(board).toContain("engagementDifference");
+  });
 });
