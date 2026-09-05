@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useUserCity } from "@/hooks/useUserCity";
 import { filterCurrentEntertainment, filterVenueListings, officialEntertainmentCalendars, type EntertainmentListing } from "@/lib/entertainmentDiscovery";
@@ -15,12 +15,29 @@ function formatEventDate(date: Date) {
   return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(date));
 }
 
+const entertainmentKinds = [
+  { id: "all", label: "All entertainment" },
+  { id: "live_music", label: "Live bands" },
+  { id: "comedy", label: "Comedy" },
+  { id: "karaoke", label: "Karaoke" },
+] as const;
+
+function matchesEntertainmentKind(event: EntertainmentListing, kind: typeof entertainmentKinds[number]["id"]) {
+  if (kind === "all") return true;
+  const text = `${event.title} ${event.venueName ?? ""}`.toLowerCase();
+  if (kind === "karaoke") return /karaoke/.test(text);
+  if (kind === "comedy") return /comedy|comic|improv|stand-?up/.test(text);
+  return /live music|live band|\bband\b|open mic|jazz|acoustic|concert/.test(text) || event.category === "music";
+}
+
 export default function Entertainment() {
   const { city } = useUserCity();
   const { data: listings, isLoading } = trpc.events.list.useQuery({ city, limit: 100 });
   const { data: waukeshaListings, isLoading: isLoadingWaukeshaLibrary } = trpc.events.list.useQuery({ city: "Waukesha", limit: 100 });
   const trackClick = trpc.entertainment.trackEntertainmentClick.useMutation();
+  const [kind, setKind] = useState<typeof entertainmentKinds[number]["id"]>("all");
   const currentEntertainment = useMemo(() => filterCurrentEntertainment((listings ?? []) as EntertainmentListing[]), [listings]);
+  const filteredEntertainment = useMemo(() => currentEntertainment.filter((event) => matchesEntertainmentKind(event, kind)), [currentEntertainment, kind]);
   const waukeshaLibraryPrograms = useMemo(() => filterVenueListings((waukeshaListings ?? []) as EntertainmentListing[], "Waukesha Public Library"), [waukeshaListings]);
 
   const openOfficialListing = (listing: EntertainmentListing) => {
@@ -51,7 +68,8 @@ export default function Entertainment() {
               <div><p className="font-semibold">Upcoming entertainment in {city}</p><p className="text-sm text-muted-foreground">Use the official source for final time, ticket, and accessibility details.</p></div>
               <Badge variant="secondary" className="rounded-full px-3 py-1">Live local feed</Badge>
             </div>
-            {isLoading ? <div className="space-y-3">{[1, 2, 3].map((key) => <Skeleton key={key} className="h-32 rounded-2xl" />)}</div> : currentEntertainment.length ? <div className="grid gap-4 md:grid-cols-2">{currentEntertainment.map((event) => <CurrentEventCard key={event.id} event={event} onOpen={openOfficialListing} />)}</div> : <div className="rounded-2xl border border-dashed border-border p-8 text-center"><Music className="mx-auto mb-3 h-7 w-7 text-orange-500" /><h2 className="font-display text-xl font-bold">More entertainment is being refreshed for {city}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Browse the trusted venue calendars below or check the broader local event feed.</p><Button asChild className="mt-4 rounded-full"><Link href="/events">Browse all local events</Link></Button></div>}
+            <div className="flex flex-wrap gap-2" aria-label="Entertainment type filters">{entertainmentKinds.map((item) => <Button key={item.id} type="button" size="sm" variant={kind === item.id ? "default" : "outline"} className="rounded-full" onClick={() => setKind(item.id)}>{item.label}</Button>)}</div>
+            {isLoading ? <div className="space-y-3">{[1, 2, 3].map((key) => <Skeleton key={key} className="h-32 rounded-2xl" />)}</div> : filteredEntertainment.length ? <div className="grid gap-4 md:grid-cols-2">{filteredEntertainment.map((event) => <CurrentEventCard key={event.id} event={event} onOpen={openOfficialListing} />)}</div> : <div className="rounded-2xl border border-dashed border-border p-8 text-center"><Music className="mx-auto mb-3 h-7 w-7 text-orange-500" /><h2 className="font-display text-xl font-bold">More {kind === "all" ? "entertainment" : entertainmentKinds.find((item) => item.id === kind)?.label.toLowerCase()} is being refreshed for {city}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Browse trusted official calendars below or check the broader local event feed.</p><Button asChild className="mt-4 rounded-full"><Link href="/events">Browse all local events</Link></Button></div>}
             <section aria-labelledby="waukesha-library-programs" className="rounded-3xl border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Featured Waukesha venue</p><h2 id="waukesha-library-programs" className="font-display text-2xl font-bold">Waukesha Public Library programs</h2><p className="mt-1 text-sm text-muted-foreground">Free, current library events—shown here even when you are browsing another nearby city.</p></div><Button variant="outline" className="rounded-full border-sky-200 bg-white" onClick={() => window.open("https://waukesha.librarycalendar.com/events/upcoming", "_blank", "noopener,noreferrer")}>Library calendar <ExternalLink className="ml-1.5 h-4 w-4" /></Button></div>
               {isLoadingWaukeshaLibrary ? <div className="grid gap-3 md:grid-cols-2"><Skeleton className="h-28 rounded-2xl" /><Skeleton className="h-28 rounded-2xl" /></div> : waukeshaLibraryPrograms.length ? <div className="grid gap-3 md:grid-cols-2">{waukeshaLibraryPrograms.map((event) => <CurrentEventCard key={event.id} event={event} onOpen={openOfficialListing} compact />)}</div> : <p className="rounded-2xl bg-white/80 p-4 text-sm text-muted-foreground">The official library calendar is available above while its current programs load.</p>}

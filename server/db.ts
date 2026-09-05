@@ -3242,6 +3242,9 @@ export async function upsertScrapedEvents(events: Array<{
       "Overture Center": "scraped",
       "City Church Madison": "church",
       "UW–Madison Events Calendar": "university",
+      "Club 400": "scraped",
+      "Milwaukee Comedy": "scraped",
+      "The Laughing Tap": "scraped",
     };
     const source = (sourceMap[ev.sourceName] ?? "scraped") as CommunityEvent["source"];
 
@@ -3252,7 +3255,7 @@ export async function upsertScrapedEvents(events: Array<{
       cooking_class: "food", escape_room: "community", wine_tasting: "food",
       hiking: "outdoors", park: "outdoors", library: "community",
       church: "community", community_center: "community", sports: "sports",
-      arts: "arts", other: "other",
+      arts: "arts", comedy: "arts", karaoke: "music", live_music: "music", other: "other",
     };
     const category = (catMap[ev.category] ?? "other") as CommunityEvent["category"];
 

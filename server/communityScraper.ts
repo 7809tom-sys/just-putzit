@@ -129,6 +129,9 @@ export function parseWaukeshaCalendarDate(month: string, day: string, year: stri
 /** Guess a category from title/description keywords */
 function guessCategory(text: string): string {
   const t = text.toLowerCase();
+  if (/karaoke/i.test(t)) return "karaoke";
+  if (/comedy|comic|improv|stand-?up/i.test(t)) return "comedy";
+  if (/live music|live band|\bband\b|open mic|jazz|acoustic|concert/i.test(t)) return "live_music";
   if (/bowl|bowling/i.test(t)) return "bowling";
   if (/golf/i.test(t)) return "mini_golf";
   if (/kayak|canoe|paddle/i.test(t)) return "kayaking";
@@ -332,6 +335,117 @@ export async function scrapeMarquette(): Promise<ScrapedEvent[]> {
   });
 
   return events.slice(0, 30);
+}
+
+// ─── Club 400, Waukesha ──────────────────────────────────────────────────────
+
+export function parseClub400EntertainmentEvents(html: string, referenceDate = new Date()): ScrapedEvent[] {
+  const url = "https://www.clubwaukesha.com/events";
+  const $ = cheerio.load(html);
+  const events: ScrapedEvent[] = [];
+  $("h1, h2, h3").each((_, el) => {
+    const title = $(el).text().replace(/\s+/g, " ").trim();
+    if (!/karaoke|open mic|live music|live band|comedy/i.test(title)) return;
+    const card = $(el).closest("article, .event, li, section");
+    const nearby = [card.text(), $(el).parent().text(), $(el).next().text()].join(" ").replace(/\s+/g, " ").trim();
+    const eventDate = parseCommunityCalendarDate(nearby, referenceDate);
+    if (!eventDate) return;
+    const link = card.find("a[href]").first().attr("href") ?? $(el).find("a[href]").first().attr("href");
+    events.push({
+      title,
+      description: nearby.replace(title, "").slice(0, 500).trim() || null,
+      eventDate,
+      endDate: null,
+      venueName: "Club 400",
+      venueAddress: "322 Williams St, Waukesha, WI 53186",
+      venueCity: "Waukesha, WI",
+      category: guessCategory(`${title} ${nearby}`),
+      sourceUrl: link ? (link.startsWith("http") ? link : new URL(link, url).toString()) : url,
+      sourceName: "Club 400",
+      isFree: /free|no cover/i.test(nearby),
+      isOnCampus: false,
+    });
+  });
+  return futureEvents(dedupeScrapedEvents(events), 30).filter((event) => event.eventDate && event.eventDate.getTime() >= referenceDate.getTime() - 6 * 60 * 60 * 1000);
+}
+
+export async function scrapeClub400Entertainment(): Promise<ScrapedEvent[]> {
+  const html = await fetchHtml("https://www.clubwaukesha.com/events");
+  return html ? parseClub400EntertainmentEvents(html) : [];
+}
+
+// ─── Milwaukee Comedy ────────────────────────────────────────────────────────
+
+export function parseMilwaukeeComedyEvents(html: string, referenceDate = new Date()): ScrapedEvent[] {
+  const url = "https://www.milwaukeecomedy.com/";
+  const $ = cheerio.load(html);
+  const events: ScrapedEvent[] = [];
+  $("a[href]").each((_, el) => {
+    const title = $(el).text().replace(/\s+/g, " ").trim();
+    const href = $(el).attr("href") ?? "";
+    if (!title || title.length > 180 || !/comedy|laugh/i.test(title) || !/(ticket|laughingtap|milwaukeecomedy)/i.test(href)) return;
+    const eventDate = parseCommunityCalendarDate(title, referenceDate);
+    if (!eventDate) return;
+    events.push({
+      title,
+      description: "Official Milwaukee Comedy ticket and show information.",
+      eventDate,
+      endDate: null,
+      venueName: "Milwaukee Comedy",
+      venueAddress: null,
+      venueCity: "Milwaukee, WI",
+      category: "comedy",
+      sourceUrl: href.startsWith("http") ? href : new URL(href, url).toString(),
+      sourceName: "Milwaukee Comedy",
+      isFree: false,
+      isOnCampus: false,
+    });
+  });
+  return futureEvents(dedupeScrapedEvents(events), 30).filter((event) => event.eventDate && event.eventDate.getTime() >= referenceDate.getTime() - 6 * 60 * 60 * 1000);
+}
+
+export async function scrapeMilwaukeeComedy(): Promise<ScrapedEvent[]> {
+  const html = await fetchHtml("https://www.milwaukeecomedy.com/");
+  return html ? parseMilwaukeeComedyEvents(html) : [];
+}
+
+// ─── The Laughing Tap, Milwaukee ─────────────────────────────────────────────
+
+export function parseLaughingTapComedyEvents(html: string, referenceDate = new Date()): ScrapedEvent[] {
+  const url = "https://laughingtap.com/";
+  const $ = cheerio.load(html);
+  const events: ScrapedEvent[] = [];
+  const addEvent = (title: string, href: string) => {
+    if (!title || title.length > 180 || !/etix\.com\/ticket\/(?:e|p)\//i.test(href)) return;
+    const eventDate = parseCommunityCalendarDate(title, referenceDate);
+    if (!eventDate) return;
+    events.push({
+      title,
+      description: "Official live comedy listing. Most shows are 18+ unless otherwise stated; confirm details with the venue.",
+      eventDate,
+      endDate: null,
+      venueName: "The Laughing Tap Comedy Club",
+      venueAddress: "761 N. Jefferson St, Milwaukee, WI 53202",
+      venueCity: "Milwaukee, WI",
+      category: "comedy",
+      sourceUrl: href,
+      sourceName: "The Laughing Tap",
+      isFree: false,
+      isOnCampus: false,
+    });
+  };
+  $("a[href]").each((_, el) => {
+    addEvent($(el).text().replace(/\s+/g, " ").trim(), $(el).attr("href") ?? "");
+  });
+  $("a[href] img[alt]").each((_, el) => {
+    addEvent($(el).attr("alt")?.replace(/\s+/g, " ").trim() ?? "", $(el).closest("a[href]").attr("href") ?? "");
+  });
+  return futureEvents(dedupeScrapedEvents(events), 45).filter((event) => event.eventDate && event.eventDate.getTime() >= referenceDate.getTime() - 6 * 60 * 60 * 1000);
+}
+
+export async function scrapeLaughingTapComedy(): Promise<ScrapedEvent[]> {
+  const html = await fetchHtml("https://laughingtap.com/");
+  return html ? parseLaughingTapComedyEvents(html) : [];
 }
 
 // ─── OnMilwaukee Weekend Preview ─────────────────────────────────────────────
@@ -561,7 +675,9 @@ export function parseUWMArtsCalendarEvents(events: UWMArtsCalendarEvent[], now =
       isOnCampus: true,
     } satisfies ScrapedEvent];
   });
-  return futureEvents(dedupeScrapedEvents(normalized), 60).filter((event) => event.eventDate && event.eventDate.getTime() >= now.getTime() - 6 * 60 * 60 * 1000);
+  return dedupeScrapedEvents(normalized)
+    .filter((event) => event.eventDate && event.eventDate.getTime() >= now.getTime() - 6 * 60 * 60 * 1000)
+    .slice(0, 60);
 }
 
 // ─── UW–Milwaukee Peck School of the Arts ─────────────────────────────────────
@@ -650,6 +766,9 @@ export async function scrapeAllMilwaukeeEventsWithHealth() {
     { sourceKey: "uwm", sourceLabel: "UW–Milwaukee", city: "Milwaukee", run: scrapeUWMilwaukee },
     { sourceKey: "uwm_arts", sourceLabel: "UW–Milwaukee Peck School of the Arts", city: "Milwaukee", run: scrapeUWMArtsPerformingEvents },
     { sourceKey: "marquette", sourceLabel: "Marquette University", city: "Milwaukee", run: scrapeMarquette },
+    { sourceKey: "club_400", sourceLabel: "Club 400", city: "Waukesha", run: scrapeClub400Entertainment },
+    { sourceKey: "milwaukee_comedy", sourceLabel: "Milwaukee Comedy", city: "Milwaukee", run: scrapeMilwaukeeComedy },
+    { sourceKey: "laughing_tap", sourceLabel: "The Laughing Tap", city: "Milwaukee", run: scrapeLaughingTapComedy },
     { sourceKey: "onmilwaukee", sourceLabel: "OnMilwaukee", city: "Milwaukee", run: scrapeOnMilwaukee },
   ]);
 }
