@@ -1159,6 +1159,8 @@
 - [x] Preserve member saved-city browsing and make all-locations selection reversible
 - [x] Add coverage and responsive verification for visitor-controlled Marketplace location filtering
 - [x] Confirm the public city-search controls have propagated to the live Marketplace domain
+- [x] Deduplicate repeated Marketplace cards by venue, city, category, and title without suppressing distinct listings
+- [x] Add regression coverage for duplicate-free local Marketplace results
 
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area

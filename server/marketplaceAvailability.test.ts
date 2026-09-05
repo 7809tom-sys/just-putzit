@@ -9,7 +9,8 @@ describe("Marketplace availability recovery", () => {
 
   it("exposes only active Marketplace category counts through the established protected router", () => {
     expect(db).toContain("getActivityMarketplaceCategoryCounts");
-    expect(db).toContain("groupBy(activityListings.category)");
+    expect(db).toContain("new Set<string>()");
+    expect(db).toContain("row.title.trim().toLowerCase()");
     expect(router).toContain("categoryCounts: publicProcedure");
   });
 

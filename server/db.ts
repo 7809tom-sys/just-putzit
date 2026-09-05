@@ -889,8 +889,24 @@ export async function getActivityListings(
     filtered = filtered.filter(r => r.category === category);
   }
 
-  return filtered
+  const uniqueRows = Array.from(
+    filtered
     .sort((left, right) => Number(right.isSponsored) - Number(left.isSponsored) || Number(right.createdAt) - Number(left.createdAt))
+    .reduce((unique, row) => {
+      const key = [
+        row.venueId,
+        row.category,
+        row.title.trim().toLowerCase(),
+        row.eventDate?.getTime() ?? "recurring",
+        row.recurringSchedule?.trim().toLowerCase() ?? "",
+      ].join("|");
+      if (!unique.has(key)) unique.set(key, row);
+      return unique;
+    }, new Map<string, typeof filtered[number]>())
+    .values(),
+  );
+
+  return uniqueRows
     .slice(0, 80)
     .map((row) => ({
       ...row,
@@ -904,29 +920,32 @@ export async function getActivityMarketplaceCategoryCounts(city?: string) {
   const db = await getDb();
   if (!db) return {} as Record<string, number>;
   const rows = await db
-    .select({ category: activityListings.category, count: sql<number>`COUNT(*)` })
+    .select({
+      venueId: activityListings.venueId,
+      category: activityListings.category,
+      title: activityListings.title,
+      eventDate: activityListings.eventDate,
+      recurringSchedule: activityListings.recurringSchedule,
+      venueCity: venuePartners.city,
+    })
     .from(activityListings)
     .leftJoin(venuePartners, eq(activityListings.venueId, venuePartners.id))
-    .where(eq(activityListings.isActive, true))
-    .groupBy(activityListings.category);
+    .where(eq(activityListings.isActive, true));
   const normalizedCity = city?.trim().toLowerCase();
-  const locationRows = normalizedCity
-    ? rows.filter((row) => row.category && row.count !== undefined)
-    : rows;
-  if (normalizedCity) {
-    const cityRows = await db
-      .select({ category: activityListings.category, count: sql<number>`COUNT(*)` })
-      .from(activityListings)
-      .innerJoin(venuePartners, eq(activityListings.venueId, venuePartners.id))
-      .where(and(eq(activityListings.isActive, true), sql`LOWER(${venuePartners.city}) = ${normalizedCity}`))
-      .groupBy(activityListings.category);
-    return cityRows.reduce<Record<string, number>>((counts, row) => {
-      counts[row.category] = Number(row.count);
-      return counts;
-    }, {});
-  }
-  return locationRows.reduce<Record<string, number>>((counts, row) => {
-    counts[row.category] = Number(row.count);
+  const seen = new Set<string>();
+  return rows.reduce<Record<string, number>>((counts, row) => {
+    if (!row.category) return counts;
+    if (normalizedCity && row.venueCity?.trim().toLowerCase() !== normalizedCity) return counts;
+    const key = [
+      row.venueId,
+      row.category,
+      row.title.trim().toLowerCase(),
+      row.eventDate?.getTime() ?? "recurring",
+      row.recurringSchedule?.trim().toLowerCase() ?? "",
+    ].join("|");
+    if (seen.has(key)) return counts;
+    seen.add(key);
+    counts[row.category] = (counts[row.category] ?? 0) + 1;
     return counts;
   }, {});
 }
