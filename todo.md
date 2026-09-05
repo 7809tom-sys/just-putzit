@@ -1153,6 +1153,8 @@
 - [x] Remove non-production test listings from active Marketplace inventory
 - [x] Make Marketplace results city-aware for signed-in members without silently substituting another city
 - [x] Add regression coverage and desktop/mobile verification for local, trusted Marketplace inventory
+- [x] Scope Marketplace totals and category controls to the active saved city or explicit all-locations choice
+- [x] Add regression coverage for location-accurate Marketplace availability
 
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area

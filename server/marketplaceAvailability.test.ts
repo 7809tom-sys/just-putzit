@@ -26,6 +26,13 @@ describe("Marketplace availability recovery", () => {
     expect(marketplace).toContain("Browse all locations instead");
   });
 
+  it("uses the same explicit location input for category availability as the listings query", () => {
+    expect(db).toContain("getActivityMarketplaceCategoryCounts(city?: string)");
+    expect(router).toContain("getActivityMarketplaceCategoryCounts(input.city)");
+    expect(marketplace).toContain("marketplaceLocationInput");
+    expect(marketplace).toContain("categoryCounts.useQuery(marketplaceLocationInput)");
+  });
+
   it("recovers from a stale empty category and explains retry and nearby-activity options", () => {
     expect(marketplace).toContain("availableCategories");
     expect(marketplace).toContain('setCategory("all")');

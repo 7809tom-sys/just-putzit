@@ -2015,7 +2015,9 @@ Return JSON with questions array, each having optionA and optionB.`,
 
   // ─── Marketplace (ticket booking) ─────────────────────────────────────────
   marketplace: router({
-    categoryCounts: publicProcedure.query(async () => getActivityMarketplaceCategoryCounts()),
+    categoryCounts: publicProcedure
+      .input(z.object({ city: z.string().trim().min(1).max(120).optional() }))
+      .query(async ({ input }) => getActivityMarketplaceCategoryCounts(input.city)),
 
     browse: publicProcedure
       .input(z.object({ category: z.string().optional(), city: z.string().trim().min(1).max(120).optional(), ticketsOnly: z.boolean().optional() }))

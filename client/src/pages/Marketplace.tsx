@@ -60,11 +60,14 @@ export default function Marketplace() {
     category: category === "all" ? undefined : category,
     city: browseAllLocations ? undefined : memberCity,
   }), [browseAllLocations, category, memberCity]);
+  const marketplaceLocationInput = useMemo(() => ({
+    city: browseAllLocations ? undefined : memberCity,
+  }), [browseAllLocations, memberCity]);
   const { data: listings, isLoading, isError, refetch } = trpc.marketplace.browse.useQuery(
     marketplaceInput,
     { enabled: true }
   );
-  const { data: categoryCounts } = trpc.marketplace.categoryCounts.useQuery();
+  const { data: categoryCounts } = trpc.marketplace.categoryCounts.useQuery(marketplaceLocationInput);
   const availableCategories = CATEGORIES.filter((item) => item.id === "all" || (categoryCounts?.[item.id] ?? 0) > 0);
   const totalAvailable = Object.values(categoryCounts ?? {}).reduce((total, count) => total + Number(count), 0);
   const locationLabel = !browseAllLocations && memberCity ? memberCity : null;
