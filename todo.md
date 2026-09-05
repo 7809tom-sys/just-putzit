@@ -1102,6 +1102,15 @@
 - [x] Add tests and verify the responsive Home experience
 - [x] Move the Home activity and location search control into the top page area with responsive desktop and mobile layout
 
+## Activity Board UX Refinement
+- [x] Replace the always-visible saved-location name input with a reveal-on-demand bookmark control
+- [x] Consolidate Activity Board filters into a compact horizontal row with secondary filters in a More Filters control
+- [x] Add Save, Share, and More Info quick actions to event and activity cards
+- [x] Add Date, Distance, and Trending sort controls to the Activity Board feed
+- [x] Show result counts consistently for Community Events and Local Activities tabs
+- [x] Replace the dedicated promotion banner with a native sponsor card inserted in the organic activity feed
+- [x] Add regression coverage and mobile/desktop visual verification for Activity Board discovery controls
+
 ## Family Select Toast Feedback
 - [x] Show a success toast when a valid Family Select gender option is selected
 - [x] Add regression coverage and verify the Family interaction

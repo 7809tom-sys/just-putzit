@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy, Megaphone } from "lucide-react";
+import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy, Megaphone, Bookmark, BookmarkCheck, Share2, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { MapView } from "@/components/Map";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 import { LocationOverrideControl } from "@/components/LocationOverrideControl";
@@ -53,6 +53,9 @@ const COMMUNITY_CATEGORIES = [
   { id: "market", label: "Market", emoji: "🛍️" },
   { id: "sports", label: "Sports", emoji: "⚽" },
   { id: "arts", label: "Arts", emoji: "🎨" },
+  { id: "comedy", label: "Comedy", emoji: "🎭" },
+  { id: "karaoke", label: "Karaoke", emoji: "🎤" },
+  { id: "live_music", label: "Live Bands", emoji: "🎸" },
   { id: "community", label: "Community", emoji: "🤝" },
   { id: "outdoors", label: "Outdoors", emoji: "🌿" },
   { id: "other", label: "Other", emoji: "🌟" },
@@ -126,6 +129,9 @@ export default function ActivityBoard() {
   const [recommendationSort, setRecommendationSort] = useState<RecommendationSort>("relevance");
   const [recommendationTimeWindow, setRecommendationTimeWindow] = useState<RecommendationTimeWindow>("any");
   const [recommendationCategory, setRecommendationCategory] = useState("all");
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [communitySort, setCommunitySort] = useState<"date" | "distance" | "trending">("date");
+  const [, navigate] = useLocation();
   const [pickupForm, setPickupForm] = useState({
     activityType: "basketball" as "basketball" | "bowling_singles" | "other",
     title: "Pickup basketball — 3:00–5:00 PM",
@@ -143,6 +149,7 @@ export default function ActivityBoard() {
   const userLat = detectedCity?.lat ?? (profile?.latitude ? parseFloat(profile.latitude) : undefined);
   const userLng = detectedCity?.lng ?? (profile?.longitude ? parseFloat(profile.longitude) : undefined);
 
+  const utils = trpc.useUtils();
   const { data: sallyRecs, isLoading: recsLoading } = trpc.activityBoard.getSallyRecommendations.useQuery({});
   const { data: rememberedActivities } = trpc.activityBoard.getPersonalized.useQuery();
   const { data: activities, refetch } = trpc.activityBoard.getAll.useQuery({
@@ -168,6 +175,14 @@ export default function ActivityBoard() {
     category: communityCategory === "all" ? undefined : communityCategory,
     isFree: showFreeOnly ? true : undefined,
     limit: 150,
+  });
+  const { data: bookmarkedEventIds } = trpc.activityBoard.bookmarks.useQuery(undefined, { enabled: Boolean(user) });
+  const toggleBookmark = trpc.activityBoard.toggleBookmark.useMutation({
+    onSuccess: (result) => {
+      void utils.activityBoard.bookmarks.invalidate();
+      toast.success(result.bookmarked ? "Event saved for later." : "Removed from saved events.");
+    },
+    onError: () => toast.error("Couldn’t update saved events. Please try again."),
   });
 
   const rsvpMutation = trpc.activityBoard.rsvp.useMutation({
@@ -197,7 +212,6 @@ export default function ActivityBoard() {
     }
   }, [activities, reportSponsoredMetric]);
 
-  const utils = trpc.useUtils();
   const pickupAlertMutation = trpc.pickupActivities.setAlertPreference.useMutation({
     onSuccess: () => utils.pickupActivities.alertPreference.invalidate(),
   });
@@ -332,6 +346,31 @@ export default function ActivityBoard() {
     return matchesSearch && matchesCampus && matchesSource;
   });
 
+  const sortedCommunity = useMemo(() => [...filteredCommunity].sort((a: any, b: any) => {
+    if (communitySort === "trending") return (b.rsvpCount ?? 0) - (a.rsvpCount ?? 0);
+    if (communitySort === "distance" && userLat !== undefined && userLng !== undefined) {
+      const distance = (event: any) => event.lat != null && event.lng != null
+        ? haversineDistanceMiles(userLat, userLng, Number(event.lat), Number(event.lng))
+        : Number.POSITIVE_INFINITY;
+      return distance(a) - distance(b);
+    }
+    return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
+  }), [filteredCommunity, communitySort, userLat, userLng]);
+
+  async function shareEvent(event: { title: string; id: number }) {
+    const url = `${window.location.origin}/events/${event.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: event.title, text: `Check out ${event.title} on Just Putzit`, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Event link copied.");
+      }
+    } catch (error: any) {
+      if (error?.name !== "AbortError") toast.error("Couldn’t share this event. Try copying the link from its details page.");
+    }
+  }
+
   const categoryEmoji: Record<string, string> = Object.fromEntries(
     CATEGORIES.map(c => [c.id, c.emoji])
   );
@@ -389,23 +428,6 @@ export default function ActivityBoard() {
           )}
         </div>
 
-        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-              <Megaphone className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-amber-950">Own a local activity or event?</p>
-              <p className="text-xs leading-5 text-amber-900">Reach nearby members with a clearly labeled Sponsored placement. Members always stay free.</p>
-            </div>
-          </div>
-          <Link href="/vendor" className="shrink-0">
-            <Button variant="outline" size="sm" className="w-full rounded-full border-amber-300 bg-white text-amber-900 hover:bg-amber-100 sm:w-auto">
-              Promote an activity
-            </Button>
-          </Link>
-        </div>
-
         <div className="mb-6 max-w-xl">
           <LocationOverrideControl compact />
         </div>
@@ -421,6 +443,7 @@ export default function ActivityBoard() {
             }`}
           >
             🎯 Local Activities
+            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary">{filteredActivities.length}</span>
           </button>
           <button
             onClick={() => setActiveTab("community")}
@@ -431,11 +454,9 @@ export default function ActivityBoard() {
             }`}
           >
             🏛️ Community Events
-            {(communityEvents?.length ?? 0) > 0 && (
-              <span className="ml-2 bg-primary text-white text-xs rounded-full px-1.5 py-0.5">
-                {communityEvents!.length}
-              </span>
-            )}
+            <span className="ml-2 bg-primary text-white text-xs rounded-full px-1.5 py-0.5">
+              {sortedCommunity.length}
+            </span>
           </button>
         </div>
 
@@ -588,8 +609,7 @@ export default function ActivityBoard() {
                 </button>
               ))}
             </div>
-            {/* Quick filters */}
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setShowFreeOnly(v => !v)}
                 className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
@@ -610,6 +630,18 @@ export default function ActivityBoard() {
               >
                 🎓 Campus Events Only
               </button>
+              <button
+                type="button"
+                onClick={() => setShowMoreFilters((visible) => !visible)}
+                aria-expanded={showMoreFilters}
+                className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-primary/40"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" /> More filters
+                <ChevronDown className={`h-3.5 w-3.5 ${showMoreFilters ? "rotate-180" : ""}`} />
+              </button>
+            </div>
+            {showMoreFilters && (
+              <div className="flex flex-wrap gap-2 rounded-xl border border-gray-100 bg-gray-50 p-3">
               <button
                 onClick={() => { setShowLibrariesOnly(v => !v); setShowNewspapersOnly(false); setShowCollegeOnly(false); setShowCommunityOnly(false); }}
                 className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
@@ -662,6 +694,18 @@ export default function ActivityBoard() {
                   🌍 {showAllCities ? `All Cities` : `${userCity.split(",")[0].trim()} Only`}
                 </button>
               )}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2">
+              <p className="text-xs font-medium text-gray-600">{sortedCommunity.length} current event{sortedCommunity.length === 1 ? "" : "s"} found</p>
+              <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                Sort
+                <select aria-label="Sort community events" value={communitySort} onChange={(event) => setCommunitySort(event.target.value as "date" | "distance" | "trending")} className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-800">
+                  <option value="date">Date</option>
+                  <option value="distance">Distance</option>
+                  <option value="trending">Trending</option>
+                </select>
+              </label>
             </div>
           </div>
         )}
@@ -828,7 +872,7 @@ export default function ActivityBoard() {
                       <div key={i} className="h-32 bg-gray-100 rounded-2xl animate-pulse" />
                     ))}
                   </div>
-                ) : filteredCommunity.length === 0 ? (
+                ) : sortedCommunity.length === 0 ? (
                   <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
                     <div className="text-6xl mb-4">🏛️</div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">Community Events Coming Soon</h3>
@@ -853,12 +897,13 @@ export default function ActivityBoard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {filteredCommunity.map((event: any) => {
+                    {sortedCommunity.flatMap((event: any, index: number) => {
                       const src = SOURCE_META[(event as any).source ?? "admin"] ?? SOURCE_META.admin;
-                      return (
+                      const bookmarked = bookmarkedEventIds?.includes(event.id) ?? false;
+                      const eventCard = (
                         <Card key={event.id} className="border border-gray-100 hover:shadow-md transition-shadow">
                           <CardContent className="p-5">
-                            <div className="flex items-start justify-between gap-4">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                               <div className="flex-1">
                                 {/* Source badge */}
                                 <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -866,6 +911,11 @@ export default function ActivityBoard() {
                                     <span>{src.icon}</span>
                                     {src.label}
                                   </span>
+                                  {event.category && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium capitalize text-gray-700">
+                                      {COMMUNITY_CATEGORIES.find((category) => category.id === event.category)?.emoji ?? "✨"} {event.category.replaceAll("_", " ")}
+                                    </span>
+                                  )}
                                   {event.isFree && (
                                     <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
                                       🆓 Free
@@ -908,23 +958,42 @@ export default function ActivityBoard() {
                                   )}
                                 </div>
                               </div>
-                              {event.externalUrl && (
-                                <a
-                                  href={event.externalUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex-shrink-0"
-                                >
-                                  <Button size="sm" variant="outline" className="rounded-full text-xs gap-1">
-                                    Details
-                                    <ExternalLink className="w-3 h-3" />
+                              <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-stretch">
+                                {user && (
+                                  <Button size="sm" variant="outline" aria-label={bookmarked ? `Remove ${event.title} from saved events` : `Save ${event.title} for later`} aria-pressed={bookmarked} disabled={toggleBookmark.isPending} onClick={() => toggleBookmark.mutate({ activityId: event.id })} className="rounded-full text-xs gap-1">
+                                    {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />} Save
                                   </Button>
-                                </a>
-                              )}
+                                )}
+                                <Button size="sm" variant="outline" onClick={() => void shareEvent(event)} className="rounded-full text-xs gap-1">
+                                  <Share2 className="h-3.5 w-3.5" /> Share
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => navigate(`/events/${event.id}`)} className="rounded-full text-xs gap-1">
+                                  More info <ExternalLink className="w-3 h-3" />
+                                </Button>
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
                       );
+                      if (index !== 1) return [eventCard];
+                      return [
+                        eventCard,
+                        <Card key="native-sponsor-cta" className="border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-orange-50">
+                          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700"><Megaphone className="h-4 w-4" /></div>
+                              <div>
+                                <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-700">For local partners</p>
+                                <p className="mt-1 font-semibold text-gray-900">Put your activity in front of nearby people ready to make plans.</p>
+                                <p className="mt-1 text-xs text-gray-600">Sponsored placements are clearly labeled. Member profiles remain private.</p>
+                              </div>
+                            </div>
+                            <Link href="/vendor" className="shrink-0">
+                              <Button size="sm" variant="outline" className="rounded-full border-amber-300 bg-white text-amber-900">Promote an activity</Button>
+                            </Link>
+                          </CardContent>
+                        </Card>,
+                      ];
                     })}
                   </div>
                 )}

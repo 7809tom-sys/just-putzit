@@ -8,6 +8,7 @@ export function LocationOverrideControl({ compact = false }: { compact?: boolean
   const { city, detectedCity, isDetecting, isResolvingManualLocation, manualLocationError, isManualOverride, setManualLocation, clearManualLocation, savedLocations, selectSavedLocation, saveCurrentLocation, setSavedLocationHome, deleteSavedLocation, renameSavedLocation, isSavingLocation } = useUserCity();
   const [draft, setDraft] = useState("");
   const [saveLabel, setSaveLabel] = useState("");
+  const [showSaveLocation, setShowSaveLocation] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
 
@@ -87,12 +88,21 @@ export function LocationOverrideControl({ compact = false }: { compact?: boolean
         </div>
       )}
       {detectedCity?.lat !== undefined && detectedCity?.lng !== undefined && (
-        <form onSubmit={(event) => { event.preventDefault(); saveCurrentLocation(saveLabel); setSaveLabel(""); }} className="mt-3 flex gap-2">
-          <Input value={saveLabel} onChange={(event) => setSaveLabel(event.target.value)} placeholder="Save this location as…" aria-label="Name this saved location" className="h-8 min-w-0 bg-white text-xs" />
-          <Button type="submit" size="sm" variant="outline" className="h-8 shrink-0 gap-1.5 text-xs" disabled={isSavingLocation}>
-            <Bookmark className="h-3.5 w-3.5" aria-hidden="true" /> Save
-          </Button>
-        </form>
+        <div className="mt-3">
+          {!showSaveLocation ? (
+            <Button type="button" size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => setShowSaveLocation(true)}>
+              <Bookmark className="h-3.5 w-3.5" aria-hidden="true" /> Bookmark this location
+            </Button>
+          ) : (
+            <form onSubmit={(event) => { event.preventDefault(); saveCurrentLocation(saveLabel); setSaveLabel(""); setShowSaveLocation(false); }} className="flex gap-2">
+              <Input autoFocus value={saveLabel} onChange={(event) => setSaveLabel(event.target.value)} placeholder="Name this saved location" aria-label="Name this saved location" className="h-8 min-w-0 bg-white text-xs" />
+              <Button type="submit" size="sm" variant="outline" className="h-8 shrink-0 gap-1.5 text-xs" disabled={isSavingLocation}>
+                <Bookmark className="h-3.5 w-3.5" aria-hidden="true" /> Save
+              </Button>
+              <Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setShowSaveLocation(false); setSaveLabel(""); }}>Cancel</Button>
+            </form>
+          )}
+        </div>
       )}
     </section>
   );
