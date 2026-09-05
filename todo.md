@@ -1121,6 +1121,11 @@
 - [x] Use actual aggregate engagement with a date tie-breaker for Activity Board Trending order
 - [x] Add regression coverage for the aggregate-only trending contract
 
+## Official Waukesha County Parks Discovery
+- [x] Add Waukesha County Parks as a tracked official Community Events source
+- [x] Parse future-only park programs with precise stated venue city and official handoff link
+- [x] Add source parser coverage, refresh current listings, and verify discovery visibility
+
 ## Family Select Toast Feedback
 - [x] Show a success toast when a valid Family Select gender option is selected
 - [x] Add regression coverage and verify the Family interaction

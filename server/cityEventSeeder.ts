@@ -40,7 +40,7 @@ const VALID_CATEGORIES = [
 ] as const;
 
 const VALID_SOURCES = [
-  "community", "eventbrite", "admin", "milwaukee_library", "waukesha_library",
+  "community", "eventbrite", "admin", "milwaukee_library", "waukesha_library", "waukesha_county_parks",
   "uwm", "marquette", "onmilwaukee", "scraped", "jsonline", "milwaukee_journal",
   "waukesha_freeman", "newspaper", "college", "university", "church",
   "senior_center", "youth_group", "neighborhood", "general",

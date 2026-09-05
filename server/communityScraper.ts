@@ -126,12 +126,69 @@ export function parseWaukeshaCalendarDate(month: string, day: string, year: stri
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+export function parseWaukeshaCountyParksEvents(html: string, now = new Date()): ScrapedEvent[] {
+  const $ = cheerio.load(html);
+  const events: ScrapedEvent[] = [];
+
+  $("li.gs-feed-list-item").each((_, element) => {
+    const titleLink = $(element).find("a.gs-feed-list-title").first();
+    const title = titleLink.text().replace(/\s+/g, " ").trim();
+    const eventDate = parseDate($(element).find(".gs-feed-list-date").first().text());
+    if (!title || !eventDate) return;
+
+    const sourceUrl = titleLink.attr("href")?.trim();
+    if (!sourceUrl?.startsWith("https://events.waukeshacounty.gov/default/detail/")) return;
+
+    const detailText = $(element).find(".gs-feed-list-description").text().replace(/\s+/g, " ").trim();
+    // A single calendar listing can describe many distinct dates and locations.
+    // Keep those out of the feed until they can be split into accurate occurrences.
+    if (/DATES\/TIMES\/LOCATIONS\s*:/i.test(detailText)) return;
+    const locationMatch = detailText.match(/LOCATION\s*:\s*([\s\S]{1,300}?)(?=(?:COST|HOW TO PURCHASE TICKETS|DATES\/TIMES|REGISTRATION|QUESTIONS|NOTE)\s*:|$)/i);
+    const locationText = locationMatch?.[1]?.trim() ?? "";
+    const cityMatch = locationText.match(/,\s*([A-Za-z .'-]+),?\s+WI(?:\s+\d{5})?\)?/i);
+    const venueCity = cityMatch?.[1]?.trim() ? `${cityMatch[1].trim()}, WI` : "Waukesha, WI";
+    const addressMatch = locationText.match(/\(([^()]*\bWI(?:\s+\d{5})?[^()]*)\)/i);
+    const venueName = locationText.split("(")[0]?.trim() || "Waukesha County Parks";
+    const detailDate = sourceUrl.match(/\/detail\/(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})-/);
+    const startAt = detailDate
+      ? new Date(Number(detailDate[1]), Number(detailDate[2]) - 1, Number(detailDate[3]), Number(detailDate[4]), Number(detailDate[5]))
+      : eventDate;
+    const costMatch = detailText.match(/COST\s*:\s*([\s\S]{1,200}?)(?=(?:HOW TO PURCHASE TICKETS|DATES\/TIMES|REGISTRATION|QUESTIONS|NOTE)\s*:|$)/i);
+
+    events.push({
+      title,
+      description: detailText.slice(0, 1000) || null,
+      eventDate: startAt,
+      endDate: null,
+      venueName,
+      venueAddress: addressMatch?.[1]?.trim() || null,
+      venueCity,
+      category: guessCategory(`${title} ${detailText}`),
+      sourceUrl,
+      sourceName: "Waukesha County Parks",
+      isFree: /\bfree\b|no charge|admission free/i.test(costMatch?.[1] ?? ""),
+      isOnCampus: false,
+    });
+  });
+
+  return futureEvents(dedupeScrapedEvents(events), 75)
+    .filter((event) => event.eventDate && event.eventDate.getTime() >= now.getTime() - 6 * 60 * 60 * 1000);
+}
+
+// ─── Waukesha County Parks ──────────────────────────────────────────────────
+export async function scrapeWaukeshaCountyParks(): Promise<ScrapedEvent[]> {
+  const url = "https://www.waukeshacounty.gov/parks-and-land-use/parks-and-land-use-events/";
+  const html = await fetchHtml(url);
+  return html ? parseWaukeshaCountyParksEvents(html) : [];
+}
+
 /** Guess a category from title/description keywords */
 function guessCategory(text: string): string {
   const t = text.toLowerCase();
   if (/karaoke/i.test(t)) return "karaoke";
   if (/comedy|comic|improv|stand-?up/i.test(t)) return "comedy";
   if (/live music|live band|\bband\b|open mic|jazz|acoustic|concert/i.test(t)) return "live_music";
+  if (/skate|ice rink|ice arena/i.test(t)) return "sports";
   if (/bowl|bowling/i.test(t)) return "bowling";
   if (/golf/i.test(t)) return "mini_golf";
   if (/kayak|canoe|paddle/i.test(t)) return "kayaking";
@@ -799,6 +856,7 @@ export async function scrapeAllMilwaukeeEventsWithHealth() {
   return runNamedSourceScrapers([
     { sourceKey: "milwaukee_library", sourceLabel: "Milwaukee Public Library", city: "Milwaukee", run: scrapeMilwaukeeLibrary },
     { sourceKey: "waukesha_library", sourceLabel: "Waukesha Public Library", city: "Waukesha", run: scrapeWaukeshaLibrary },
+    { sourceKey: "waukesha_county_parks", sourceLabel: "Waukesha County Parks", city: "Waukesha County", run: scrapeWaukeshaCountyParks },
     { sourceKey: "uwm", sourceLabel: "UW–Milwaukee", city: "Milwaukee", run: scrapeUWMilwaukee },
     { sourceKey: "uwm_arts", sourceLabel: "UW–Milwaukee Peck School of the Arts", city: "Milwaukee", run: scrapeUWMArtsPerformingEvents },
     { sourceKey: "marquette", sourceLabel: "Marquette University", city: "Milwaukee", run: scrapeMarquette },

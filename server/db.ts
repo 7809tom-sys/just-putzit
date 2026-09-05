@@ -3234,6 +3234,7 @@ export async function upsertScrapedEvents(events: Array<{
     const sourceMap: Record<string, string> = {
       "Milwaukee Public Library": "milwaukee_library",
       "Waukesha Public Library": "waukesha_library",
+      "Waukesha County Parks": "waukesha_county_parks",
       "UW-Milwaukee": "uwm",
       "Marquette University": "marquette",
       "OnMilwaukee": "onmilwaukee",
@@ -3284,6 +3285,7 @@ export async function upsertScrapedEvents(events: Array<{
       await db.update(communityEvents).set({
         description: ev.description?.slice(0, 1000) ?? null,
         category,
+        eventDate: ev.eventDate ?? undefined,
         endDate: ev.endDate ?? undefined,
         venueName: ev.venueName?.slice(0, 255) ?? null,
         address: ev.venueAddress ?? null,
