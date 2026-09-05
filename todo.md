@@ -1158,6 +1158,7 @@
 - [x] Add an explicit city search for Marketplace visitors without saved profile locations
 - [x] Preserve member saved-city browsing and make all-locations selection reversible
 - [x] Add coverage and responsive verification for visitor-controlled Marketplace location filtering
+- [ ] Confirm the public city-search controls have propagated to the live Marketplace domain
 
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area

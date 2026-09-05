@@ -163,11 +163,11 @@ export default function Marketplace() {
             }}
           >
             <div className="min-w-0 flex-1">
-              <Label htmlFor="marketplace-city" className="text-xs font-semibold">Find bookable activities by city</Label>
+              <Label htmlFor="marketplace-city" className="text-xs font-semibold">Search active activities by city</Label>
               <Input id="marketplace-city" value={visitorCityDraft} onChange={(event) => setVisitorCityDraft(event.target.value)} placeholder="City, for example Milwaukee" className="mt-1" />
             </div>
             <div className="flex gap-2">
-              <Button type="submit" className="rounded-full gap-2"><Search className="h-4 w-4" /> Search city</Button>
+              <Button type="submit" className="rounded-full gap-2"><Search className="h-4 w-4" /> Show this city</Button>
               {visitorCity && <Button type="button" variant="outline" className="rounded-full bg-card gap-2" onClick={() => { setVisitorCity(undefined); setVisitorCityDraft(""); setCategory("all"); }}><X className="h-4 w-4" /> All locations</Button>}
             </div>
           </form>
