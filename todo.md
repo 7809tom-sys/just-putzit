@@ -1111,6 +1111,11 @@
 - [x] Replace the dedicated promotion banner with a native sponsor card inserted in the organic activity feed
 - [x] Add regression coverage and mobile/desktop visual verification for Activity Board discovery controls
 
+## Community Events Calendar View
+- [x] Add an accessible month calendar that reflects the active Community Events filters
+- [x] Allow members to select a day and review that day’s current events before opening details
+- [x] Add regression coverage and responsive verification for the filtered calendar view
+
 ## Family Select Toast Feedback
 - [x] Show a success toast when a valid Family Select gender option is selected
 - [x] Add regression coverage and verify the Family interaction

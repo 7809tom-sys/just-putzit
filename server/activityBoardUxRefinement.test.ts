@@ -24,4 +24,11 @@ describe("Activity Board UX refinement", () => {
     expect(board).toContain('key="native-sponsor-cta"');
     expect(board).toContain("index !== 1");
   });
+
+  it("offers a filtered, selectable Community Events calendar view", () => {
+    expect(board).toContain("CalendarWidget");
+    expect(board).toContain('aria-label="Community Events calendar"');
+    expect(board).toContain("selectedCommunityEvents");
+    expect(board).toContain("Show all current events");
+  });
 });

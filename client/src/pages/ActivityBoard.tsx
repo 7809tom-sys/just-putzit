@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Calendar as CalendarWidget } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { MapPin, Calendar, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy, Megaphone, Bookmark, BookmarkCheck, Share2, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { MapPin, Calendar, CalendarDays, List, Users, Search, CheckCircle, BookOpen, GraduationCap, Newspaper, ExternalLink, Plus, BellRing, ShieldCheck, Trophy, Megaphone, Bookmark, BookmarkCheck, Share2, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -131,6 +132,8 @@ export default function ActivityBoard() {
   const [recommendationCategory, setRecommendationCategory] = useState("all");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [communitySort, setCommunitySort] = useState<"date" | "distance" | "trending">("date");
+  const [communityView, setCommunityView] = useState<"list" | "calendar">("list");
+  const [selectedCommunityDate, setSelectedCommunityDate] = useState<Date | undefined>();
   const [, navigate] = useLocation();
   const [pickupForm, setPickupForm] = useState({
     activityType: "basketball" as "basketball" | "bowling_singles" | "other",
@@ -356,6 +359,16 @@ export default function ActivityBoard() {
     }
     return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
   }), [filteredCommunity, communitySort, userLat, userLng]);
+
+  const calendarEventDates = useMemo(() => sortedCommunity.reduce<Date[]>((dates, event: any) => {
+    const eventDate = new Date(event.eventDate);
+    return Number.isNaN(eventDate.getTime()) ? dates : [...dates, eventDate];
+  }, []), [sortedCommunity]);
+  const selectedCommunityEvents = useMemo(() => {
+    if (!selectedCommunityDate) return sortedCommunity;
+    const selectedDay = selectedCommunityDate.toDateString();
+    return sortedCommunity.filter((event: any) => new Date(event.eventDate).toDateString() === selectedDay);
+  }, [selectedCommunityDate, sortedCommunity]);
 
   async function shareEvent(event: { title: string; id: number }) {
     const url = `${window.location.origin}/events/${event.id}`;
@@ -698,14 +711,20 @@ export default function ActivityBoard() {
             )}
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2">
               <p className="text-xs font-medium text-gray-600">{sortedCommunity.length} current event{sortedCommunity.length === 1 ? "" : "s"} found</p>
-              <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
-                Sort
-                <select aria-label="Sort community events" value={communitySort} onChange={(event) => setCommunitySort(event.target.value as "date" | "distance" | "trending")} className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-800">
-                  <option value="date">Date</option>
-                  <option value="distance">Distance</option>
-                  <option value="trending">Trending</option>
-                </select>
-              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <div role="group" aria-label="Community Events view" className="flex rounded-lg border border-gray-200 p-0.5">
+                  <Button type="button" size="sm" variant={communityView === "list" ? "secondary" : "ghost"} className="h-7 gap-1 px-2 text-xs" onClick={() => setCommunityView("list")} aria-pressed={communityView === "list"}><List className="h-3.5 w-3.5" /> List</Button>
+                  <Button type="button" size="sm" variant={communityView === "calendar" ? "secondary" : "ghost"} className="h-7 gap-1 px-2 text-xs" onClick={() => setCommunityView("calendar")} aria-pressed={communityView === "calendar"}><CalendarDays className="h-3.5 w-3.5" /> Calendar</Button>
+                </div>
+                <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                  Sort
+                  <select aria-label="Sort community events" value={communitySort} onChange={(event) => setCommunitySort(event.target.value as "date" | "distance" | "trending")} className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-800">
+                    <option value="date">Date</option>
+                    <option value="distance">Distance</option>
+                    <option value="trending">Trending</option>
+                  </select>
+                </label>
+              </div>
             </div>
           </div>
         )}
@@ -866,18 +885,40 @@ export default function ActivityBoard() {
             }
             {activeTab === "community" && (
               <>
+                {communityView === "calendar" && (
+                  <section className="mb-4 grid gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-4 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)]">
+                    <div className="overflow-x-auto rounded-xl bg-white p-1">
+                      <CalendarWidget
+                        mode="single"
+                        selected={selectedCommunityDate}
+                        onSelect={setSelectedCommunityDate}
+                        defaultMonth={calendarEventDates[0] ?? new Date()}
+                        modifiers={{ hasEvents: calendarEventDates }}
+                        modifiersClassNames={{ hasEvents: "font-bold text-primary underline decoration-primary/50 decoration-2 underline-offset-4" }}
+                        aria-label="Community Events calendar"
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-col justify-center">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Calendar view</p>
+                      <h2 className="mt-1 text-lg font-bold text-gray-900">{selectedCommunityDate ? selectedCommunityDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "Choose a day"}</h2>
+                      <p className="mt-1 text-sm text-gray-600">{selectedCommunityDate ? `${selectedCommunityEvents.length} current event${selectedCommunityEvents.length === 1 ? "" : "s"} match this day.` : "Dates with current events are underlined. Select a day to narrow the cards below."}</p>
+                      {selectedCommunityDate && <Button type="button" size="sm" variant="ghost" className="mt-2 w-fit px-0 text-primary hover:bg-transparent hover:text-primary/80" onClick={() => setSelectedCommunityDate(undefined)}>Show all current events</Button>}
+                      {selectedCommunityDate && selectedCommunityEvents.length > 0 && <div className="mt-3 space-y-2">{selectedCommunityEvents.slice(0, 3).map((event: any) => <button key={event.id} type="button" className="block w-full rounded-lg border border-gray-100 bg-white px-3 py-2 text-left text-xs font-medium text-gray-800 hover:border-primary/30" onClick={() => navigate(`/events/${event.id}`)}>{event.title}</button>)}</div>}
+                    </div>
+                  </section>
+                )}
                 {communityLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map(i => (
                       <div key={i} className="h-32 bg-gray-100 rounded-2xl animate-pulse" />
                     ))}
                   </div>
-                ) : sortedCommunity.length === 0 ? (
+                ) : selectedCommunityEvents.length === 0 ? (
                   <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
                     <div className="text-6xl mb-4">🏛️</div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">Community Events Coming Soon</h3>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">{communityView === "calendar" && selectedCommunityDate ? "No Current Events on This Day" : "Community Events Coming Soon"}</h3>
                     <p className="text-gray-500 max-w-sm mx-auto">
-                      Just Putzit scrapes local libraries, universities, and newspapers nightly. Check back tomorrow for fresh events!
+                      {communityView === "calendar" && selectedCommunityDate ? "Try another date or clear the day selection to review every current event matching your filters." : "Just Putzit scrapes local libraries, universities, and newspapers nightly. Check back tomorrow for fresh events!"}
                     </p>
                     <div className="mt-6 grid grid-cols-2 gap-3 max-w-xs mx-auto text-sm text-gray-600">
                       {[
@@ -897,7 +938,7 @@ export default function ActivityBoard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {sortedCommunity.flatMap((event: any, index: number) => {
+                    {selectedCommunityEvents.flatMap((event: any, index: number) => {
                       const src = SOURCE_META[(event as any).source ?? "admin"] ?? SOURCE_META.admin;
                       const bookmarked = bookmarkedEventIds?.includes(event.id) ?? false;
                       const eventCard = (
