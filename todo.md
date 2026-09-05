@@ -1131,6 +1131,11 @@
 - [x] Exclude cancelled occurrences and retain each occurrence's stated exact city and venue
 - [ ] Refresh and verify future occurrences when the official Waukesha County Parks calendar permits an authorized response
 
+## Distance-Ready Official Events
+- [x] Geocode public venue addresses safely during official event ingestion
+- [x] Preserve ingestion when geocoding is unavailable and avoid collecting member location data
+- [x] Add coverage for public-venue coordinate lookup and distance-ready source records
+
 ## Official Brookfield Public Library Discovery
 - [x] Add the official Brookfield Public Library calendar as a tracked Community Events source
 - [x] Ingest current public library programs while excluding closure notices and government-only entries

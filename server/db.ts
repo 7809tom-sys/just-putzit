@@ -98,6 +98,7 @@ import { getWebauthnChallengeExpiry } from "../shared/webauthnChallengePolicy";
 import { canCreateEventIntroduction, getEventIntroductionPair } from "../shared/eventIntroductionPolicy";
 import { getArchivableEventIds } from "../shared/eventRetentionPolicy";
 import { selectCurrentSavedActivityEvents } from "../shared/savedActivityEvents";
+import { makeRequest, type GeocodingResult } from "./_core/map";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -111,6 +112,19 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+export async function geocodePublicVenueAddress(address: string | null): Promise<{ lat: number; lng: number } | null> {
+  if (!address?.trim()) return null;
+  try {
+    const response = await makeRequest<GeocodingResult>("/maps/api/geocode/json", { address: address.trim() });
+    const location = response.results[0]?.geometry.location;
+    if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return null;
+    return { lat: location.lat, lng: location.lng };
+  } catch {
+    // A source refresh must remain available if public-address geocoding is unavailable.
+    return null;
+  }
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -3222,6 +3236,7 @@ export async function upsertScrapedEvents(events: Array<{
   if (!db) throw new Error("DB unavailable");
 
   let inserted = 0;
+  const coordinateCache = new Map<string, { lat: number; lng: number } | null>();
   for (const ev of events) {
     if (!ev.title || ev.title.length < 3) continue;
 
@@ -3229,6 +3244,14 @@ export async function upsertScrapedEvents(events: Array<{
     const parts = ev.venueCity.split(",");
     const city = parts[0]?.trim() ?? ev.venueCity;
     const state = parts[1]?.trim() ?? "WI";
+    const addressKey = ev.venueAddress?.trim().toLowerCase() ?? "";
+    let coordinates: { lat: number; lng: number } | null = null;
+    if (addressKey) {
+      if (!coordinateCache.has(addressKey)) {
+        coordinateCache.set(addressKey, await geocodePublicVenueAddress(ev.venueAddress));
+      }
+      coordinates = coordinateCache.get(addressKey) ?? null;
+    }
 
     // Map sourceName → source enum value
     const sourceMap: Record<string, string> = {
@@ -3292,6 +3315,8 @@ export async function upsertScrapedEvents(events: Array<{
         address: ev.venueAddress ?? null,
         city,
         state,
+        lat: coordinates?.lat ?? undefined,
+        lng: coordinates?.lng ?? undefined,
         isFree: ev.isFree,
         externalUrl: ev.sourceUrl,
         isOnCampus: ev.isOnCampus,
@@ -3316,6 +3341,8 @@ export async function upsertScrapedEvents(events: Array<{
       source,
       isOnCampus: ev.isOnCampus,
       isActive: true,
+      lat: coordinates?.lat ?? null,
+      lng: coordinates?.lng ?? null,
     });
     inserted++;
   }
