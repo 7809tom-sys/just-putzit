@@ -1126,6 +1126,11 @@
 - [x] Parse future-only park programs with precise stated venue city and official handoff link
 - [x] Add source parser coverage, refresh current listings, and verify discovery visibility
 
+## Waukesha County Parks Multi-Location Precision
+- [x] Split individually dated official multi-location park programs into discrete event occurrences
+- [x] Exclude cancelled occurrences and retain each occurrence's stated exact city and venue
+- [ ] Refresh and verify future occurrences when the official Waukesha County Parks calendar permits an authorized response
+
 ## Official Brookfield Public Library Discovery
 - [x] Add the official Brookfield Public Library calendar as a tracked Community Events source
 - [x] Ingest current public library programs while excluding closure notices and government-only entries

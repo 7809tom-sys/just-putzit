@@ -25,3 +25,7 @@ On September 5, 2026, both the main Milwaukee County Parks event calendar and it
 Official calendar: https://www.ci.brookfield.wi.us/calendar.aspx?view=list&CID=29
 
 The City of Brookfield's official calendar publishes a dedicated Library Calendar with future event titles, start dates and times, descriptions where available, and the exact Brookfield library address. The adapter reads only that category, treats it as free unless the official calendar states otherwise, removes closure notices, and retains the official calendar as the handoff link. Its first verified refresh returned 42 current public library programs in Brookfield.
+
+## Waukesha County Parks Access Status
+
+The Waukesha County Parks page returned an accessible official calendar during the initial verification and supplied the individually dated listings already stored from that verified pull. A subsequent refresh attempt on September 5, 2026 received an HTTP 403 response. No access-control bypass was attempted and no new parks events were inserted from that denied request. The production parser retains the new occurrence-splitting safeguards for the next authorized official response; the source-health record will surface any failed scheduled refresh rather than silently inventing or updating data.

@@ -105,7 +105,7 @@ function futureEvents(events: ScrapedEvent[], limit = 40) {
 function dedupeScrapedEvents(events: ScrapedEvent[]) {
   const seen = new Set<string>();
   return events.filter((event) => {
-    const key = `${event.sourceName}|${event.title.toLowerCase().replace(/\s+/g, " ").trim()}|${event.eventDate?.toISOString().slice(0, 10) ?? ""}`;
+    const key = `${event.sourceName}|${event.title.toLowerCase().replace(/\s+/g, " ").trim()}|${event.eventDate?.toISOString() ?? ""}|${event.venueAddress ?? event.venueName ?? ""}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -126,6 +126,45 @@ export function parseWaukeshaCalendarDate(month: string, day: string, year: stri
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseWaukeshaCountyParksLocation(locationText: string) {
+  const cityMatch = locationText.match(/,\s*([A-Za-z .'-]+),?\s+WI(?:\s+\d{5})?\)?/i);
+  const venueCity = cityMatch?.[1]?.trim() ? `${cityMatch[1].trim()}, WI` : "Waukesha, WI";
+  const addressMatch = locationText.match(/\(([^()]*\bWI(?:\s+\d{5})?[^()]*)\)/i);
+  const venueName = locationText.split("(")[0]?.trim() || "Waukesha County Parks";
+  return { venueCity, venueAddress: addressMatch?.[1]?.trim() || null, venueName };
+}
+
+function parseWaukeshaCountyParksOccurrences(title: string, detailText: string, sourceUrl: string): ScrapedEvent[] {
+  const entries = detailText.matchAll(/(?:\b(CANCELLED)\s+)?\b(JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:T(?:EMBER)?)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)\s+(\d{1,2}),\s+(\d{4})\s*•\s*(\d{1,2})(?::(\d{2}))?\s*(?:[–-]\s*\d{1,2}(?::\d{2})?\s*)?([ap])\.?m\.?\s*•\s*(.*?)(?=\s+(?:\bCANCELLED\s+)?\b(?:JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:T(?:EMBER)?)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)\s+\d{1,2},\s+\d{4}\s*•|$)/gi);
+  const events: ScrapedEvent[] = [];
+
+  Array.from(entries).forEach((entry) => {
+    const [, cancelled, month, day, year, hourText, minuteText, meridiem, locationText] = entry;
+    if (cancelled) return;
+    const monthIndex = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].indexOf(month.slice(0, 3).toLowerCase());
+    if (monthIndex < 0) return;
+    let hour = Number(hourText);
+    if (meridiem.toLowerCase() === "p" && hour < 12) hour += 12;
+    if (meridiem.toLowerCase() === "a" && hour === 12) hour = 0;
+    const eventDate = new Date(Number(year), monthIndex, Number(day), hour, Number(minuteText ?? 0), 0, 0);
+    if (Number.isNaN(eventDate.getTime())) return;
+    const location = parseWaukeshaCountyParksLocation(locationText.trim());
+    events.push({
+      title,
+      description: detailText.slice(0, 1000) || null,
+      eventDate,
+      endDate: null,
+      ...location,
+      category: guessCategory(`${title} ${detailText}`),
+      sourceUrl,
+      sourceName: "Waukesha County Parks",
+      isFree: /\bfree\b|no charge|admission free/i.test(detailText),
+      isOnCampus: false,
+    });
+  });
+  return events;
+}
+
 export function parseWaukeshaCountyParksEvents(html: string, now = new Date()): ScrapedEvent[] {
   const $ = cheerio.load(html);
   const events: ScrapedEvent[] = [];
@@ -140,15 +179,13 @@ export function parseWaukeshaCountyParksEvents(html: string, now = new Date()): 
     if (!sourceUrl?.startsWith("https://events.waukeshacounty.gov/default/detail/")) return;
 
     const detailText = $(element).find(".gs-feed-list-description").text().replace(/\s+/g, " ").trim();
-    // A single calendar listing can describe many distinct dates and locations.
-    // Keep those out of the feed until they can be split into accurate occurrences.
-    if (/DATES\/TIMES\/LOCATIONS\s*:/i.test(detailText)) return;
+    if (/DATES\/TIMES\/LOCATIONS\s*:/i.test(detailText)) {
+      events.push(...parseWaukeshaCountyParksOccurrences(title, detailText, sourceUrl));
+      return;
+    }
     const locationMatch = detailText.match(/LOCATION\s*:\s*([\s\S]{1,300}?)(?=(?:COST|HOW TO PURCHASE TICKETS|DATES\/TIMES|REGISTRATION|QUESTIONS|NOTE)\s*:|$)/i);
     const locationText = locationMatch?.[1]?.trim() ?? "";
-    const cityMatch = locationText.match(/,\s*([A-Za-z .'-]+),?\s+WI(?:\s+\d{5})?\)?/i);
-    const venueCity = cityMatch?.[1]?.trim() ? `${cityMatch[1].trim()}, WI` : "Waukesha, WI";
-    const addressMatch = locationText.match(/\(([^()]*\bWI(?:\s+\d{5})?[^()]*)\)/i);
-    const venueName = locationText.split("(")[0]?.trim() || "Waukesha County Parks";
+    const location = parseWaukeshaCountyParksLocation(locationText);
     const detailDate = sourceUrl.match(/\/detail\/(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})-/);
     const startAt = detailDate
       ? new Date(Number(detailDate[1]), Number(detailDate[2]) - 1, Number(detailDate[3]), Number(detailDate[4]), Number(detailDate[5]))
@@ -160,9 +197,7 @@ export function parseWaukeshaCountyParksEvents(html: string, now = new Date()): 
       description: detailText.slice(0, 1000) || null,
       eventDate: startAt,
       endDate: null,
-      venueName,
-      venueAddress: addressMatch?.[1]?.trim() || null,
-      venueCity,
+      ...location,
       category: guessCategory(`${title} ${detailText}`),
       sourceUrl,
       sourceName: "Waukesha County Parks",

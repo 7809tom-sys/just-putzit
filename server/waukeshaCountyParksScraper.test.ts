@@ -18,13 +18,20 @@ const fixture = `
     </div></div>
   </li>
   <li class="gs-feed-list-item"><a href="https://events.waukeshacounty.gov/default/detail/2026-08-01-past" class="gs-feed-list-title">Past Program</a><span class="gs-feed-list-date">August 01, 2026</span></li>
+  <li class="gs-feed-list-item item item_text-right divider-lines">
+    <div class="gs-feed-list-content info"><div class="gs-feed-list-meta">
+      <a href="https://events.waukeshacounty.gov/default/detail/2026-09-12-1400-Community-Science" class="gs-feed-list-title">Community Science: Pollinators</a>
+      <span class="gs-feed-list-date">September 12, 2026</span>
+      <span class="gs-feed-list-description"><p>DATES/TIMES/LOCATIONS: SEPTEMBER 12, 2026 • 2-3 p.m. • Fox Brook Park, Picnic Area (2925 N Barker Rd, Brookfield, WI) SEPTEMBER 14, 2026 • 2-3 p.m. • Menomonee Park, Family Camp (W220N7884 Town Line Rd, Menomonee Falls, WI) CANCELLED SEPTEMBER 16, 2026 • 2-3 p.m. • Retzer Nature Center, Lobby (S14W28167 Madison St, Waukesha, WI)</p><p>COST: Free</p></span>
+    </div></div>
+  </li>
 </ul>`;
 
 describe("Waukesha County Parks official calendar parser", () => {
   it("retains exact event city, official handoff, and admission status for future records", () => {
     const events = parseWaukeshaCountyParksEvents(fixture, new Date("2026-09-05T12:00:00"));
 
-    expect(events).toHaveLength(2);
+    expect(events).toHaveLength(4);
     expect(events[0]).toMatchObject({
       title: "Adult/Senior Skate (Eble)",
       venueName: "Eble Park Ice Arena",
@@ -37,5 +44,10 @@ describe("Waukesha County Parks official calendar parser", () => {
     });
     expect(events[1]).toMatchObject({ venueCity: "Waukesha, WI", isFree: true });
     expect(events[0]?.eventDate.toISOString()).toContain("2026-09-08T10:30:00");
+    expect(events.slice(2)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ title: "Community Science: Pollinators", venueCity: "Brookfield, WI", venueName: "Fox Brook Park, Picnic Area", isFree: true }),
+      expect.objectContaining({ title: "Community Science: Pollinators", venueCity: "Menomonee Falls, WI", venueName: "Menomonee Park, Family Camp", isFree: true }),
+    ]));
+    expect(events.some((event) => event.venueName === "Retzer Nature Center, Lobby")).toBe(false);
   });
 });
