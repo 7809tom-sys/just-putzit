@@ -182,6 +182,48 @@ export async function scrapeWaukeshaCountyParks(): Promise<ScrapedEvent[]> {
   return html ? parseWaukeshaCountyParksEvents(html) : [];
 }
 
+export function parseBrookfieldLibraryCalendarEvents(html: string, now = new Date()): ScrapedEvent[] {
+  const $ = cheerio.load(html);
+  const url = "https://www.ci.brookfield.wi.us/calendar.aspx?view=list&CID=29";
+  const events: ScrapedEvent[] = [];
+
+  $("#CID29 > ol > li").each((_, element) => {
+    const title = $(element).find("h3").first().text().replace(/\s+/g, " ").trim();
+    if (!title || /\bclosed\b/i.test(title)) return;
+
+    const dateText = $(element).find(".subHeader .date").first().text().replace(/\s+/g, " ").trim();
+    const eventDate = parseDate(dateText.split(/\s+[–—-]\s+/)[0]?.trim());
+    if (!eventDate) return;
+
+    const location = $(element).find(".eventLocation .name").first().text().replace(/\s+/g, " ").trim();
+    const description = $(element).find(".icalDescription").first().text().replace(/\s+/g, " ").trim();
+    events.push({
+      title,
+      description: description || null,
+      eventDate,
+      endDate: null,
+      venueName: "Brookfield Public Library",
+      venueAddress: location || "1900 N. Calhoun Rd, Brookfield, WI 53005",
+      venueCity: "Brookfield, WI",
+      category: guessCategory(`${title} ${description}`),
+      sourceUrl: url,
+      sourceName: "Brookfield Public Library",
+      isFree: true,
+      isOnCampus: false,
+    });
+  });
+
+  return futureEvents(dedupeScrapedEvents(events), 75)
+    .filter((event) => event.eventDate && event.eventDate.getTime() >= now.getTime() - 6 * 60 * 60 * 1000);
+}
+
+// ─── Brookfield Public Library ──────────────────────────────────────────────
+export async function scrapeBrookfieldLibrary(): Promise<ScrapedEvent[]> {
+  const url = "https://www.ci.brookfield.wi.us/calendar.aspx?view=list&CID=29";
+  const html = await fetchHtml(url);
+  return html ? parseBrookfieldLibraryCalendarEvents(html) : [];
+}
+
 /** Guess a category from title/description keywords */
 function guessCategory(text: string): string {
   const t = text.toLowerCase();
@@ -857,6 +899,7 @@ export async function scrapeAllMilwaukeeEventsWithHealth() {
     { sourceKey: "milwaukee_library", sourceLabel: "Milwaukee Public Library", city: "Milwaukee", run: scrapeMilwaukeeLibrary },
     { sourceKey: "waukesha_library", sourceLabel: "Waukesha Public Library", city: "Waukesha", run: scrapeWaukeshaLibrary },
     { sourceKey: "waukesha_county_parks", sourceLabel: "Waukesha County Parks", city: "Waukesha County", run: scrapeWaukeshaCountyParks },
+    { sourceKey: "brookfield_library", sourceLabel: "Brookfield Public Library", city: "Brookfield", run: scrapeBrookfieldLibrary },
     { sourceKey: "uwm", sourceLabel: "UW–Milwaukee", city: "Milwaukee", run: scrapeUWMilwaukee },
     { sourceKey: "uwm_arts", sourceLabel: "UW–Milwaukee Peck School of the Arts", city: "Milwaukee", run: scrapeUWMArtsPerformingEvents },
     { sourceKey: "marquette", sourceLabel: "Marquette University", city: "Milwaukee", run: scrapeMarquette },

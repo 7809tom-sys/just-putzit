@@ -15,3 +15,13 @@ The official page publishes upcoming programs and links each listing to an offic
 ## Integration Decision
 
 Start with Waukesha County Parks because the official page is accessible and has clear dated event records. Preserve each event's stated city—especially Brookfield, Waukesha, Muskego, Menomonee Falls, and Mukwonago—rather than labeling the source broadly as Waukesha or Milwaukee. Do not circumvent the Milwaukee County anti-bot challenge; revisit it only through an approved official feed or accessible public calendar endpoint.
+
+## Milwaukee County Parks Follow-up
+
+On September 5, 2026, both the main Milwaukee County Parks event calendar and its official WebTrac public-program listing returned access challenges to automated requests. Search visibility confirms that these are official sources, but no documented API, RSS feed, or other public structured endpoint was identified. The integration remains intentionally unimplemented: Just Putzit will not automate around the access controls. If Milwaukee County Parks later provides an accessible official feed or data-sharing endpoint, it can be evaluated as a separate source adapter.
+
+## Brookfield Public Library
+
+Official calendar: https://www.ci.brookfield.wi.us/calendar.aspx?view=list&CID=29
+
+The City of Brookfield's official calendar publishes a dedicated Library Calendar with future event titles, start dates and times, descriptions where available, and the exact Brookfield library address. The adapter reads only that category, treats it as free unless the official calendar states otherwise, removes closure notices, and retains the official calendar as the handoff link. Its first verified refresh returned 42 current public library programs in Brookfield.

@@ -1126,6 +1126,11 @@
 - [x] Parse future-only park programs with precise stated venue city and official handoff link
 - [x] Add source parser coverage, refresh current listings, and verify discovery visibility
 
+## Official Brookfield Public Library Discovery
+- [x] Add the official Brookfield Public Library calendar as a tracked Community Events source
+- [x] Ingest current public library programs while excluding closure notices and government-only entries
+- [x] Add parser coverage, refresh current listings, and verify source-level data precision
+
 ## Family Select Toast Feedback
 - [x] Show a success toast when a valid Family Select gender option is selected
 - [x] Add regression coverage and verify the Family interaction
