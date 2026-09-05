@@ -900,6 +900,20 @@ export async function getActivityListings(
     }));
 }
 
+export async function getActivityMarketplaceCategoryCounts() {
+  const db = await getDb();
+  if (!db) return {} as Record<string, number>;
+  const rows = await db
+    .select({ category: activityListings.category, count: sql<number>`COUNT(*)` })
+    .from(activityListings)
+    .where(eq(activityListings.isActive, true))
+    .groupBy(activityListings.category);
+  return rows.reduce<Record<string, number>>((counts, row) => {
+    counts[row.category] = Number(row.count);
+    return counts;
+  }, {});
+}
+
 export async function getActivityById(activityId: number) {
   const db = await getDb();
   if (!db) return null;

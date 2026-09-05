@@ -1141,6 +1141,16 @@
 - [x] Keep member interest private while showing only the existing aggregate interest count
 - [x] Add regression coverage for the Activity Board interest interaction
 
+## Activity Marketplace Restoration
+- [x] Diagnose why the Activity Marketplace appears empty for members
+- [x] Restore browseable, current marketplace inventory or provide a clear nearby-activity fallback
+- [x] Add regression coverage and verify Marketplace browsing on desktop and mobile
+
+## Visit Waukesha Authoritative Event Discovery
+- [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
+- [ ] Parse current public event records with exact city, venue, admission, and official detail handoff
+- [ ] Add parser coverage, refresh verified listings, and prevent duplicate city-area event records
+
 ## Official Brookfield Public Library Discovery
 - [x] Add the official Brookfield Public Library calendar as a tracked Community Events source
 - [x] Ingest current public library programs while excluding closure notices and government-only entries

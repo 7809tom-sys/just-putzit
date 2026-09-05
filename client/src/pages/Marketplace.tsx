@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MapPin, Ticket, Users, CalendarDays, Star, CheckCircle2 } from "lucide-react";
+import { MapPin, Ticket, Users, CalendarDays, Star, CheckCircle2, RefreshCw, Compass } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -53,10 +53,19 @@ export default function Marketplace() {
   const [scheduledFor, setScheduledFor] = useState("");
 
   const utils = trpc.useUtils();
-  const { data: listings, isLoading } = trpc.marketplace.browse.useQuery(
+  const { data: listings, isLoading, isError, refetch } = trpc.marketplace.browse.useQuery(
     { category: category === "all" ? undefined : category },
     { enabled: isAuthenticated }
   );
+  const { data: categoryCounts } = trpc.marketplace.categoryCounts.useQuery(undefined, { enabled: isAuthenticated });
+  const availableCategories = CATEGORIES.filter((item) => item.id === "all" || (categoryCounts?.[item.id] ?? 0) > 0);
+  const totalAvailable = Object.values(categoryCounts ?? {}).reduce((total, count) => total + Number(count), 0);
+
+  useEffect(() => {
+    if (category !== "all" && categoryCounts && (categoryCounts[category] ?? 0) === 0) {
+      setCategory("all");
+    }
+  }, [category, categoryCounts]);
 
   const bookMutation = trpc.marketplace.book.useMutation({
     onSuccess: (booking) => {
@@ -137,7 +146,7 @@ export default function Marketplace() {
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Activity Marketplace</h1>
             <p className="text-sm text-muted-foreground">
-              Real things to do, booked in-app. No fees for you — ever.
+              Real things to do, booked in-app. No fees for you — ever. {totalAvailable > 0 ? `${totalAvailable} activities available.` : ""}
             </p>
           </div>
           <Button variant="outline" className="rounded-full gap-2 bg-card" asChild>
@@ -147,7 +156,7 @@ export default function Marketplace() {
 
         {/* Category chips */}
         <div className="flex flex-wrap gap-2 mb-6">
-          {CATEGORIES.map(c => (
+          {availableCategories.map(c => (
             <button
               key={c.id}
               onClick={() => setCategory(c.id)}
@@ -165,6 +174,15 @@ export default function Marketplace() {
         {/* Listings */}
         {isLoading ? (
           <div className="flex justify-center py-20"><Spinner /></div>
+        ) : isError ? (
+          <Card className="border-amber-200 bg-amber-50/60">
+            <CardContent className="p-10 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-800"><RefreshCw className="h-5 w-5" /></div>
+              <h2 className="font-display text-lg font-bold text-foreground">We couldn’t load Marketplace activities</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Your saved category has been kept. Please retry to see the current bookable activities.</p>
+              <Button className="mt-5 rounded-full gap-2" onClick={() => void refetch()}><RefreshCw className="h-4 w-4" /> Try again</Button>
+            </CardContent>
+          </Card>
         ) : listings && listings.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {([...(listings as Listing[]).filter(l => l.isSponsored), ...(listings as Listing[]).filter(l => !l.isSponsored)]).map(l => (
@@ -219,10 +237,13 @@ export default function Marketplace() {
         ) : (
           <Card className="border-dashed border-2 bg-muted/30">
             <CardContent className="p-10 text-center">
-              <div className="text-4xl mb-3">🗺️</div>
-              <p className="text-sm text-muted-foreground">
-                No activities in this category yet. Check back soon — Sally is signing up local spots!
-              </p>
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary"><Compass className="h-5 w-5" /></div>
+              <h2 className="font-display text-lg font-bold text-foreground">No bookable activities in {category === "all" ? "the Marketplace" : `this ${category.replaceAll("_", " ")} category`} yet</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Try every available Marketplace category, or explore nearby public activities and current events while new partners are added.</p>
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                {category !== "all" && <Button variant="outline" className="rounded-full bg-card" onClick={() => setCategory("all")}>Browse all available</Button>}
+                <Button className="rounded-full" asChild><a href="/activities">Explore nearby activities</a></Button>
+              </div>
             </CardContent>
           </Card>
         )}

@@ -29,3 +29,21 @@ The City of Brookfield's official calendar publishes a dedicated Library Calenda
 ## Waukesha County Parks Access Status
 
 The Waukesha County Parks page returned an accessible official calendar during the initial verification and supplied the individually dated listings already stored from that verified pull. A subsequent refresh attempt on September 5, 2026 received an HTTP 403 response. No access-control bypass was attempted and no new parks events were inserted from that denied request. The production parser retains the new occurrence-splitting safeguards for the next authorized official response; the source-health record will surface any failed scheduled refresh rather than silently inventing or updating data.
+
+## City of Waukesha Special Events
+
+Official calendar: https://www.waukesha-wi.gov/special-events.php
+
+The official City of Waukesha page lists individual future events with titles, dates, times, venues when published, and official detail or registration links. The September 5, 2026 review included Neighborhood Beer Garden at Merrill Crest Park, It's Our Fox River Day, Oktoberfest, Waukesha Unlocked, Wauk-Tober, Tombstone Trot, and city seasonal events. The page was visible to text extraction but presented a browser access challenge. A standard server-side request also returned HTTP 403, so no adapter is implemented and no access controls will be bypassed. The source can be reconsidered only if the city provides an accessible official feed, API, or data-sharing endpoint.
+
+## Visit Waukesha Events
+
+Authoritative destination calendar: https://visitwaukesha.org/events/
+
+Visit Waukesha provides an accessible current-events listing for the Waukesha–Pewaukee area. The September 5, 2026 review contained individual event dates and times, exact venues and addresses, descriptive previews, free-admission markers, and official event detail pages for public events including the Wisconsin Highland Games, Fiesta del Río, the Pewaukee Farmers Market, and Waukesha Oktoberfest. Each record would preserve its stated city instead of being broadly labelled Waukesha. However, a standard server-side request returns a Cloudflare challenge, so no adapter is implemented and the protected source will not be bypassed. It can be revisited only with a permitted official feed or data-sharing endpoint.
+
+## Waukesha Civic Theatre
+
+Official calendar candidate: https://www.waukeshacivictheatre.org/box-office/upcoming-shows/
+
+The official theatre page renders a shell without the current show data in its static markup. Its standard public WordPress content endpoint timed out during the September 5, 2026 assessment. No parser or records are added from an incomplete or unavailable response. The source can be revisited if an accessible official calendar feed or stable public endpoint is confirmed.

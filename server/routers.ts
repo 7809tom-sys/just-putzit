@@ -88,6 +88,7 @@ import {
   getVenueById,
   createVenuePartner,
   getActivityListings,
+  getActivityMarketplaceCategoryCounts,
   getActivityById,
   getSponsoredPlacementEligibleListing,
   getSponsoredPlacementsForActivities,
@@ -2014,6 +2015,8 @@ Return JSON with questions array, each having optionA and optionB.`,
 
   // ─── Marketplace (ticket booking) ─────────────────────────────────────────
   marketplace: router({
+    categoryCounts: protectedProcedure.query(async () => getActivityMarketplaceCategoryCounts()),
+
     browse: protectedProcedure
       .input(z.object({ category: z.string().optional(), ticketsOnly: z.boolean().optional() }))
       .query(async ({ input }) => {
