@@ -48,4 +48,13 @@ describe("Marketplace availability recovery", () => {
     expect(marketplace).toContain("We couldn’t load Marketplace activities");
     expect(marketplace).toContain("Explore nearby activities");
   });
+
+  it("progressively reveals Marketplace cards and resets the result window when the city or category changes", () => {
+    expect(marketplace).toContain("const INITIAL_VISIBLE_RESULTS = 12");
+    expect(marketplace).toContain("setVisibleResults(INITIAL_VISIBLE_RESULTS)");
+    expect(marketplace).toContain("}, [activeCity, category]);");
+    expect(marketplace).toContain("const visibleListings = orderedListings.slice(0, visibleResults)");
+    expect(marketplace).toContain("Showing {visibleListings.length} of {orderedListings.length} available activities");
+    expect(marketplace).toContain("Show {Math.min(INITIAL_VISIBLE_RESULTS, remainingListings)} more activities");
+  });
 });

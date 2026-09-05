@@ -1161,6 +1161,9 @@
 - [x] Confirm the public city-search controls have propagated to the live Marketplace domain
 - [x] Deduplicate repeated Marketplace cards by venue, city, category, and title without suppressing distinct listings
 - [x] Add regression coverage for duplicate-free local Marketplace results
+- [x] Show Marketplace results progressively while keeping all active local inventory accessible
+- [x] Reset the visible-result count when Marketplace city or category changes
+- [x] Add regression coverage and responsive verification for progressive Marketplace browsing
 
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area

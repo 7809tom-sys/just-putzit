@@ -27,6 +27,8 @@ const CATEGORIES = [
   { id: "arts", label: "Arts", emoji: "🎨" },
 ];
 
+const INITIAL_VISIBLE_RESULTS = 12;
+
 type Listing = {
   id: number;
   title: string;
@@ -55,6 +57,7 @@ export default function Marketplace() {
   const [selected, setSelected] = useState<Listing | null>(null);
   const [partySize, setPartySize] = useState(2);
   const [scheduledFor, setScheduledFor] = useState("");
+  const [visibleResults, setVisibleResults] = useState(INITIAL_VISIBLE_RESULTS);
 
   const utils = trpc.useUtils();
   const memberCity = profile?.city?.trim() || undefined;
@@ -82,6 +85,20 @@ export default function Marketplace() {
       setCategory("all");
     }
   }, [category, categoryCounts]);
+
+  useEffect(() => {
+    setVisibleResults(INITIAL_VISIBLE_RESULTS);
+  }, [activeCity, category]);
+
+  const orderedListings = useMemo(
+    () => [
+      ...(listings as Listing[] | undefined ?? []).filter((listing) => listing.isSponsored),
+      ...(listings as Listing[] | undefined ?? []).filter((listing) => !listing.isSponsored),
+    ],
+    [listings],
+  );
+  const visibleListings = orderedListings.slice(0, visibleResults);
+  const remainingListings = Math.max(orderedListings.length - visibleListings.length, 0);
 
   const bookMutation = trpc.marketplace.book.useMutation({
     onSuccess: (booking) => {
@@ -203,8 +220,9 @@ export default function Marketplace() {
             </CardContent>
           </Card>
         ) : listings && listings.length > 0 ? (
+          <>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {([...(listings as Listing[]).filter(l => l.isSponsored), ...(listings as Listing[]).filter(l => !l.isSponsored)]).map(l => (
+            {visibleListings.map(l => (
               <Card key={l.id} className={`overflow-hidden group transition-shadow ${
                 l.isSponsored
                   ? "border border-amber-500/40 shadow-md hover:shadow-amber-500/20 ring-1 ring-amber-500/20"
@@ -262,6 +280,15 @@ export default function Marketplace() {
               </Card>
             ))}
           </div>
+          {remainingListings > 0 && (
+            <div className="mt-7 flex flex-col items-center gap-2">
+              <p className="text-sm text-muted-foreground">Showing {visibleListings.length} of {orderedListings.length} available activities</p>
+              <Button variant="outline" className="rounded-full bg-card" onClick={() => setVisibleResults((current) => current + INITIAL_VISIBLE_RESULTS)}>
+                Show {Math.min(INITIAL_VISIBLE_RESULTS, remainingListings)} more activities
+              </Button>
+            </div>
+          )}
+          </>
         ) : (
           <Card className="border-dashed border-2 bg-muted/30">
             <CardContent className="p-10 text-center">
