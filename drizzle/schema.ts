@@ -646,7 +646,7 @@ export const communityEvents = mysqlTable("community_events", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   category: mysqlEnum("category", [
-    "music", "food", "market", "sports", "arts", "community", "outdoors", "other"
+    "music", "food", "market", "sports", "arts", "community", "outdoors", "comedy", "karaoke", "live_music", "other"
   ]).notNull().default("other"),
   eventDate: timestamp("eventDate").notNull(),
   endDate: timestamp("endDate"),

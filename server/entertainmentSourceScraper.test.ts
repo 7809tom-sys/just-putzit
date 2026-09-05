@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseClub400EntertainmentEvents, parseLaughingTapComedyEvents, parseMilwaukeeComedyEvents } from "./communityScraper";
+import { parseClub400EntertainmentEvents, parseLaughingTapComedyEvents, parseMilwaukeeComedyEvents, parseMilwaukeeImprovEvents } from "./communityScraper";
 
 describe("verified entertainment source scrapers", () => {
   const referenceDate = new Date(2026, 8, 5, 12, 0, 0);
@@ -37,5 +37,21 @@ describe("verified entertainment source scrapers", () => {
     expect(events.map((event) => event.title)).toEqual(["JF Harris Sept 11-12", "Comedy Magic Show Sept 17", "Zach Martina September 18-19"]);
     expect(events.every((event) => event.category === "comedy")).toBe(true);
     expect(events.every((event) => event.venueName === "The Laughing Tap Comedy Club")).toBe(true);
+  });
+
+  it("imports current Milwaukee Improv shows with the actual Brookfield venue location", () => {
+    const events = parseMilwaukeeImprovEvents(`
+      <div class="cal-list">
+        <a class="item" href="/milwaukee/comic/will+burkart/"><div class="dates"><dl><dt>Sep</dt><dd>5<i> Sat</i></dd></dl></div><h3>Will Burkart</h3></a>
+        <a class="item" href="/milwaukee/comic/sam+tallent/"><div class="dates"><dl><dt>Sep</dt><dd>11<i> Fri</i></dd></dl></div><h3>Sam Tallent</h3></a>
+      </div>
+    `, new Date("2026-09-05T12:00:00"));
+    expect(events).toEqual([expect.objectContaining({
+      title: "Sam Tallent",
+      venueName: "Milwaukee Improv",
+      venueCity: "Brookfield, WI",
+      category: "comedy",
+      sourceUrl: "https://improv.com/milwaukee/comic/sam+tallent/",
+    })]);
   });
 });

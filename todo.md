@@ -1231,6 +1231,8 @@
 - [x] Add comedy club, karaoke night, and live-band performance categories to entertainment discovery
 - [x] Integrate only verified sources that expose current dated comedy, karaoke, or live-music events
 - [x] Verify the new entertainment categories appear in nearby city and ZIP-based discovery
+- [x] Treat Waukesha and Milwaukee County as the primary combined entertainment discovery area while retaining each event’s exact city and venue
+- [x] Add Milwaukee Improv’s official Brookfield calendar to the nearby comedy feed
 
 ## Waukesha Library Visibility Fix
 - [x] Audit Waukesha location filtering and current library event visibility

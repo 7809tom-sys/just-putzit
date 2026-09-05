@@ -448,6 +448,42 @@ export async function scrapeLaughingTapComedy(): Promise<ScrapedEvent[]> {
   return html ? parseLaughingTapComedyEvents(html) : [];
 }
 
+// ─── Milwaukee Improv, Brookfield ────────────────────────────────────────────
+
+export function parseMilwaukeeImprovEvents(html: string, referenceDate = new Date()): ScrapedEvent[] {
+  const url = "https://improv.com/milwaukee/calendar/";
+  const $ = cheerio.load(html);
+  const events: ScrapedEvent[] = [];
+  $(".cal-list a.item[href]").each((_, el) => {
+    const month = $(el).find(".dates dt").first().text().trim();
+    const day = $(el).find(".dates dd").first().clone().children().remove().end().text().trim();
+    const title = $(el).find("h3").first().text().replace(/\s+/g, " ").trim();
+    const href = $(el).attr("href") ?? "";
+    const eventDate = parseCommunityCalendarDate(`${month} ${day}`, referenceDate);
+    if (!title || !eventDate || !href) return;
+    events.push({
+      title,
+      description: "Official Milwaukee Improv show listing. Unless otherwise specified, guests must be at least 21; confirm show details and venue policies before booking.",
+      eventDate,
+      endDate: null,
+      venueName: "Milwaukee Improv",
+      venueAddress: "20110 Lower Union Street, Brookfield, WI",
+      venueCity: "Brookfield, WI",
+      category: "comedy",
+      sourceUrl: new URL(href, url).toString(),
+      sourceName: "Milwaukee Improv",
+      isFree: /two cents tuesday/i.test(title),
+      isOnCampus: false,
+    });
+  });
+  return futureEvents(dedupeScrapedEvents(events), 60).filter((event) => event.eventDate && event.eventDate.getTime() >= referenceDate.getTime() - 6 * 60 * 60 * 1000);
+}
+
+export async function scrapeMilwaukeeImprov(): Promise<ScrapedEvent[]> {
+  const html = await fetchHtml("https://improv.com/milwaukee/calendar/");
+  return html ? parseMilwaukeeImprovEvents(html) : [];
+}
+
 // ─── OnMilwaukee Weekend Preview ─────────────────────────────────────────────
 export async function scrapeOnMilwaukee(): Promise<ScrapedEvent[]> {
   const url = "https://onmilwaukee.com/articles/weekend-preview";
@@ -769,6 +805,7 @@ export async function scrapeAllMilwaukeeEventsWithHealth() {
     { sourceKey: "club_400", sourceLabel: "Club 400", city: "Waukesha", run: scrapeClub400Entertainment },
     { sourceKey: "milwaukee_comedy", sourceLabel: "Milwaukee Comedy", city: "Milwaukee", run: scrapeMilwaukeeComedy },
     { sourceKey: "laughing_tap", sourceLabel: "The Laughing Tap", city: "Milwaukee", run: scrapeLaughingTapComedy },
+    { sourceKey: "milwaukee_improv", sourceLabel: "Milwaukee Improv", city: "Brookfield", run: scrapeMilwaukeeImprov },
     { sourceKey: "onmilwaukee", sourceLabel: "OnMilwaukee", city: "Milwaukee", run: scrapeOnMilwaukee },
   ]);
 }

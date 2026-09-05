@@ -3255,7 +3255,7 @@ export async function upsertScrapedEvents(events: Array<{
       cooking_class: "food", escape_room: "community", wine_tasting: "food",
       hiking: "outdoors", park: "outdoors", library: "community",
       church: "community", community_center: "community", sports: "sports",
-      arts: "arts", comedy: "arts", karaoke: "music", live_music: "music", other: "other",
+      arts: "arts", comedy: "comedy", karaoke: "karaoke", live_music: "live_music", other: "other",
     };
     const category = (catMap[ev.category] ?? "other") as CommunityEvent["category"];
 
