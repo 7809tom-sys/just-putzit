@@ -3,7 +3,7 @@ import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Settings2, X, Radio, RotateCcw, Calendar, CalendarPlus, Navigation } from "lucide-react";
+import { Heart, MapPin, Users, Sparkles, Shield, MessageCircle, ChevronRight, Star, Smartphone, Share2, MoreVertical, Plus, Megaphone, GripVertical, Settings2, X, Radio, RotateCcw, Calendar, CalendarPlus, Navigation, ExternalLink } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -444,6 +444,7 @@ type NearbyDiscoveryItem = {
   id: number;
   kind: "event" | "activity";
   title: string;
+  description?: string | null;
   category?: string | null;
   eventDate?: Date | string | null;
   endDate?: Date | string | null;
@@ -454,6 +455,9 @@ type NearbyDiscoveryItem = {
   lat?: number | null;
   lng?: number | null;
   distanceMiles?: number | null;
+  venueWebsite?: string | null;
+  venueIsLocallyOwned?: boolean | null;
+  venueOwnershipNote?: string | null;
 };
 
 function calendarDate(value: Date | string) {
@@ -480,8 +484,8 @@ function getDirectionsUrl(item: NearbyDiscoveryItem) {
 }
 
 function StandardDiscoveryCard({ item, onPlan, navigate }: { item: NearbyDiscoveryItem; onPlan: () => void; navigate: (path: string) => void }) {
-  const detailPath = item.kind === "event" ? "/events" : `/activities/${item.id}`;
-  const dateLabel = item.eventDate ? new Date(item.eventDate).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "Flexible date";
+  const detailPath = item.kind === "event" ? `/events/${item.id}` : `/activities/${item.id}`;
+  const dateLabel = item.eventDate ? new Date(item.eventDate).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Flexible date";
   const calendarUrl = getCalendarUrl(item);
   const directionsUrl = getDirectionsUrl(item);
   return (
@@ -492,13 +496,14 @@ function StandardDiscoveryCard({ item, onPlan, navigate }: { item: NearbyDiscove
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">{item.kind}</span>
             {item.category && <span className="truncate text-[11px] text-muted-foreground">{item.category}</span>}
           </div>
-          <h3 className="truncate font-semibold text-sm text-foreground">{item.title}</h3>
+          <h3 className="font-semibold text-sm leading-snug text-foreground">{item.title}</h3>
         </div>
         <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        {dateLabel}{item.venueName ? ` · ${item.venueName}` : ""}{item.venueCity ? ` · ${item.venueCity}` : ""}{item.distanceMiles != null ? ` · ${formatMilesAway(item.distanceMiles)}` : ""}
-      </p>
+      <p className="mt-2 text-xs text-muted-foreground">{dateLabel}{item.distanceMiles != null ? ` · ${formatMilesAway(item.distanceMiles)}` : ""}</p>
+      {item.description && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.description}</p>}
+      {item.venueName && <p className="mt-2 flex items-start gap-1 text-xs font-medium text-foreground"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />{item.venueName}{item.venueCity ? ` · ${item.venueCity}` : ""}</p>}
+      {item.address && <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{item.address}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button type="button" size="sm" className="h-8 rounded-full gap-1.5" onClick={onPlan}>
           <CalendarPlus className="h-3.5 w-3.5" /> Plan it
@@ -508,6 +513,7 @@ function StandardDiscoveryCard({ item, onPlan, navigate }: { item: NearbyDiscove
         </Button>
         {calendarUrl && <a href={calendarUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"><Calendar className="h-3.5 w-3.5" /> Calendar</a>}
         {directionsUrl && <a href={directionsUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"><Navigation className="h-3.5 w-3.5" /> Directions</a>}
+        {item.externalUrl && <a href={item.externalUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted">Official details <ExternalLink className="h-3.5 w-3.5" /></a>}
       </div>
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
         <span>Want company? Start with the public event.</span>
@@ -537,6 +543,12 @@ function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
     lng: userLng,
     radiusMiles,
   });
+  const locallyOwnedDining = activities.filter((activity: any) =>
+    (activity.category === "dining" || activity.category === "coffee") &&
+    activity.venueIsLocallyOwned &&
+    activity.venueName &&
+    activity.venueWebsite
+  ).slice(0, 2);
   const { data: plan } = trpc.homepage.getTodaysPlan.useQuery();
   const savePlan = trpc.homepage.saveTodaysPlan.useMutation({ onSuccess: () => utils.homepage.getTodaysPlan.invalidate() });
   const clearPlan = trpc.homepage.clearTodaysPlan.useMutation({ onSuccess: () => utils.homepage.getTodaysPlan.invalidate() });
@@ -545,13 +557,16 @@ function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
   const items: NearbyDiscoveryItem[] = [
     ...events.map((event: any) => ({
       id: Number(event.id), kind: "event" as const, title: event.title, category: event.category,
+      description: event.description,
       eventDate: event.eventDate, endDate: event.endDate, venueName: event.venueName, venueCity: event.city ?? event.venueCity,
       address: event.address, externalUrl: event.externalUrl, lat: event.lat, lng: event.lng, distanceMiles: hasGps && event.lat != null && event.lng != null ? haversineDistanceMiles(userLat!, userLng!, Number(event.lat), Number(event.lng)) : event.distanceMiles,
     })),
     ...activities.map((activity: any) => ({
       id: Number(activity.id), kind: "activity" as const, title: activity.title, category: activity.category,
+      description: activity.description,
       eventDate: activity.eventDate, endDate: activity.endDate, venueName: activity.venueName, venueCity: activity.venueCity ?? activity.city,
-      address: activity.address, externalUrl: activity.externalUrl, lat: activity.lat, lng: activity.lng, distanceMiles: activity.distanceMiles,
+      address: activity.venueAddress ?? activity.address, externalUrl: activity.venueWebsite ?? activity.externalUrl, lat: activity.venueLat ?? activity.lat, lng: activity.venueLng ?? activity.lng, distanceMiles: activity.distanceMiles,
+      venueWebsite: activity.venueWebsite, venueIsLocallyOwned: activity.venueIsLocallyOwned, venueOwnershipNote: activity.venueOwnershipNote,
     })),
   ].sort((a, b) => new Date(a.eventDate ?? "9999-12-31").getTime() - new Date(b.eventDate ?? "9999-12-31").getTime()).slice(0, 4);
 
@@ -588,6 +603,29 @@ function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
         {!isLoading && items.map((item) => <StandardDiscoveryCard key={`${item.kind}-${item.id}`} item={item} navigate={navigate} onPlan={() => savePlan.mutate(buildTodayPlanSelection(item))} />)}
         {!isLoading && items.length === 0 && <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground sm:col-span-2">No verified listings matched this radius. Try 50 miles or search another city.</div>}
       </div>
+      {locallyOwnedDining.length > 0 && (
+        <section className="mt-5 rounded-2xl border border-orange-200 bg-orange-50/70 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-orange-700">Community favorites</p>
+              <h3 className="mt-1 font-display text-lg font-bold text-foreground">Locally owned coffee & dining nearby</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Each card shows its exact city. Local ownership is shown only when stated on the business’s official site.</p>
+            </div>
+            <Button type="button" size="sm" variant="outline" className="rounded-full bg-background" onClick={() => navigate("/activities")}>See all activities</Button>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {locallyOwnedDining.map((activity: any) => (
+              <article key={activity.id} className="rounded-xl border border-orange-100 bg-background p-3">
+                <div className="flex items-center gap-2"><span className="text-lg">{activity.category === "coffee" ? "☕" : "🍽️"}</span><Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Locally owned</Badge></div>
+                <h4 className="mt-2 font-semibold text-foreground">{activity.venueName}</h4>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{activity.venueOwnershipNote}</p>
+                <p className="mt-2 flex items-start gap-1 text-xs text-muted-foreground"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{activity.venueAddress}{activity.venueCity ? ` · ${activity.venueCity}` : ""}</p>
+                <a href={activity.venueWebsite} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Official site, hours & menu <ExternalLink className="h-3.5 w-3.5" /></a>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="mt-4 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => navigate("/events")}>Browse events</Button><Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => navigate("/activities")}>Browse activities</Button></div>
     </section>
   );

@@ -1171,6 +1171,12 @@
 - [x] Preserve exact city labels and direct official business or ordering handoffs
 - [x] Add source coverage and desktop/mobile verification for enriched local discovery cards
 
+## Home Nearby Card Information
+- [x] Show the full nearby event description, exact venue/city, and official handoff on Home cards without truncation
+- [x] Feature verified locally owned Waukesha coffee and dining options on the Home discovery experience
+- [x] Add regression coverage and responsive verification for the richer Home discovery cards
+- [x] Label nearby local-business highlights without implying they are in the member’s city when they are only within the selected radius
+
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
 - [ ] Parse current public event records with exact city, venue, admission, and official detail handoff
