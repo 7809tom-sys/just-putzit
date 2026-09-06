@@ -553,6 +553,7 @@ function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
     lng: userLng,
     radiusMiles,
   });
+  const officialEvents = events.filter((event: any) => Boolean(event.externalUrl));
   const locallyOwnedDining = activities.filter((activity: any) =>
     (activity.category === "dining" || activity.category === "coffee") &&
     activity.venueIsLocallyOwned &&
@@ -565,7 +566,7 @@ function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
   const { data: myMatches = [] } = trpc.matchmaking.getMyMatches.useQuery();
 
   const items: NearbyDiscoveryItem[] = [
-    ...events.map((event: any) => ({
+    ...officialEvents.map((event: any) => ({
       id: Number(event.id), kind: "event" as const, title: event.title, category: event.category,
       description: event.description,
       eventDate: event.eventDate, endDate: event.endDate, venueName: event.venueName, venueCity: event.city ?? event.venueCity,
@@ -613,6 +614,7 @@ function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
         {!isLoading && items.map((item) => <StandardDiscoveryCard key={`${item.kind}-${item.id}`} item={item} navigate={navigate} onPlan={() => savePlan.mutate(buildTodayPlanSelection(item))} />)}
         {!isLoading && items.length === 0 && <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground sm:col-span-2">No verified listings matched this radius. Try 50 miles or search another city.</div>}
       </div>
+      {!isLoading && events.length > officialEvents.length && <p className="mt-3 text-xs text-muted-foreground">Community-submitted events remain available in <button type="button" className="font-semibold text-primary hover:underline" onClick={() => navigate("/events")}>Browse events</button>; the nearby recommendations above prioritize listings with official public handoffs.</p>}
       {locallyOwnedDining.length > 0 && (
         <section className="mt-5 rounded-2xl border border-orange-200 bg-orange-50/70 p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">

@@ -1182,6 +1182,11 @@
 - [x] Avoid presenting an official handoff label when no official source link is available
 - [x] Add regression coverage for Home event-source status presentation
 
+## Official-First Home Nearby Discovery
+- [x] Prioritize current events with verified official handoffs in the Home nearby feed
+- [x] Keep community-submitted events discoverable without presenting them as official homepage recommendations
+- [x] Add regression coverage and responsive verification for official-first Home discovery
+
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
 - [ ] Parse current public event records with exact city, venue, admission, and official detail handoff
