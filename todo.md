@@ -1187,6 +1187,11 @@
 - [x] Keep community-submitted events discoverable without presenting them as official homepage recommendations
 - [x] Add regression coverage and responsive verification for official-first Home discovery
 
+## Community Event Provenance
+- [x] Identify seeded versus genuine member-submitted events without official handoffs
+- [x] Apply transparent visibility rules that protect members from unverified seeded records
+- [x] Add regression coverage for Community Events provenance presentation
+
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
 - [ ] Parse current public event records with exact city, venue, admission, and official detail handoff

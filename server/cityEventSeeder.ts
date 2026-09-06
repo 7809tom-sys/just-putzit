@@ -3,11 +3,9 @@
  *
  * When a user signs up in a new city, this module:
  *  1. Checks if the city already has events in the DB.
- *  2. If not, uses the built-in LLM to generate realistic community events
- *     across ALL categories: library, newspaper, college/university, church,
- *     senior center, youth group, neighborhood, and general community.
- *  3. Geocodes the city to get lat/lng for radius-based queries.
- *  4. Upserts those events into community_events and records the city in seeded_cities.
+ *  2. Triggers permitted official-source crawling for the requested city.
+ *  3. Geocodes the city only to support city-level discovery metadata.
+ *  4. Records the refresh attempt in seeded_cities without publishing generated events.
  *
  * Runs fire-and-forget — never blocks the signup flow.
  */
@@ -236,35 +234,19 @@ export async function autoSeedCityEvents(city: string, state = "WI"): Promise<vo
   const normalizedCity = city.trim();
 
   try {
-    const alreadyHasEvents = await cityHasEvents(normalizedCity);
-    if (alreadyHasEvents) {
-      console.log(`[cityEventSeeder] ${normalizedCity} already has events — skipping seed`);
-      return;
-    }
-
-    console.log(`[cityEventSeeder] New city: ${normalizedCity}, ${state} — geocoding + generating events...`);
-
-    // Geocode, generate LLM events, and crawl real museum/library events in parallel
-    const [coords, events] = await Promise.all([
+    console.log(`[cityEventSeeder] Refreshing permitted sources for ${normalizedCity}, ${state}`);
+    const [coords] = await Promise.all([
       geocodeCity(normalizedCity, state),
-      generateEventsForCity(normalizedCity, state),
+      crawlMuseumLibraryEvents(normalizedCity).catch(() => {}),
     ]);
-    // Also crawl real events from public APIs (fire-and-forget, non-blocking)
-    crawlMuseumLibraryEvents(normalizedCity).catch(() => {});
 
     if (coords) {
       console.log(`[cityEventSeeder] Geocoded ${normalizedCity}: ${coords.lat}, ${coords.lng}`);
     }
 
-    if (events.length === 0) {
-      console.warn(`[cityEventSeeder] No events generated for ${normalizedCity}`);
-      return;
-    }
-
-    const inserted = await insertGeneratedEvents(events, normalizedCity, state, coords);
-    await markCitySeeded(normalizedCity, state, inserted, coords);
-    console.log(`[cityEventSeeder] Seeded ${inserted} events for ${normalizedCity}, ${state}`);
+    await markCitySeeded(normalizedCity, state, 0, coords);
+    console.log(`[cityEventSeeder] Completed permitted-source refresh for ${normalizedCity}; no generated events were published.`);
   } catch (err) {
-    console.error(`[cityEventSeeder] Failed to seed ${normalizedCity}:`, err);
+    console.error(`[cityEventSeeder] Failed to refresh permitted sources for ${normalizedCity}:`, err);
   }
 }
