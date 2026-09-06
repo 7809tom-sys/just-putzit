@@ -15,3 +15,11 @@ The business’s official website describes Tally’s Tap & Eatery as a third-ge
 ## Copilot Coffee Co.
 
 Copilot Coffee Co.’s official website confirms its Waukesha location at **279 W Main St., Waukesha, WI**, current hours, and breakfast/lunch service. The site does not make an ownership claim in the reviewed content, so it may be shown as a local Waukesha coffee option but should not receive a “locally owned” badge without further verified evidence. Source: <https://www.copilotcoffeeco.com/>.
+
+## Sprocket Café
+
+Sprocket Café’s official site identifies owners Juliet and Gwenn, lists **3385 S Kinnickinnic Ave, Milwaukee, WI 53207**, daily 8 AM–3 PM hours, phone, and direct Toast online-ordering handoff. The site also describes its house blend developed by the owners and its use of beans from a locally owned Milwaukee roaster. This supports an explicitly locally owned Milwaukee coffee listing. Source: <https://sprocketcafe.weebly.com/>.
+
+## The Packing House
+
+The Packing House’s official site explicitly states that it is a **family owned restaurant** and lists **900 E Layton Ave, Milwaukee, WI**, its direct menu and reservation handoffs, current dining hours, and more than 50 years in Milwaukee. This supports a verified locally owned Milwaukee dining listing. Source: <https://packinghousemke.com/>.

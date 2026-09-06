@@ -1171,6 +1171,11 @@
 - [x] Preserve exact city labels and direct official business or ordering handoffs
 - [x] Add source coverage and desktop/mobile verification for enriched local discovery cards
 
+## Verified Milwaukee Local Business Discovery
+- [x] Verify locally owned Milwaukee coffee and dining businesses using official business sources
+- [x] Add city-precise listings with direct official handoffs and ownership evidence
+- [x] Add source coverage and verify nearby discovery presentation
+
 ## Home Nearby Card Information
 - [x] Show the full nearby event description, exact venue/city, and official handoff on Home cards without truncation
 - [x] Feature verified locally owned Waukesha coffee and dining options on the Home discovery experience
