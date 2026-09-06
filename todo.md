@@ -1191,6 +1191,7 @@
 - [x] Identify seeded versus genuine member-submitted events without official handoffs
 - [x] Apply transparent visibility rules that protect members from unverified seeded records
 - [x] Add regression coverage for Community Events provenance presentation
+- [x] Remove the unused AI-generated event implementation from the city refresh codepath
 
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
