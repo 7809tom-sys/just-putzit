@@ -458,6 +458,7 @@ type NearbyDiscoveryItem = {
   venueWebsite?: string | null;
   venueIsLocallyOwned?: boolean | null;
   venueOwnershipNote?: string | null;
+  source?: string | null;
 };
 
 function calendarDate(value: Date | string) {
@@ -483,11 +484,18 @@ function getDirectionsUrl(item: NearbyDiscoveryItem) {
   return destination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}` : null;
 }
 
+function getEventSourceStatus(item: NearbyDiscoveryItem) {
+  if (item.externalUrl) return { label: "Official source", detail: "Official venue or event page available", className: "bg-emerald-100 text-emerald-800" };
+  if (item.source === "community") return { label: "Community submitted", detail: "Confirm details with the venue", className: "bg-amber-100 text-amber-900" };
+  return { label: "Community listing", detail: "Confirm details with the venue", className: "bg-slate-100 text-slate-700" };
+}
+
 function StandardDiscoveryCard({ item, onPlan, navigate }: { item: NearbyDiscoveryItem; onPlan: () => void; navigate: (path: string) => void }) {
   const detailPath = item.kind === "event" ? `/events/${item.id}` : `/activities/${item.id}`;
   const dateLabel = item.eventDate ? new Date(item.eventDate).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Flexible date";
   const calendarUrl = getCalendarUrl(item);
   const directionsUrl = getDirectionsUrl(item);
+  const sourceStatus = item.kind === "event" ? getEventSourceStatus(item) : null;
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
@@ -495,6 +503,7 @@ function StandardDiscoveryCard({ item, onPlan, navigate }: { item: NearbyDiscove
           <div className="mb-1 flex items-center gap-2">
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">{item.kind}</span>
             {item.category && <span className="truncate text-[11px] text-muted-foreground">{item.category}</span>}
+            {sourceStatus && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${sourceStatus.className}`}>{sourceStatus.label}</span>}
           </div>
           <h3 className="font-semibold text-sm leading-snug text-foreground">{item.title}</h3>
         </div>
@@ -504,6 +513,7 @@ function StandardDiscoveryCard({ item, onPlan, navigate }: { item: NearbyDiscove
       {item.description && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.description}</p>}
       {item.venueName && <p className="mt-2 flex items-start gap-1 text-xs font-medium text-foreground"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />{item.venueName}{item.venueCity ? ` · ${item.venueCity}` : ""}</p>}
       {item.address && <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{item.address}</p>}
+      {sourceStatus && !item.externalUrl && <p className="mt-2 text-xs text-amber-800">{sourceStatus.detail}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button type="button" size="sm" className="h-8 rounded-full gap-1.5" onClick={onPlan}>
           <CalendarPlus className="h-3.5 w-3.5" /> Plan it
@@ -559,7 +569,7 @@ function NearbyNowModule({ navigate }: { navigate: (path: string) => void }) {
       id: Number(event.id), kind: "event" as const, title: event.title, category: event.category,
       description: event.description,
       eventDate: event.eventDate, endDate: event.endDate, venueName: event.venueName, venueCity: event.city ?? event.venueCity,
-      address: event.address, externalUrl: event.externalUrl, lat: event.lat, lng: event.lng, distanceMiles: hasGps && event.lat != null && event.lng != null ? haversineDistanceMiles(userLat!, userLng!, Number(event.lat), Number(event.lng)) : event.distanceMiles,
+      address: event.address, externalUrl: event.externalUrl, lat: event.lat, lng: event.lng, distanceMiles: hasGps && event.lat != null && event.lng != null ? haversineDistanceMiles(userLat!, userLng!, Number(event.lat), Number(event.lng)) : event.distanceMiles, source: event.source,
     })),
     ...activities.map((activity: any) => ({
       id: Number(activity.id), kind: "activity" as const, title: activity.title, category: activity.category,

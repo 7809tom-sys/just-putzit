@@ -1177,6 +1177,11 @@
 - [x] Add regression coverage and responsive verification for the richer Home discovery cards
 - [x] Label nearby local-business highlights without implying they are in the member’s city when they are only within the selected radius
 
+## Trustworthy Home Event Sources
+- [x] Distinguish verified official-source events from community-submitted or partner-provided listings on Home cards
+- [x] Avoid presenting an official handoff label when no official source link is available
+- [x] Add regression coverage for Home event-source status presentation
+
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
 - [ ] Parse current public event records with exact city, venue, admission, and official detail handoff
