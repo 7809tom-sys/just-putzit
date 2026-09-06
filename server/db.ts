@@ -855,6 +855,8 @@ export async function getActivityListings(
       venueWebsite: venuePartners.website,
       venueIsPublicAccess: venuePartners.isPublicAccess,
       venueAccessNotes: venuePartners.accessNotes,
+      venueIsLocallyOwned: venuePartners.isLocallyOwned,
+      venueOwnershipNote: venuePartners.ownershipNote,
     })
     .from(activityListings)
     .leftJoin(venuePartners, eq(activityListings.venueId, venuePartners.id))

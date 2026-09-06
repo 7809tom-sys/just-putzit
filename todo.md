@@ -1165,6 +1165,12 @@
 - [x] Reset the visible-result count when Marketplace city or category changes
 - [x] Add regression coverage and responsive verification for progressive Marketplace browsing
 
+## Complete Local Discovery Cards and Dining Highlights
+- [x] Show complete, actionable event-card information without forcing members to open a detail page
+- [x] Feature verified locally owned restaurants and coffee shops in the active community
+- [x] Preserve exact city labels and direct official business or ordering handoffs
+- [x] Add source coverage and desktop/mobile verification for enriched local discovery cards
+
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
 - [ ] Parse current public event records with exact city, venue, admission, and official detail handoff

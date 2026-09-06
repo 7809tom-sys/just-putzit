@@ -165,6 +165,12 @@ export default function ActivityBoard() {
     lng: userLng,
     radiusMiles,
   });
+  const { data: localActivityCatalog } = trpc.activityBoard.getAll.useQuery({
+    city: userCity,
+    lat: userLat,
+    lng: userLng,
+    radiusMiles,
+  });
   const { data: pickupSessions, refetch: refetchPickups } = trpc.pickupActivities.list.useQuery({ city: userCity?.split(",")[0].trim() });
   const { data: pickupAlerts } = trpc.pickupActivities.alertPreference.useQuery();
 
@@ -364,6 +370,15 @@ export default function ActivityBoard() {
     a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (a.description ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   ) ?? [];
+
+  const locallyOwnedDiningHighlights = useMemo(() => (
+    (localActivityCatalog ?? []).filter((activity: any) =>
+      (activity.category === "dining" || activity.category === "coffee") &&
+      activity.venueIsLocallyOwned &&
+      activity.venueName &&
+      activity.venueWebsite
+    ).slice(0, 4)
+  ), [localActivityCatalog]);
 
   const rememberedRecommendationCategories = getRecommendationCategories((rememberedActivities?.activities ?? []) as any[]);
   const filteredRememberedActivities = filterPersonalizedRecommendations({
@@ -781,6 +796,34 @@ export default function ActivityBoard() {
             {/* ── Activities Tab ── */}
             {activeTab === "activities" && (
               <>
+                {locallyOwnedDiningHighlights.length > 0 && (
+                  <section className="mb-5 rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 via-white to-amber-50 p-5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-700">Community favorites</p>
+                        <h2 className="mt-1 text-xl font-bold text-gray-900">Locally owned coffee & dining in {userCity?.split(",")[0].trim() ?? "your area"}</h2>
+                        <p className="mt-1 text-sm text-gray-600">Ownership is shown only when stated on the business’s official site. Check each venue’s official page for current hours, menu, and ordering.</p>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" className="w-fit rounded-full bg-white" onClick={() => setSelectedCategory("dining")}>Explore dining</Button>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {locallyOwnedDiningHighlights.map((activity: any) => (
+                        <div key={activity.id} className="flex min-w-0 flex-col justify-between gap-3 rounded-xl border border-orange-100 bg-white p-4">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xl">{categoryEmoji[activity.category] ?? "🍽️"}</span>
+                              <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Locally owned</Badge>
+                            </div>
+                            <h3 className="mt-2 font-bold text-gray-900">{activity.venueName}</h3>
+                            <p className="mt-1 text-sm text-gray-600">{activity.venueOwnershipNote ?? activity.description}</p>
+                            <p className="mt-2 flex items-start gap-1 text-xs font-medium text-gray-600"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{activity.venueAddress}{activity.venueCity ? ` · ${activity.venueCity}` : ""}</p>
+                          </div>
+                          <a href={activity.venueWebsite} target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-1 text-sm font-semibold text-primary hover:underline">Official website, hours & menu <ExternalLink className="h-3.5 w-3.5" /></a>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 {filteredActivities.length === 0 ? (
                   <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
                     <div className="text-6xl mb-4">🗺️</div>
@@ -1017,7 +1060,7 @@ export default function ActivityBoard() {
                                 </div>
                                 <h3 className="font-bold text-gray-900 text-base mb-1">{event.title}</h3>
                                 {event.description && (
-                                  <p className="text-gray-600 text-sm mb-2 line-clamp-2">{event.description}</p>
+                                <p className="text-gray-600 text-sm mb-2">{event.description}</p>
                                 )}
                                 <div className="flex flex-wrap gap-3 text-sm text-gray-500">
                                   {event.eventDate && (
@@ -1035,7 +1078,7 @@ export default function ActivityBoard() {
                                   {event.venueName && (
                                     <span className="flex items-center gap-1">
                                       <MapPin className="w-3.5 h-3.5" />
-                                      {event.venueName}
+                                      {event.venueName}{event.city ? ` · ${event.city}` : ""}
                                     </span>
                                   )}
                                   {interestCount > 0 && (
@@ -1051,6 +1094,8 @@ export default function ActivityBoard() {
                                     </span>
                                   )}
                                 </div>
+                                {event.address && <p className="mt-2 flex items-start gap-1 text-xs text-gray-500"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{event.address}</p>}
+                                {event.externalUrl && <a href={event.externalUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Official details, tickets & hours <ExternalLink className="h-3.5 w-3.5" /></a>}
                               </div>
                               <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-stretch">
                                 {user && (

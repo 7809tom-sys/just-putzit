@@ -329,6 +329,8 @@ export const venuePartners = mysqlTable("venue_partners", {
   website: varchar("website", { length: 300 }),
   isPublicAccess: boolean("is_public_access").notNull().default(false),
   accessNotes: varchar("access_notes", { length: 300 }),
+  isLocallyOwned: boolean("is_locally_owned").notNull().default(false),
+  ownershipNote: varchar("ownership_note", { length: 300 }),
   referralFeePerVisit: int("referralFeePerVisit").notNull().default(100), // cents
   commissionPct: int("commissionPct").notNull().default(12), // platform commission on bookings (percent)
   ownerUserId: int("ownerUserId"), // vendor account that owns this venue
