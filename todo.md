@@ -1218,14 +1218,14 @@
 - [ ] Connect the approved workstreams to partner listings, sponsorships, referral bookings, and other member-free revenue operations
 
 ## Cinch GitHub Full-Edit Path
-- [ ] Inspect the existing Just Putz It GitHub repository connection and available write permissions
-- [ ] Configure the user-approved Cinch GitHub source-code editing path
-- [ ] Verify synchronization and document the repository destination and edit boundary
-- [ ] Verify the user-supplied repository target 7809tom-sys/just-putzit and its write-access readiness
+- [x] Inspect the existing Just Putz It GitHub repository connection and available write permissions
+- [x] Configure the user-approved Cinch GitHub source-code editing path
+- [x] Verify synchronization and document the repository destination and edit boundary
+- [x] Verify the user-supplied repository target 7809tom-sys/just-putzit and its write-access readiness
 
 ## GitHub Workspace Export
-- [ ] Export the current Just Putz It workspace to 7809tom-sys/just-putzit after user confirmation
-- [ ] Verify the GitHub repository contains the exported source and document the external-agent editing workflow
+- [x] Export the current Just Putz It workspace to 7809tom-sys/just-putzit after user confirmation
+- [x] Verify the GitHub repository contains the exported source and document the external-agent editing workflow
 
 ## Approval-Gated External SEO Recommendations
 - [ ] Document that external SEO agents submit recommendations without access to member data, payments, credentials, or direct publishing
