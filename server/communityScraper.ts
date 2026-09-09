@@ -425,6 +425,115 @@ export async function scrapeDowntownWaukesha(): Promise<ScrapedEvent[]> {
   return html ? parseDowntownWaukeshaEvents(html) : [];
 }
 
+// ─── Waukesha Area Chamber of Commerce ─────────────────────────────────────────
+
+type WaukeshaChamberPublicEvent = {
+  name?: string;
+  startdate?: string;
+  enddate?: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  location_name?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  event_cost?: string | null;
+  event_reg_link?: string | null;
+  more_info_link?: string | null;
+  description?: string | null;
+  details?: string | null;
+  cd_cancelled_ind?: string | null;
+  private_event?: string | number | null;
+};
+
+function chamberText(value: string | null | undefined) {
+  return cheerio.load(value ?? "").text().replace(/\s+/g, " ").trim();
+}
+
+function parseChamberDate(dateValue: string | undefined, timeValue: string | null | undefined) {
+  const dateMatch = dateValue?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const timeMatch = timeValue?.match(/^(\d{1,2}):(\d{2})/);
+  if (!dateMatch || !timeMatch) return null;
+  return chicagoCalendarDate(
+    Number(dateMatch[1]),
+    Number(dateMatch[2]) - 1,
+    Number(dateMatch[3]),
+    Number(timeMatch[1]),
+    Number(timeMatch[2]),
+  );
+}
+
+function chamberVenueAddress(event: WaukeshaChamberPublicEvent) {
+  const values = [event.address, event.city, event.state, event.zip]
+    .map((value) => value?.trim())
+    .filter(Boolean);
+  return values.length > 0 ? values.join(", ") : null;
+}
+
+function isChamberGovernanceEvent(title: string, description: string | null) {
+  return /\b(board of directors|board meeting|committee meeting|membership meeting)\b/i.test(`${title} ${description ?? ""}`);
+}
+
+function chamberCategory(title: string, description: string | null) {
+  if (/\b(business|network|leadership|professional|ribbon cutting|conference|lunch and learn)\b/i.test(`${title} ${description ?? ""}`)) {
+    return "community_center";
+  }
+  return guessCategory(`${title} ${description ?? ""}`);
+}
+
+export function parseWaukeshaChamberEvents(rows: WaukeshaChamberPublicEvent[], now = new Date()): ScrapedEvent[] {
+  const events = rows.flatMap((event) => {
+    const title = event.name?.replace(/\s+/g, " ").trim();
+    const eventDate = parseChamberDate(event.startdate, event.start_time);
+    const endDate = event.enddate && event.enddate !== "0000-00-00"
+      ? parseChamberDate(event.enddate, event.end_time ?? event.start_time)
+      : null;
+    const city = event.city?.trim();
+    const sourceUrl = event.more_info_link?.trim() || event.event_reg_link?.trim();
+    if (!title || !eventDate || !city || !sourceUrl || event.cd_cancelled_ind === "Y" || event.private_event === 1 || event.private_event === "1") {
+      return [];
+    }
+    const description = chamberText(event.details) || chamberText(event.description) || null;
+    if (isChamberGovernanceEvent(title, description)) return [];
+    const address = chamberVenueAddress(event);
+    return [{
+      title,
+      description: description?.slice(0, 1000) ?? null,
+      eventDate,
+      endDate,
+      venueName: event.location_name?.replace(/\s+/g, " ").trim() || "Waukesha Area Chamber event venue",
+      venueAddress: address,
+      venueCity: `${city}, ${event.state?.trim() || "WI"}`,
+      category: chamberCategory(title, description),
+      sourceUrl,
+      sourceName: "Waukesha Area Chamber",
+      isFree: /\bfree\b|\$\s*0(?:\.00)?\b/i.test(`${event.event_cost ?? ""} ${description ?? ""}`),
+      isOnCampus: false,
+    } satisfies ScrapedEvent];
+  });
+  return futureEvents(dedupeScrapedEvents(events), 100)
+    .filter((event) => event.eventDate && event.eventDate.getTime() >= now.getTime() - 6 * 60 * 60 * 1000);
+}
+
+async function fetchWaukeshaChamberYear(year: number) {
+  const response = await fetch("https://auth.chamberwidgets.com/cn-api/org/calendar/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ searchValues: `&org_id=COWC&year=${year}&day=` }).toString(),
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error(`Waukesha Chamber calendar returned ${response.status}`);
+  return response.json() as Promise<WaukeshaChamberPublicEvent[]>;
+}
+
+export async function scrapeWaukeshaChamber(now = new Date()): Promise<ScrapedEvent[]> {
+  const currentYear = now.getFullYear();
+  const years = now.getMonth() >= 10 ? [currentYear, currentYear + 1] : [currentYear];
+  const results = await Promise.all(years.map(fetchWaukeshaChamberYear));
+  return parseWaukeshaChamberEvents(results.flat(), now);
+}
+
 /** Guess a category from title/description keywords */
 function guessCategory(text: string): string {
   const t = text.toLowerCase();
@@ -1104,6 +1213,7 @@ export async function scrapeAllMilwaukeeEventsWithHealth() {
     { sourceKey: "brookfield_library", sourceLabel: "Brookfield Public Library", city: "Brookfield", run: scrapeBrookfieldLibrary },
     { sourceKey: "visit_waukesha", sourceLabel: "Visit Waukesha", city: "Waukesha–Pewaukee", run: scrapeVisitWaukesha },
     { sourceKey: "downtown_waukesha", sourceLabel: "Downtown Waukesha", city: "Waukesha", run: scrapeDowntownWaukesha },
+    { sourceKey: "waukesha_chamber", sourceLabel: "Waukesha Area Chamber", city: "Waukesha area", run: scrapeWaukeshaChamber },
     { sourceKey: "uwm", sourceLabel: "UW–Milwaukee", city: "Milwaukee", run: scrapeUWMilwaukee },
     { sourceKey: "uwm_arts", sourceLabel: "UW–Milwaukee Peck School of the Arts", city: "Milwaukee", run: scrapeUWMArtsPerformingEvents },
     { sourceKey: "marquette", sourceLabel: "Marquette University", city: "Milwaukee", run: scrapeMarquette },

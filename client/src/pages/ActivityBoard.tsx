@@ -69,6 +69,7 @@ const SOURCE_META: Record<string, { label: string; colorClass: string; icon: str
   brookfield_library: { label: "Brookfield Library", colorClass: "bg-blue-100 text-blue-700", icon: "📚" },
   visit_waukesha: { label: "Visit Waukesha", colorClass: "bg-teal-100 text-teal-700", icon: "📍" },
   downtown_waukesha: { label: "Downtown Waukesha", colorClass: "bg-amber-100 text-amber-800", icon: "🏙️" },
+  waukesha_chamber: { label: "Waukesha Area Chamber", colorClass: "bg-sky-100 text-sky-800", icon: "🤝" },
   uwm: { label: "UW-Milwaukee", colorClass: "bg-yellow-100 text-yellow-800", icon: "🎓" },
   marquette: { label: "Marquette", colorClass: "bg-yellow-100 text-yellow-800", icon: "🎓" },
   college: { label: "College", colorClass: "bg-yellow-100 text-yellow-800", icon: "🎓" },

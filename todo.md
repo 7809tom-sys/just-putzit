@@ -1219,6 +1219,12 @@
 - [x] Prevent equivalent same-day city event cards from duplicating current official records across sources
 - [x] Add parser coverage, refresh verified listings, and validate source precision
 
+## Waukesha Area Chamber Authoritative Event Discovery
+- [x] Add the Waukesha Area Chamber calendar as a tracked official Community Events source
+- [x] Parse only public event fields and never retain submitter identities or contact information from the chamber feed
+- [x] Preserve exact event city, public venue, official detail or registration handoff, and future-only timing
+- [x] Add parser coverage, refresh current listings, and validate source precision
+
 ## Official Brookfield Public Library Discovery
 - [x] Add the official Brookfield Public Library calendar as a tracked Community Events source
 - [x] Ingest current public library programs while excluding closure notices and government-only entries

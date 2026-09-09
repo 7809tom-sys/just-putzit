@@ -61,3 +61,9 @@ The official theatre page renders a shell without the current show data in its s
 Official calendar: https://www.downtownwaukesha.com/upcoming-events/
 
 On September 9, 2026, a standard transparent request returned the official event-card HTML. Each card publishes a dated Central Time start, a Waukesha venue or address where available, a concise description, and an official Downtown Waukesha detail link. The initial permitted refresh parsed nine future entries, including Waukesha Farmers' Market dates, Autumn Epoxy Afternoon, Waukesha Art Crawl, and Wauk-Tober. The source is ingested as `downtown_waukesha`; the persistence guard avoids showing an equivalent same-day Waukesha event twice when an active Visit Waukesha official record already represents it.
+
+## Waukesha Area Chamber of Commerce
+
+Official calendar: https://www.waukeshaworks.com/events-calendar
+
+On September 9, 2026, the Chamber’s official page published its `COWC` calendar configuration and a standard request to its documented calendar endpoint returned current event records. The adapter uses only public event title, date/time, venue, address, city, stated cost, public description, and official detail or registration link. It deliberately ignores submitter names, email addresses, telephone numbers, member identifiers, and contact fields present in the upstream response. Internal governance entries, such as Board meetings, are excluded from member discovery; public networking, education, ribbon-cutting, conference, and community programs retain their exact venue city.

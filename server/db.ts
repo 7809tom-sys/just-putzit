@@ -3336,6 +3336,7 @@ export async function upsertScrapedEvents(events: Array<{
       "Brookfield Public Library": "brookfield_library",
       "Visit Waukesha": "visit_waukesha",
       "Downtown Waukesha": "downtown_waukesha",
+      "Waukesha Area Chamber": "waukesha_chamber",
       "UW-Milwaukee": "uwm",
       "Marquette University": "marquette",
       "OnMilwaukee": "onmilwaukee",
