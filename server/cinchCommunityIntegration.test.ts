@@ -6,19 +6,19 @@ describe("Cinch Community integration", () => {
   const communityPage = readFileSync(resolve(__dirname, "../client/src/pages/Community.tsx"), "utf8");
   const routerSource = readFileSync(resolve(__dirname, "./routers.ts"), "utf8");
 
-  it("uses a contained official Cinch iframe with no parent-origin privileges", () => {
-    expect(communityPage).toContain('src="${config.scriptUrl}"');
-    expect(communityPage).toContain('data-platform="generic"');
-    expect(communityPage).toContain('sandbox="allow-scripts"');
-    expect(communityPage).toContain('referrerPolicy="no-referrer"');
-    expect(communityPage).not.toContain("allow-same-origin");
-    expect(communityPage).not.toContain("allow-top-navigation");
+  it("mounts the approved official Cinch script directly in the Community page", () => {
+    expect(communityPage).toContain('document.createElement("script")');
+    expect(communityPage).toContain("script.src = cinchConfig.scriptUrl");
+    expect(communityPage).toContain("script.dataset.seed = cinchConfig.seedId");
+    expect(communityPage).toContain("script.dataset.key = cinchConfig.connectKey");
+    expect(communityPage).toContain('script.dataset.platform = "generic"');
+    expect(communityPage).toContain("mount.replaceChildren(script)");
     expect(routerSource).toContain('scriptUrl: "https://cinchseed.com/v1/watch.js"');
   });
 
   it("states the administrator approval and member-data boundaries", () => {
     expect(communityPage).toContain("Every Cinch-originated improvement requires administrator approval");
-    expect(communityPage).toContain("profiles, matches, messages, and payment data");
+    expect(communityPage).toContain("profile, matching, message, or payment records");
     expect(communityPage).toContain("Review before publish is active");
   });
 

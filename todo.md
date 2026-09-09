@@ -1205,6 +1205,8 @@
 - [x] Add regression coverage and verify the Community section on desktop and mobile
 - [x] Document the user-approved third-party embed boundary and visible privacy notice
 - [x] Require explicit administrator approval before any Cinch-originated improvement can alter or publish the site
+- [x] Recheck the approved Cinch embed reachability and Community workspace rendering
+- [x] Replace the contained Cinch preview with the user-approved direct Community script placement
 
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area

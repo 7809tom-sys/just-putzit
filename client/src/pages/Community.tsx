@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,32 +36,37 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   fitness: "💪", social: "🤝", other: "🌟",
 };
 
-function createCinchEmbedDocument(config: { seedId: string; connectKey: string; scriptUrl: string }) {
-  const safeSeedId = config.seedId.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-  const safeConnectKey = config.connectKey.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-
-  return `<!doctype html>
-<html lang="en">
-  <head><meta charset="utf-8" /><meta name="referrer" content="no-referrer" /></head>
-  <body>
-    <p>Preparing community recommendations for administrator review.</p>
-    <script src="${config.scriptUrl}" data-seed="${safeSeedId}" data-key="${safeConnectKey}" data-platform="generic" async></script>
-  </body>
-</html>`;
-}
-
 export default function Community() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [newGroup, setNewGroup] = useState({ name: "", description: "", category: "social", city: "" });
+  const [cinchStatus, setCinchStatus] = useState<"loading" | "mounted" | "unavailable">("loading");
+  const cinchMountRef = useRef<HTMLDivElement>(null);
 
   const [, navigate] = useLocation();
   const { data: groups, refetch } = trpc.community.getGroups.useQuery({
     // category filter not supported server-side yet, filter client-side
   });
   const { data: cinchConfig, isError: cinchConfigError } = trpc.cinchSeed.getEmbedConfig.useQuery(undefined, { retry: false });
-  const cinchEmbedDocument = cinchConfig ? createCinchEmbedDocument(cinchConfig) : undefined;
+
+  useEffect(() => {
+    const mount = cinchMountRef.current;
+    if (!mount || !cinchConfig) return;
+
+    const script = document.createElement("script");
+    script.src = cinchConfig.scriptUrl;
+    script.dataset.seed = cinchConfig.seedId;
+    script.dataset.key = cinchConfig.connectKey;
+    script.dataset.platform = "generic";
+    script.async = true;
+    script.onload = () => setCinchStatus("mounted");
+    script.onerror = () => setCinchStatus("unavailable");
+
+    mount.replaceChildren(script);
+    setCinchStatus("mounted");
+    return () => script.remove();
+  }, [cinchConfig]);
 
   const joinMutation = trpc.community.joinGroup.useMutation({
     onSuccess: () => {
@@ -178,25 +183,22 @@ export default function Community() {
               </div>
               <h2 id="cinch-community-heading" className="text-xl font-bold text-gray-900">Cinch Community recommendations</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-700">
-                Community suggestions are kept separate from Just Putz It profiles, matches, messages, and payment data. Every Cinch-originated improvement requires administrator approval before it can change or publish anything on Just Putz It.
+                Cinch is managed from your Cinch Seed dashboard. Just Putz It does not send profile, matching, message, or payment records through this integration. Every Cinch-originated improvement requires administrator approval before it can change or publish anything on Just Putz It.
               </p>
               <div className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-800">
                 <ShieldCheck className="h-4 w-4" /> Review before publish is active
               </div>
             </div>
-            {cinchEmbedDocument ? (
-              <iframe
-                title="Cinch Community recommendations"
-                srcDoc={cinchEmbedDocument}
-                sandbox="allow-scripts"
-                referrerPolicy="no-referrer"
-                className="min-h-24 w-full rounded-xl border border-indigo-100 bg-white p-3 text-sm text-gray-600"
-              />
-            ) : (
-              <div className="rounded-xl border border-indigo-100 bg-white px-4 py-5 text-sm text-gray-600">
-                {cinchConfigError ? "The Community workspace is temporarily unavailable. Community Groups remain available below." : "Preparing the Community workspace…"}
-              </div>
-            )}
+            <div className="min-h-24 rounded-xl border border-indigo-100 bg-white px-4 py-5 text-sm text-gray-600">
+              <div ref={cinchMountRef} aria-live="polite" />
+              {cinchConfigError
+                ? "The Community workspace is temporarily unavailable. Community Groups remain available below."
+                : cinchStatus === "unavailable"
+                  ? "Cinch is temporarily unavailable. You can manage it from your Cinch Seed dashboard and return here later."
+                  : cinchStatus === "mounted"
+                    ? "Cinch is installed. Manage recommendations in your Cinch Seed dashboard."
+                    : "Connecting Cinch Community workspace…"}
+            </div>
           </div>
         </section>
 
