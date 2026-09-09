@@ -1,4 +1,4 @@
-# Verified Waukesha Local Business Sources
+# Verified Local Business Sources
 
 ## Café de Arts Roastery
 
@@ -23,3 +23,11 @@ Sprocket Café’s official site identifies owners Juliet and Gwenn, lists **338
 ## The Packing House
 
 The Packing House’s official site explicitly states that it is a **family owned restaurant** and lists **900 E Layton Ave, Milwaukee, WI**, its direct menu and reservation handoffs, current dining hours, and more than 50 years in Milwaukee. This supports a verified locally owned Milwaukee dining listing. Source: <https://packinghousemke.com/>.
+
+## The Elbow Room
+
+The Elbow Room’s official site describes it as **“Brookfield’s locally owned bar and grill,”** lists **2850 N Brookfield Rd, Brookfield, WI 53045**, daily opening from 11 AM, contact information, a public menu, and direct gift-card handoff. This supports a verified locally owned Brookfield dining listing. Source: <https://www.elbowroombrookfield.com/>.
+
+## Brookfield Coffee Candidates
+
+Coffeeville, Café Sherpa’s, and Fresh Baked Café publish Brookfield locations and public hours on their own websites. The reviewed official pages do not expressly establish a local, family, or employee ownership status, so none is labeled or seeded as a **locally owned** Brookfield coffee card. They remain out of the verified local-business feature until first-party ownership evidence is available.

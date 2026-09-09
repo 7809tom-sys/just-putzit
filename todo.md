@@ -1208,6 +1208,30 @@
 - [x] Recheck the approved Cinch embed reachability and Community workspace rendering
 - [x] Replace the contained Cinch preview with the user-approved direct Community script placement
 
+## Cinch Seed Operating Boundary
+- [ ] Keep Just Putz It on Manus; let Cinch and other AI agents recommend work, and have Manus apply only user-approved website changes
+
+## External AI Collaboration and Revenue Workflow
+- [ ] Define approved workstreams for external AI agents, including local discovery, SEO, partner outreach, content, and technical changes
+- [ ] Select a least-privilege access path that protects member data, payments, and production publishing controls
+- [ ] Establish an administrator review step for any externally proposed database, code, content, or SEO change
+- [ ] Connect the approved workstreams to partner listings, sponsorships, referral bookings, and other member-free revenue operations
+
+## Cinch GitHub Full-Edit Path
+- [ ] Inspect the existing Just Putz It GitHub repository connection and available write permissions
+- [ ] Configure the user-approved Cinch GitHub source-code editing path
+- [ ] Verify synchronization and document the repository destination and edit boundary
+- [ ] Verify the user-supplied repository target 7809tom-sys/just-putzit and its write-access readiness
+
+## GitHub Workspace Export
+- [ ] Export the current Just Putz It workspace to 7809tom-sys/just-putzit after user confirmation
+- [ ] Verify the GitHub repository contains the exported source and document the external-agent editing workflow
+
+## Approval-Gated External SEO Recommendations
+- [ ] Document that external SEO agents submit recommendations without access to member data, payments, credentials, or direct publishing
+- [ ] Provide a safe intake path for administrator-reviewed SEO recommendations
+- [ ] Require an explicit user approval before Manus implements or publishes each accepted SEO change
+
 ## Visit Waukesha Authoritative Event Discovery
 - [x] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
 - [x] Parse current public event records with exact city, venue, admission, and official detail handoff
@@ -1224,6 +1248,12 @@
 - [x] Parse only public event fields and never retain submitter identities or contact information from the chamber feed
 - [x] Preserve exact event city, public venue, official detail or registration handoff, and future-only timing
 - [x] Add parser coverage, refresh current listings, and validate source precision
+
+## Verified Brookfield Local Business Discovery
+- [x] Add only Brookfield businesses whose own official sites substantiate their local ownership claim
+- [x] Preserve exact Brookfield address, public coordinates, hours, and direct official handoff
+- [x] Keep unverified local-ownership coffee candidates out of the feature until official evidence is available
+- [x] Extend source-evidence coverage and validate nearby discovery presentation
 
 ## Official Brookfield Public Library Discovery
 - [x] Add the official Brookfield Public Library calendar as a tracked Community Events source

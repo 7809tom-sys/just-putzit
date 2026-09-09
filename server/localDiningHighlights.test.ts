@@ -37,4 +37,13 @@ describe("local dining and complete discovery cards", () => {
     expect(sourceAudit).toContain("900 E Layton Ave, Milwaukee, WI");
     expect(sourceAudit).toContain("https://packinghousemke.com/");
   });
+
+  it("retains Brookfield local-ownership evidence while excluding unverified coffee ownership claims", () => {
+    expect(sourceAudit).toContain("## The Elbow Room");
+    expect(sourceAudit).toContain("Brookfield’s locally owned bar and grill");
+    expect(sourceAudit).toContain("2850 N Brookfield Rd, Brookfield, WI 53045");
+    expect(sourceAudit).toContain("https://www.elbowroombrookfield.com/");
+    expect(sourceAudit).toContain("## Brookfield Coffee Candidates");
+    expect(sourceAudit).toContain("none is labeled or seeded as a **locally owned** Brookfield coffee card");
+  });
 });
