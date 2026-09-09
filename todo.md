@@ -1198,6 +1198,14 @@
 - [x] Add regression coverage for Community Events provenance presentation
 - [x] Remove the unused AI-generated event implementation from the city refresh codepath
 
+## Cinch Seed Community Integration
+- [x] Configure the supplied Cinch Seed credentials in protected project settings
+- [x] Add the official lightweight Cinch embed in a new Community section without rebuilding the site
+- [x] Keep Just Putz It member identities private and avoid transferring profile or matching data to the embed
+- [x] Add regression coverage and verify the Community section on desktop and mobile
+- [x] Document the user-approved third-party embed boundary and visible privacy notice
+- [x] Require explicit administrator approval before any Cinch-originated improvement can alter or publish the site
+
 ## Visit Waukesha Authoritative Event Discovery
 - [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
 - [ ] Parse current public event records with exact city, venue, admission, and official detail handoff

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, Plus, Search, BookOpen, Mountain, ChefHat, Music, Palette, Dumbbell, Globe, Gamepad2, ChevronRight, Zap, Calendar } from "lucide-react";
+import { Users, Plus, Search, BookOpen, Mountain, ChefHat, Music, Palette, Dumbbell, Globe, Gamepad2, ChevronRight, Zap, Calendar, ShieldCheck, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import { LocalVenueBanner } from "@/components/LocalVenueBanner";
 
@@ -36,6 +36,20 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   fitness: "💪", social: "🤝", other: "🌟",
 };
 
+function createCinchEmbedDocument(config: { seedId: string; connectKey: string; scriptUrl: string }) {
+  const safeSeedId = config.seedId.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const safeConnectKey = config.connectKey.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+
+  return `<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><meta name="referrer" content="no-referrer" /></head>
+  <body>
+    <p>Preparing community recommendations for administrator review.</p>
+    <script src="${config.scriptUrl}" data-seed="${safeSeedId}" data-key="${safeConnectKey}" data-platform="generic" async></script>
+  </body>
+</html>`;
+}
+
 export default function Community() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,6 +60,8 @@ export default function Community() {
   const { data: groups, refetch } = trpc.community.getGroups.useQuery({
     // category filter not supported server-side yet, filter client-side
   });
+  const { data: cinchConfig, isError: cinchConfigError } = trpc.cinchSeed.getEmbedConfig.useQuery(undefined, { retry: false });
+  const cinchEmbedDocument = cinchConfig ? createCinchEmbedDocument(cinchConfig) : undefined;
 
   const joinMutation = trpc.community.joinGroup.useMutation({
     onSuccess: () => {
@@ -153,6 +169,36 @@ export default function Community() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Local venue banner ad slot */}
         <LocalVenueBanner page="community" className="mb-6" />
+
+        <section aria-labelledby="cinch-community-heading" className="mb-6 overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-emerald-50">
+          <div className="grid gap-4 p-5 md:grid-cols-[1fr_260px] md:items-center">
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-indigo-700">
+                <Sparkles className="h-4 w-4" /> Community workspace
+              </div>
+              <h2 id="cinch-community-heading" className="text-xl font-bold text-gray-900">Cinch Community recommendations</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-700">
+                Community suggestions are kept separate from Just Putz It profiles, matches, messages, and payment data. Every Cinch-originated improvement requires administrator approval before it can change or publish anything on Just Putz It.
+              </p>
+              <div className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-800">
+                <ShieldCheck className="h-4 w-4" /> Review before publish is active
+              </div>
+            </div>
+            {cinchEmbedDocument ? (
+              <iframe
+                title="Cinch Community recommendations"
+                srcDoc={cinchEmbedDocument}
+                sandbox="allow-scripts"
+                referrerPolicy="no-referrer"
+                className="min-h-24 w-full rounded-xl border border-indigo-100 bg-white p-3 text-sm text-gray-600"
+              />
+            ) : (
+              <div className="rounded-xl border border-indigo-100 bg-white px-4 py-5 text-sm text-gray-600">
+                {cinchConfigError ? "The Community workspace is temporarily unavailable. Community Groups remain available below." : "Preparing the Community workspace…"}
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Search */}
         <div className="relative mb-6">

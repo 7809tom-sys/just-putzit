@@ -287,6 +287,26 @@ import { getSallyBehaviorReviewCue } from "../shared/sallyBehaviorReviewPolicy";
 export const appRouter = router({
   system: systemRouter,
 
+  cinchSeed: router({
+    getEmbedConfig: publicProcedure.query(() => {
+      const seedId = process.env.CINCH_SEED_ID;
+      const connectKey = process.env.CINCH_CONNECT_KEY;
+
+      if (!seedId || !connectKey) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Cinch Community is not configured.",
+        });
+      }
+
+      return {
+        seedId,
+        connectKey,
+        scriptUrl: "https://cinchseed.com/v1/watch.js",
+      };
+    }),
+  }),
+
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
