@@ -3311,6 +3311,7 @@ export async function upsertScrapedEvents(events: Array<{
       "Waukesha Public Library": "waukesha_library",
       "Waukesha County Parks": "waukesha_county_parks",
       "Brookfield Public Library": "brookfield_library",
+      "Visit Waukesha": "visit_waukesha",
       "UW-Milwaukee": "uwm",
       "Marquette University": "marquette",
       "OnMilwaukee": "onmilwaukee",
@@ -3337,7 +3338,7 @@ export async function upsertScrapedEvents(events: Array<{
       cooking_class: "food", escape_room: "community", wine_tasting: "food",
       hiking: "outdoors", park: "outdoors", library: "community",
       church: "community", community_center: "community", sports: "sports",
-      arts: "arts", comedy: "comedy", karaoke: "karaoke", live_music: "live_music", other: "other",
+      arts: "arts", market: "market", comedy: "comedy", karaoke: "karaoke", live_music: "live_music", other: "other",
     };
     const category = (catMap[ev.category] ?? "other") as CommunityEvent["category"];
 

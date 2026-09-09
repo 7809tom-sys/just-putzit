@@ -1209,9 +1209,9 @@
 - [x] Replace the contained Cinch preview with the user-approved direct Community script placement
 
 ## Visit Waukesha Authoritative Event Discovery
-- [ ] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
-- [ ] Parse current public event records with exact city, venue, admission, and official detail handoff
-- [ ] Add parser coverage, refresh verified listings, and prevent duplicate city-area event records
+- [x] Add Visit Waukesha as a tracked supplemental source for the Waukesha–Pewaukee area
+- [x] Parse current public event records with exact city, venue, admission, and official detail handoff
+- [x] Add parser coverage, refresh verified listings, and prevent duplicate city-area event records
 
 ## Official Brookfield Public Library Discovery
 - [x] Add the official Brookfield Public Library calendar as a tracked Community Events source

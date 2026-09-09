@@ -259,11 +259,107 @@ export async function scrapeBrookfieldLibrary(): Promise<ScrapedEvent[]> {
   return html ? parseBrookfieldLibraryCalendarEvents(html) : [];
 }
 
+// ─── Visit Waukesha ───────────────────────────────────────────────────────────
+
+function chicagoOffsetMinutes(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)]));
+  const asUtc = Date.UTC(values.year, values.month - 1, values.day, values.hour, values.minute);
+  return (asUtc - date.getTime()) / 60_000;
+}
+
+function chicagoCalendarDate(year: number, month: number, day: number, hour: number, minute: number) {
+  const utcGuess = Date.UTC(year, month, day, hour, minute, 0, 0);
+  let result = new Date(utcGuess - chicagoOffsetMinutes(new Date(utcGuess)) * 60_000);
+  const correctedOffset = chicagoOffsetMinutes(result);
+  result = new Date(utcGuess - correctedOffset * 60_000);
+  return result;
+}
+
+function parseVisitWaukeshaDate(dateValue: string, dateText: string, referenceDate: Date) {
+  const dateMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const timeMatch = dateText.match(/@\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  if (!dateMatch) return parseCommunityCalendarDate(dateText, referenceDate);
+
+  let hour = timeMatch ? Number(timeMatch[1]) : 0;
+  const minute = timeMatch?.[2] ? Number(timeMatch[2]) : 0;
+  const meridiem = timeMatch?.[3]?.toLowerCase();
+  if (meridiem === "pm" && hour < 12) hour += 12;
+  if (meridiem === "am" && hour === 12) hour = 0;
+  const eventDate = chicagoCalendarDate(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]), hour, minute);
+  return Number.isNaN(eventDate.getTime()) ? null : eventDate;
+}
+
+function parseVisitWaukeshaVenue(venueName: string, venueAddress: string) {
+  const cityMatch = venueAddress.match(/,\s*([A-Za-z .'-]+),\s+WI(?:,\s*United States)?\s*$/i);
+  if (!cityMatch?.[1]) return null;
+  return {
+    venueName: venueName || "Visit Waukesha event venue",
+    venueAddress,
+    venueCity: `${cityMatch[1].trim()}, WI`,
+  };
+}
+
+export function parseVisitWaukeshaEvents(html: string, referenceDate = new Date()): ScrapedEvent[] {
+  const sourceUrl = "https://visitwaukesha.org/events/";
+  const $ = cheerio.load(html);
+  const events: ScrapedEvent[] = [];
+
+  $("article.tribe-events-calendar-list__event").each((_, element) => {
+    const titleLink = $(element).find(".tribe-events-calendar-list__event-title-link").first();
+    const title = titleLink.text().replace(/\s+/g, " ").trim();
+    const href = titleLink.attr("href")?.trim();
+    const dateNode = $(element).find("time.tribe-events-calendar-list__event-datetime").first();
+    const eventDate = parseVisitWaukeshaDate(
+      dateNode.attr("datetime") ?? "",
+      dateNode.text().replace(/\s+/g, " ").trim(),
+      referenceDate,
+    );
+    const venueName = $(element).find(".tribe-events-calendar-list__event-venue-title").first().text().replace(/\s+/g, " ").trim();
+    const venueAddress = $(element).find(".tribe-events-calendar-list__event-venue-address").first().text().replace(/\s+/g, " ").trim();
+    const venue = parseVisitWaukeshaVenue(venueName, venueAddress);
+    if (!title || !href || !eventDate || !venue) return;
+
+    const description = $(element).find(".tribe-events-calendar-list__event-description").first().text().replace(/\s+/g, " ").trim();
+    const cost = $(element).find(".tribe-events-calendar-list__event-cost").first().text().replace(/\s+/g, " ").trim();
+    events.push({
+      title,
+      description: description.slice(0, 1000) || null,
+      eventDate,
+      endDate: null,
+      ...venue,
+      category: guessCategory(`${title} ${description}`),
+      sourceUrl: href.startsWith("http") ? href : new URL(href, sourceUrl).toString(),
+      sourceName: "Visit Waukesha",
+      isFree: /free admission|\bfree\b|no charge/i.test(cost),
+      isOnCampus: false,
+    });
+  });
+
+  return futureEvents(dedupeScrapedEvents(events), 75)
+    .filter((event) => event.eventDate && event.eventDate.getTime() >= referenceDate.getTime() - 6 * 60 * 60 * 1000);
+}
+
+export async function scrapeVisitWaukesha(): Promise<ScrapedEvent[]> {
+  const url = "https://visitwaukesha.org/events/";
+  const html = await fetchHtml(url);
+  return html ? parseVisitWaukeshaEvents(html) : [];
+}
+
 /** Guess a category from title/description keywords */
 function guessCategory(text: string): string {
   const t = text.toLowerCase();
   if (/karaoke/i.test(t)) return "karaoke";
   if (/comedy|comic|improv|stand-?up/i.test(t)) return "comedy";
+  if (/farmers'? market|\bmarket\b/i.test(t)) return "market";
   if (/live music|live band|\bband\b|open mic|jazz|acoustic|concert/i.test(t)) return "live_music";
   if (/skate|ice rink|ice arena/i.test(t)) return "sports";
   if (/bowl|bowling/i.test(t)) return "bowling";
@@ -935,6 +1031,7 @@ export async function scrapeAllMilwaukeeEventsWithHealth() {
     { sourceKey: "waukesha_library", sourceLabel: "Waukesha Public Library", city: "Waukesha", run: scrapeWaukeshaLibrary },
     { sourceKey: "waukesha_county_parks", sourceLabel: "Waukesha County Parks", city: "Waukesha County", run: scrapeWaukeshaCountyParks },
     { sourceKey: "brookfield_library", sourceLabel: "Brookfield Public Library", city: "Brookfield", run: scrapeBrookfieldLibrary },
+    { sourceKey: "visit_waukesha", sourceLabel: "Visit Waukesha", city: "Waukesha–Pewaukee", run: scrapeVisitWaukesha },
     { sourceKey: "uwm", sourceLabel: "UW–Milwaukee", city: "Milwaukee", run: scrapeUWMilwaukee },
     { sourceKey: "uwm_arts", sourceLabel: "UW–Milwaukee Peck School of the Arts", city: "Milwaukee", run: scrapeUWMArtsPerformingEvents },
     { sourceKey: "marquette", sourceLabel: "Marquette University", city: "Milwaukee", run: scrapeMarquette },

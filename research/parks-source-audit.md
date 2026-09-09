@@ -42,6 +42,12 @@ Authoritative destination calendar: https://visitwaukesha.org/events/
 
 Visit Waukesha provides an accessible current-events listing for the Waukesha–Pewaukee area. The September 5, 2026 review contained individual event dates and times, exact venues and addresses, descriptive previews, free-admission markers, and official event detail pages for public events including the Wisconsin Highland Games, Fiesta del Río, the Pewaukee Farmers Market, and Waukesha Oktoberfest. Each record would preserve its stated city instead of being broadly labelled Waukesha. However, a standard server-side request returns a Cloudflare challenge, so no adapter is implemented and the protected source will not be bypassed. It can be revisited only with a permitted official feed or data-sharing endpoint.
 
+### September 9, 2026 reassessment
+
+The official calendar remains available to text extraction and currently presents 12 future Waukesha–Pewaukee records with individual dates and times, venue addresses, city labels, descriptions, free-admission markers where stated, and Visit Waukesha event-detail links. The listing currently includes Pewaukee Farmers Market, Fall Festival and Movie in the Park, Waukesha Farmers' Market, Apple Harvest Festival, Waukesha Oktoberfest, and the Wisconsin Antique Dealers Association show. A compliant production adapter still depends on a standard server-side request being permitted; no access-control workaround will be used.
+
+On the same reassessment, a standard transparent server-side request returned the official calendar HTML without a challenge. A first future-only refresh ingested 11 individually dated records with their stated Waukesha or Pewaukee city, public venue address, source page, and admission status. The recurring City of Waukesha special-event page remains a separate source and is not inferred from this destination calendar.
+
 ## Waukesha Civic Theatre
 
 Official calendar candidate: https://www.waukeshacivictheatre.org/box-office/upcoming-shows/
