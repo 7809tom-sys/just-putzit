@@ -3266,6 +3266,29 @@ export async function getAllCampuses() {
 }
 
 // ─── Community Scraper helpers ────────────────────────────────────────────────
+export function canonicalScrapedEventTitle(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/^\d{4}\s+/, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function canonicalScrapedEventAddress(value: string | null | undefined) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/\bwi\s+\d{5}(?:-\d{4})?\b/g, "wi")
+    .replace(/\bunited states\b/g, "")
+    .replace(/\bavenue\b/g, "ave")
+    .replace(/\bstreet\b/g, "st")
+    .replace(/\broad\b/g, "rd")
+    .replace(/\bdrive\b/g, "dr")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Upsert scraped events from community sources (libraries, universities, etc.).
  *  Deduplicates by (title, source, eventDate) to avoid flooding the table on
  *  repeated nightly runs. Returns the count of newly inserted rows.
@@ -3312,6 +3335,7 @@ export async function upsertScrapedEvents(events: Array<{
       "Waukesha County Parks": "waukesha_county_parks",
       "Brookfield Public Library": "brookfield_library",
       "Visit Waukesha": "visit_waukesha",
+      "Downtown Waukesha": "downtown_waukesha",
       "UW-Milwaukee": "uwm",
       "Marquette University": "marquette",
       "OnMilwaukee": "onmilwaukee",
@@ -3345,7 +3369,7 @@ export async function upsertScrapedEvents(events: Array<{
     // Dedup check: same title + source within same day
     const eventDateStr = ev.eventDate ? ev.eventDate.toISOString().slice(0, 10) : null;
     const existing = await db
-      .select({ id: communityEvents.id })
+      .select({ id: communityEvents.id, isActive: communityEvents.isActive })
       .from(communityEvents)
       .where(
         and(
@@ -3357,6 +3381,33 @@ export async function upsertScrapedEvents(events: Array<{
         )
       )
       .limit(1);
+
+    const eventTitleKey = canonicalScrapedEventTitle(ev.title);
+    const eventAddressKey = canonicalScrapedEventAddress(ev.venueAddress);
+    const sameDayCityCandidates = await db
+      .select({ id: communityEvents.id, title: communityEvents.title, address: communityEvents.address, source: communityEvents.source })
+      .from(communityEvents)
+      .where(
+        and(
+          eq(communityEvents.city, city),
+          eq(communityEvents.isActive, true),
+          eventDateStr
+            ? sql`DATE(${communityEvents.eventDate}) = ${eventDateStr}`
+            : sql`${communityEvents.eventDate} IS NULL`,
+        )
+      )
+      .limit(50);
+    const isCrossSourceDuplicate = sameDayCityCandidates.some((candidate) =>
+      candidate.source !== source
+      && canonicalScrapedEventTitle(candidate.title) === eventTitleKey
+      && (!eventAddressKey || canonicalScrapedEventAddress(candidate.address) === eventAddressKey)
+    );
+    if (isCrossSourceDuplicate) {
+      if (existing[0]?.isActive) {
+        await db.update(communityEvents).set({ isActive: false }).where(eq(communityEvents.id, existing[0].id));
+      }
+      continue;
+    }
 
     if (existing.length > 0) {
       await db.update(communityEvents).set({

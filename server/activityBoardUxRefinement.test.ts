@@ -44,4 +44,9 @@ describe("Activity Board UX refinement", () => {
     expect(board).toContain("interestedEventIds");
     expect(board).toContain("interested");
   });
+
+  it("labels Downtown Waukesha records with their authoritative source", () => {
+    expect(board).toContain("downtown_waukesha");
+    expect(board).toContain("Downtown Waukesha");
+  });
 });

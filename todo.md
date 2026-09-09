@@ -1213,6 +1213,12 @@
 - [x] Parse current public event records with exact city, venue, admission, and official detail handoff
 - [x] Add parser coverage, refresh verified listings, and prevent duplicate city-area event records
 
+## Downtown Waukesha Authoritative Event Discovery
+- [x] Add Downtown Waukesha as a tracked official Community Events source
+- [x] Parse future event cards with exact Waukesha city, public venue data, and official detail handoffs
+- [x] Prevent equivalent same-day city event cards from duplicating current official records across sources
+- [x] Add parser coverage, refresh verified listings, and validate source precision
+
 ## Official Brookfield Public Library Discovery
 - [x] Add the official Brookfield Public Library calendar as a tracked Community Events source
 - [x] Ingest current public library programs while excluding closure notices and government-only entries

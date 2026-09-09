@@ -354,6 +354,77 @@ export async function scrapeVisitWaukesha(): Promise<ScrapedEvent[]> {
   return html ? parseVisitWaukeshaEvents(html) : [];
 }
 
+// ─── Downtown Waukesha ────────────────────────────────────────────────────────
+
+function parseDowntownWaukeshaDate(raw: string) {
+  const cleaned = raw
+    .replace(/(\d)(?:st|nd|rd|th)\b/gi, "$1")
+    .replace(/\s*@\s*/g, " ")
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  const match = cleaned.match(/(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})\s+(\d{4})\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  if (!match) return null;
+  const month = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"].indexOf(match[1].toLowerCase());
+  if (month < 0) return null;
+  let hour = Number(match[4]);
+  if (match[6].toLowerCase() === "pm" && hour < 12) hour += 12;
+  if (match[6].toLowerCase() === "am" && hour === 12) hour = 0;
+  const eventDate = chicagoCalendarDate(Number(match[3]), month, Number(match[2]), hour, Number(match[5] ?? 0));
+  return Number.isNaN(eventDate.getTime()) ? null : eventDate;
+}
+
+function parseDowntownWaukeshaVenue(raw: string) {
+  const normalized = raw.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return { venueName: "Downtown Waukesha event venue", venueAddress: null, venueCity: "Waukesha, WI" };
+  }
+  const containsStreetAddress = /\b\d{1,5}\s+/.test(normalized);
+  const address = containsStreetAddress
+    ? (/\bwaukesha,\s*wi\b/i.test(normalized) ? normalized : `${normalized}, Waukesha, WI`)
+    : null;
+  const venueName = containsStreetAddress && normalized.includes(",")
+    ? normalized.split(",")[0].trim() || "Downtown Waukesha event venue"
+    : normalized;
+  return { venueName, venueAddress: address, venueCity: "Waukesha, WI" };
+}
+
+export function parseDowntownWaukeshaEvents(html: string, now = new Date()): ScrapedEvent[] {
+  const sourceUrl = "https://www.downtownwaukesha.com/upcoming-events/";
+  const $ = cheerio.load(html);
+  const events: ScrapedEvent[] = [];
+  $("article.event-card-box").each((_, element) => {
+    const title = $(element).find(".event-card-title").first().text().replace(/\s+/g, " ").trim();
+    const dateText = $(element).find("time.event-card-time").first().text().replace(/\s+/g, " ").trim();
+    const eventDate = parseDowntownWaukeshaDate(dateText);
+    const meta = $(element).find(".event-card-meta li").eq(1).text().replace(/\s+/g, " ").trim();
+    const description = $(element).find(".event-card-desc").first().text().replace(/\s+/g, " ").trim();
+    const href = $(element).find("a[href]").filter((__, anchor) => /view details/i.test($(anchor).text())).first().attr("href")?.trim();
+    const venue = parseDowntownWaukeshaVenue(meta);
+    if (!title || !eventDate || !href) return;
+    events.push({
+      title: title.replace(/^\d{4}\s+/, ""),
+      description: description.slice(0, 1000) || null,
+      eventDate,
+      endDate: null,
+      ...venue,
+      category: guessCategory(`${title} ${description}`),
+      sourceUrl: href.startsWith("http") ? href : new URL(href, sourceUrl).toString(),
+      sourceName: "Downtown Waukesha",
+      isFree: /\bfree\b/i.test($(element).text()),
+      isOnCampus: false,
+    });
+  });
+  return futureEvents(dedupeScrapedEvents(events), 75)
+    .filter((event) => event.eventDate && event.eventDate.getTime() >= now.getTime() - 6 * 60 * 60 * 1000);
+}
+
+export async function scrapeDowntownWaukesha(): Promise<ScrapedEvent[]> {
+  const url = "https://www.downtownwaukesha.com/upcoming-events/";
+  const html = await fetchHtml(url);
+  return html ? parseDowntownWaukeshaEvents(html) : [];
+}
+
 /** Guess a category from title/description keywords */
 function guessCategory(text: string): string {
   const t = text.toLowerCase();
@@ -376,7 +447,7 @@ function guessCategory(text: string): string {
   if (/library|book|reading|author|storytime/i.test(t)) return "library";
   if (/church|worship|faith|prayer/i.test(t)) return "church";
   if (/sport|game|league|tournament|athletic/i.test(t)) return "sports";
-  if (/art|exhibit|gallery|museum|craft|paint|draw|theater|theatre|concert|music|dance|perform/i.test(t)) return "arts";
+  if (/art|exhibit|gallery|museum|craft|paint|draw|epoxy|resin|theater|theatre|concert|music|dance|perform/i.test(t)) return "arts";
   if (/community|volunteer|fair|festival|market|meetup|social/i.test(t)) return "community_center";
   return "other";
 }
@@ -1032,6 +1103,7 @@ export async function scrapeAllMilwaukeeEventsWithHealth() {
     { sourceKey: "waukesha_county_parks", sourceLabel: "Waukesha County Parks", city: "Waukesha County", run: scrapeWaukeshaCountyParks },
     { sourceKey: "brookfield_library", sourceLabel: "Brookfield Public Library", city: "Brookfield", run: scrapeBrookfieldLibrary },
     { sourceKey: "visit_waukesha", sourceLabel: "Visit Waukesha", city: "Waukesha–Pewaukee", run: scrapeVisitWaukesha },
+    { sourceKey: "downtown_waukesha", sourceLabel: "Downtown Waukesha", city: "Waukesha", run: scrapeDowntownWaukesha },
     { sourceKey: "uwm", sourceLabel: "UW–Milwaukee", city: "Milwaukee", run: scrapeUWMilwaukee },
     { sourceKey: "uwm_arts", sourceLabel: "UW–Milwaukee Peck School of the Arts", city: "Milwaukee", run: scrapeUWMArtsPerformingEvents },
     { sourceKey: "marquette", sourceLabel: "Marquette University", city: "Milwaukee", run: scrapeMarquette },
