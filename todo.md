@@ -1227,6 +1227,12 @@
 - [x] Export the current Just Putz It workspace to 7809tom-sys/just-putzit after user confirmation
 - [x] Verify the GitHub repository contains the exported source and document the external-agent editing workflow
 
+## Database CSV Export
+- [x] Inventory every current database table and shared-file destination
+- [x] Export every database table to a complete CSV file set
+- [x] Package the CSV export for private shared-file delivery without placing data in the public source repository
+- [x] Verify table coverage and deliver the shared-file location
+
 ## Approval-Gated External SEO Recommendations
 - [ ] Document that external SEO agents submit recommendations without access to member data, payments, credentials, or direct publishing
 - [ ] Provide a safe intake path for administrator-reviewed SEO recommendations
