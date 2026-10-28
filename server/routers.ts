@@ -2,6 +2,8 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { localDiscoveryRouter } from "./routers/localDiscovery";
+import { loadSallyDiscoveryBrief } from "./localDiscovery/service";
 import { TRPCError } from "@trpc/server";
 import { sdk } from "./_core/sdk";
 import { invokeLLM } from "./_core/llm";
@@ -286,6 +288,7 @@ import { getSallyBehaviorReviewCue } from "../shared/sallyBehaviorReviewPolicy";
 
 export const appRouter = router({
   system: systemRouter,
+  localDiscovery: localDiscoveryRouter,
 
   cinchSeed: router({
     getEmbedConfig: publicProcedure.query(() => {
@@ -671,6 +674,7 @@ export const appRouter = router({
         autoSeedCityEvents(profile.city, profile.state ?? "WI").catch(() => {});
       }
       const eventSuggestions = await getSallyEventSuggestions(ctx.user.id, profile?.city ?? undefined, 3);
+      const discovered = await loadSallyDiscoveryBrief(ctx.user.id).catch(() => ({ brief: "", events: [] as Awaited<ReturnType<typeof loadSallyDiscoveryBrief>>["events"] }));
 
       const existingTraits = profile?.traits as ProfileTraits ?? {};
       const interviewCount = profile?.interviewCount ?? 0;
@@ -712,13 +716,16 @@ Rules:
       if (eventSuggestions.length > 0) {
         greeting += " I also pulled a few verified upcoming events from your community below—tell me which ones feel like you, and I’ll use that to make future picks smarter.";
       }
+      if (discovered.events.length > 0) {
+        greeting += " I found a few more things happening near you. They’re public plans at local spots, and I can use them when I suggest a date, a friend meetup, or a Gym Buddy workout.";
+      }
 
       const messages: InterviewMessage[] = [
         { role: "assistant", content: greeting, timestamp: Date.now() },
       ];
 
       await updateInterviewSession(session.id, { messages });
-      return { sessionId: session.id, message: greeting, eventSuggestions };
+      return { sessionId: session.id, message: greeting, eventSuggestions, discoveredEvents: discovered.events };
     }),
 
     eventFeedback: protectedProcedure
@@ -767,6 +774,9 @@ Rules:
         const missingTraits = traitFields.filter(f => !(existingTraits as any)[f]);
         if (missingTraits.length > 0) missingFields.push(...missingTraits.slice(0, 3).map(f => f.replace(/([A-Z])/g, ' $1').toLowerCase()));
 
+        const discovered = await loadSallyDiscoveryBrief(ctx.user.id).catch(() => ({ brief: "", events: [] as Awaited<ReturnType<typeof loadSallyDiscoveryBrief>>["events"] }));
+        const discoveryNote = discovered.brief ? `\n\nNearby public plans you can suggest:\n${discovered.brief}` : "";
+
         const profileCompleteness = Math.round(
           ((traitFields.filter(f => !!(existingTraits as any)[f]).length + (profileIdentity.gender ? 1 : 0) + (profileIdentity.sexualOrientation ? 1 : 0) + (profileIdentity.birthDate ? 1 : 0)) /
           (traitFields.length + 3)) * 100
@@ -793,7 +803,8 @@ Rules:
 - Use emojis sparingly but naturally
 - After 5+ exchanges, occasionally say "I'm updating your profile with all this amazing info!" to signal progress
 - Game participation is optional context only: never expose answers or individual scores, never turn wins or losses into personality claims, and only mention a game if it fits naturally into the conversation
-- Never be clinical, robotic, or repeat questions`,
+- Never be clinical, robotic, or repeat questions
+- If you suggest going out, use the nearby public plans below. Do not invent a venue or a time.${discoveryNote}`,
           },
           ...messages.map(m => ({ role: m.role as "assistant" | "user", content: m.content })),
         ];
@@ -2198,15 +2209,16 @@ Return JSON with questions array, each having optionA and optionB.`,
         const budgetCents = Math.round(input.budgetDollars * 100);
         const venues = await getVenuePartners(profile?.city ?? undefined);
 
+        const discovered = await loadSallyDiscoveryBrief(ctx.user.id).catch(() => ({ brief: "", events: [] as Awaited<ReturnType<typeof loadSallyDiscoveryBrief>>["events"] }));
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: `You are Sally, the warm AI date concierge for Just Putzit. You design delightful, realistic real-world outings (picnics, park dates, food deliveries to a location, fun activities). You arrange everything: Sally contacts local vendors and coordinates food/supplies delivery to the spot. Keep it warm, specific, and doable within budget. Users never pay Just Putzit — local vendors do.`,
+              content: `You are Sally, the warm AI date concierge for Just Putzit. You design delightful, realistic real-world outings (picnics, park dates, food deliveries to a location, fun activities). You arrange everything: Sally contacts local vendors and coordinates food/supplies delivery to the spot. Keep it warm, specific, and doable within budget. Users never pay Just Putzit — local vendors do. When nearby public events are listed, prefer those real plans at independent local spots, libraries, museums, churches, and nonprofits. Do not invent events and do not suggest chain businesses. Paid placement is off.`,
             },
             {
               role: "user",
-              content: `Plan a ${input.occasion}. Vibe: ${input.vibe}. Location/area: ${input.location}. Budget: $${input.budgetDollars} for ${input.partySize} people. Preferred date: ${input.preferredDate ?? "flexible"}. Dietary notes: ${input.dietaryNotes ?? "none"}. User profile: ${JSON.stringify(profile?.traits ?? {})}. Nearby partner venues (optional to use): ${JSON.stringify(venues.slice(0, 8).map(v => ({ name: v.name, category: v.category })))}.\n\nReturn JSON: { title: string, summary: string (2-3 warm sentences from Sally), items: [{ label, detail, estCostCents, vendorName }] (3-5 items), estTotalCents: number }. Keep estTotalCents within budget.`,
+              content: `Plan a ${input.occasion}. Vibe: ${input.vibe}. Location/area: ${input.location}. Budget: $${input.budgetDollars} for ${input.partySize} people. Preferred date: ${input.preferredDate ?? "flexible"}. Dietary notes: ${input.dietaryNotes ?? "none"}. User profile: ${JSON.stringify(profile?.traits ?? {})}. Nearby partner venues (optional to use): ${JSON.stringify(venues.slice(0, 8).map(v => ({ name: v.name, category: v.category })))}.\n${discovered.brief ? `Nearby public events:\n${discovered.brief}\n` : ""}\nReturn JSON: { title: string, summary: string (2-3 warm sentences from Sally), items: [{ label, detail, estCostCents, vendorName }] (3-5 items), estTotalCents: number }. Keep estTotalCents within budget.`,
             },
           ],
           response_format: {

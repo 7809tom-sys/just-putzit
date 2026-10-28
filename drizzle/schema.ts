@@ -1677,3 +1677,85 @@ export const todaysPlans = mysqlTable("todays_plans", {
 
 export type TodaysPlan = typeof todaysPlans.$inferSelect;
 export type InsertTodaysPlan = typeof todaysPlans.$inferInsert;
+
+// ─── Location-based local event discovery ────────────────────────────────────
+// Cached per city/zip. Admins curate feed URLs and can mark a business local
+// or chain. These tables do not change community_events.
+export const localDiscoveryAreas = mysqlTable("local_discovery_areas", {
+  id: int("id").autoincrement().primaryKey(),
+  areaKey: varchar("areaKey", { length: 160 }).notNull().unique(),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 32 }),
+  postalCode: varchar("postalCode", { length: 16 }),
+  lat: double("lat"),
+  lng: double("lng"),
+  radiusMiles: double("radiusMiles").notNull().default(25),
+  fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  status: varchar("status", { length: 16 }).notNull().default("fresh"),
+  errorMessage: text("errorMessage"),
+  sourceSummary: json("sourceSummary").$type<Array<{ id: string; label: string; state: string; detail: string; eventCount: number }>>(),
+});
+
+export type LocalDiscoveryArea = typeof localDiscoveryAreas.$inferSelect;
+
+export const discoveredLocalEvents = mysqlTable("discovered_local_events", {
+  id: int("id").autoincrement().primaryKey(),
+  areaKey: varchar("areaKey", { length: 160 }).notNull(),
+  externalId: varchar("externalId", { length: 191 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt"),
+  venueName: varchar("venueName", { length: 255 }),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 32 }),
+  lat: double("lat"),
+  lng: double("lng"),
+  category: varchar("category", { length: 32 }).notNull().default("community"),
+  sourceAdapter: varchar("sourceAdapter", { length: 40 }).notNull(),
+  sourceLabel: varchar("sourceLabel", { length: 160 }),
+  url: text("url"),
+  priceCents: int("priceCents"),
+  isFree: boolean("isFree").notNull().default(false),
+  familyFriendly: boolean("familyFriendly").notNull().default(false),
+  organizerKind: varchar("organizerKind", { length: 32 }).notNull(),
+  venueOwnership: varchar("venueOwnership", { length: 24 }).notNull().default("unknown"),
+  brand: varchar("brand", { length: 160 }),
+  brandWikidata: varchar("brandWikidata", { length: 64 }),
+  osmId: varchar("osmId", { length: 64 }),
+  isSponsored: boolean("isSponsored").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("discovered_local_events_area_external").on(table.areaKey, table.externalId),
+]);
+
+export type DiscoveredLocalEvent = typeof discoveredLocalEvents.$inferSelect;
+
+export const localDiscoveryFeeds = mysqlTable("local_discovery_feeds", {
+  id: int("id").autoincrement().primaryKey(),
+  areaKey: varchar("areaKey", { length: 160 }).notNull(),
+  url: varchar("url", { length: 500 }).notNull(),
+  feedKind: varchar("feedKind", { length: 16 }).notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  organizerKind: varchar("organizerKind", { length: 32 }).notNull().default("other"),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("local_discovery_feeds_area_url").on(table.areaKey, table.url),
+]);
+
+export type LocalDiscoveryFeed = typeof localDiscoveryFeeds.$inferSelect;
+
+export const localVenueOverrides = mysqlTable("local_venue_overrides", {
+  id: int("id").autoincrement().primaryKey(),
+  venueKey: varchar("venueKey", { length: 255 }).notNull().unique(),
+  displayName: varchar("displayName", { length: 255 }).notNull(),
+  city: varchar("city", { length: 100 }),
+  classification: varchar("classification", { length: 16 }).notNull(),
+  note: varchar("note", { length: 280 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LocalVenueOverride = typeof localVenueOverrides.$inferSelect;

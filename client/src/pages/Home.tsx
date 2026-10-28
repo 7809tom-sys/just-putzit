@@ -18,6 +18,7 @@ import { filterHomepageDiscovery, type HomepageDiscoveryDateRange, type Homepage
 import { formatMilesAway, haversineDistanceMiles } from "@shared/geo";
 import { buildTodayPlanSelection } from "@shared/todaysPlan";
 import { TodayPlanInviteDialog } from "@/components/TodayPlanInviteDialog";
+import { HappeningNearYou } from "@/components/HappeningNearYou";
 
 // ─── Module definitions ───────────────────────────────────────────────────────
 
@@ -852,6 +853,10 @@ function AuthenticatedHome({ user, profile }: { user: any; profile: any }) {
               <span className="hidden sm:inline">Customize</span>
             </button>
           </div>
+        </div>
+
+        <div className="mb-6">
+          <HappeningNearYou />
         </div>
 
         <div className="mb-6">

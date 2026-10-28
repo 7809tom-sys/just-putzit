@@ -28,6 +28,15 @@ export default function Interview() {
     city: string;
     feedback?: "interested" | "not_for_me" | null;
   }>>([]);
+  const [discoveredEvents, setDiscoveredEvents] = useState<Array<{
+    id: string;
+    title: string;
+    start: string;
+    venueName?: string;
+    city?: string;
+    url?: string;
+    isFree: boolean;
+  }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { isSupported: speechSupported, isListening, error: speechError, startListening, stopListening } = useSpeechRecognition((transcript) => {
@@ -39,6 +48,7 @@ export default function Interview() {
       setSessionId(data.sessionId);
       setMessages([{ role: "assistant", content: data.message }]);
       setEventSuggestions(data.eventSuggestions ?? []);
+      setDiscoveredEvents(data.discoveredEvents ?? []);
       setIsStarted(true);
       startTimer();
     },
@@ -243,6 +253,21 @@ export default function Interview() {
                         <ThumbsDown className="mr-1 h-3.5 w-3.5" /> Not for me
                       </Button>
                     </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+          {discoveredEvents.length > 0 && (
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3" aria-label="Happening near you">
+              <p className="text-sm font-bold text-foreground">Happening near you</p>
+              <p className="mb-2 text-xs text-muted-foreground">Public plans Sally can use for a date, friends, or a Gym Buddy workout.</p>
+              <div className="space-y-2">
+                {discoveredEvents.map((event) => (
+                  <article key={event.id} className="rounded-xl border bg-white p-3">
+                    <p className="text-sm font-semibold text-foreground">{event.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{new Date(event.start).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}{event.venueName || event.city ? ` · ${event.venueName ?? event.city}` : ""}{event.isFree ? " · Free" : ""}</p>
+                    {event.url && <a href={event.url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-primary hover:underline">Official details</a>}
                   </article>
                 ))}
               </div>
