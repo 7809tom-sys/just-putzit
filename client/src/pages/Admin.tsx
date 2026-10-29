@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Spinner } from "@/components/ui/spinner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { LocalDiscoveryAdmin } from "@/components/LocalDiscoveryAdmin";
 import {
   Shield,
   Flag,
@@ -853,6 +854,7 @@ export default function Admin() {
                       </div>
                     )}
                   </div>
+                  <LocalDiscoveryAdmin />
                   {!allEvents || allEvents.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">No events yet. Post events in the Events tab first.</p>
                   ) : (

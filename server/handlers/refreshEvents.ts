@@ -78,6 +78,12 @@ export async function refreshEventsHandler(req: Request, res: Response) {
     }
 
     results.reseededCities = reseeded;
+    try {
+      const { refreshSeededDiscoveryAreas } = await import("../localDiscovery/service");
+      results.localDiscovery = await refreshSeededDiscoveryAreas();
+    } catch (error) {
+      results.localDiscoveryError = error instanceof Error ? error.message : String(error);
+    }
     results.durationMs = Date.now() - startTime;
 
     console.log(`[refreshEvents] Done in ${results.durationMs}ms`, results);
