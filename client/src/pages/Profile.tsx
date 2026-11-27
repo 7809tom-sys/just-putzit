@@ -435,6 +435,17 @@ export default function Profile() {
             </div>
           </div>
 
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-800">Meet Me</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">Open to a hello, in person</p>
+                <p className="mt-1 text-sm text-muted-foreground">Only on while you turn it on at a public venue. It never runs in the background and never shares an address.</p>
+              </div>
+              <Button type="button" size="sm" variant="outline" className="rounded-full border-amber-200 bg-white" onClick={() => navigate("/meet-me")}>Open</Button>
+            </div>
+          </div>
+
           <ProfileCompletenessCard
             bio={profile?.bio}
             aiSummary={traits?.aiSummary}
