@@ -60,6 +60,7 @@ import LiveScores from "@/pages/LiveScores";
 import GymBuddy from "@/pages/GymBuddy";
 import GymPage from "@/pages/GymPage";
 import GymPitch from "@/pages/GymPitch";
+import MeetMe from "@/pages/MeetMe";
 import MyWorkout from "@/pages/MyWorkout";
 import Privacy from "@/pages/Privacy";
 import SharedQuestionSync from "@/pages/SharedQuestionSync";
@@ -158,6 +159,7 @@ function Router() {
         <Route path="/shout-out" component={ShoutOut} />
         <Route path="/refer" component={ShoutOut} />
         <Route path="/safety" component={Safety} />
+        <Route path="/meet-me" component={MeetMe} />
         <Route path="/advertise" component={AdvertiseWithUs} />
         <Route path="/admin/advertising" component={AdminAdvertising} />
         <Route path="/admin/members" component={AdminMembers} />

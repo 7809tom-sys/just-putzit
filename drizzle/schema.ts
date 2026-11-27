@@ -3,6 +3,7 @@ import {
   boolean,
   date,
   double,
+  index,
   int,
   json,
 	mysqlEnum,
@@ -1759,3 +1760,67 @@ export const localVenueOverrides = mysqlTable("local_venue_overrides", {
 });
 
 export type LocalVenueOverride = typeof localVenueOverrides.$inferSelect;
+
+// ─── Meet Me proximity sessions ──────────────────────────────────────────────
+// Venue-scoped presence for in-person introductions. No latitude, longitude,
+// address, or distance is stored here: a session can only point at a venue that is
+// already a named public place elsewhere in this schema, so a home address is not
+// representable in this feature at all.
+export const meetMeSessions = mysqlTable("meet_me_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  venueType: mysqlEnum("venueType", ["partner", "gym", "event"]).notNull(),
+  venueId: int("venueId").notNull(),
+  venueKey: varchar("venueKey", { length: 96 }).notNull(),
+  venueName: varchar("venueName", { length: 200 }).notNull(),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  endedAt: timestamp("endedAt"),
+  endReason: mysqlEnum("endReason", ["manual", "expired", "superseded", "safety"]),
+}, (table) => [
+  index("meet_me_sessions_venue_idx").on(table.venueKey, table.expiresAt),
+  index("meet_me_sessions_user_idx").on(table.userId, table.endedAt),
+]);
+export type MeetMeSession = typeof meetMeSessions.$inferSelect;
+
+// ─── Meet Me encounters ──────────────────────────────────────────────────────
+// An encounter is ephemeral and carries no relationship state: it must never create
+// a row in `matches` or `event_introductions`. The normalized pair plus dayKey is a
+// uniqueness boundary so one pair meets at most once per venue per day and a future
+// transport cannot re-surface the same pair on every radio heartbeat.
+export const meetMeEncounters = mysqlTable("meet_me_encounters", {
+  id: int("id").autoincrement().primaryKey(),
+  lowerUserId: int("lowerUserId").notNull(),
+  higherUserId: int("higherUserId").notNull(),
+  venueKey: varchar("venueKey", { length: 96 }).notNull(),
+  venueName: varchar("venueName", { length: 200 }).notNull(),
+  dayKey: varchar("dayKey", { length: 10 }).notNull(),
+  status: mysqlEnum("status", ["pending", "opened", "greeted", "dismissed", "expired", "reported"]).notNull().default("pending"),
+  icebreaker: varchar("icebreaker", { length: 280 }),
+  surfacedAt: timestamp("surfacedAt").defaultNow().notNull(),
+  openedAt: timestamp("openedAt"),
+  greetedAt: timestamp("greetedAt"),
+  expiresAt: timestamp("expiresAt").notNull(),
+}, (table) => [
+  uniqueIndex("meet_me_encounters_pair_unique").on(table.lowerUserId, table.higherUserId, table.venueKey, table.dayKey),
+  index("meet_me_encounters_lower_idx").on(table.lowerUserId, table.status),
+  index("meet_me_encounters_higher_idx").on(table.higherUserId, table.status),
+]);
+export type MeetMeEncounter = typeof meetMeEncounters.$inferSelect;
+
+// ─── Meet Me nudges ──────────────────────────────────────────────────────────
+// One row per Sally prompt actually delivered, used for rate limiting and to prove
+// what copy a member saw. Prompt text is stored so an edited template cannot rewrite
+// history during a safety review.
+export const meetMeNudges = mysqlTable("meet_me_nudges", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  encounterId: int("encounterId").notNull(),
+  kind: mysqlEnum("kind", ["nudge", "greeting"]).notNull().default("nudge"),
+  promptText: varchar("promptText", { length: 240 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  seenAt: timestamp("seenAt"),
+}, (table) => [
+  index("meet_me_nudges_user_idx").on(table.userId, table.createdAt),
+]);
+export type MeetMeNudge = typeof meetMeNudges.$inferSelect;

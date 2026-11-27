@@ -14,6 +14,7 @@ import { bullgerdashRouter } from "./routers/bullgerdash";
 import { watchPartyRouter } from "./routers/watchParty";
 import { sportsScoresRouter } from "./routers/sportsScores";
 import { gymRouter } from "./routers/gym";
+import { meetMeRouter } from "./routers/meetMe";
 import { workoutRouter } from "./routers/workout";
 import { autoSeedCityEvents } from "./cityEventSeeder";
 import { crawlAllCities } from "./museumLibraryCrawler";
@@ -289,6 +290,7 @@ import { getSallyBehaviorReviewCue } from "../shared/sallyBehaviorReviewPolicy";
 export const appRouter = router({
   system: systemRouter,
   localDiscovery: localDiscoveryRouter,
+  meetMe: meetMeRouter,
 
   cinchSeed: router({
     getEmbedConfig: publicProcedure.query(() => {
